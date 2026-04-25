@@ -1,0 +1,1388 @@
+{
+  "zh_zai_location": {
+    "id": "zh_zai_location",
+    "category": "prepositions",
+    "title": "在 for location",
+    "level": "A1",
+    "shortExplanation": "在 is used to say where someone or something is.",
+    "fullExplanation": "Use 在 before a place to show location. It can also introduce the place where an action happens.",
+    "examples": [
+    {
+    "chinese": "我在家。",
+    "pinyin": "Wǒ zài jiā."
+    },
+    {
+    "chinese": "他在学校。",
+    "pinyin": "Tā zài xuéxiào."
+    },
+    {
+    "chinese": "手机在桌子上。",
+    "pinyin": "Shǒujī zài zhuōzi shàng."
+    }
+    ],
+    "markers": ["在"]
+    },
+
+ "zh_le_completed_action": {
+    "id": "zh_le_completed_action",
+    "category": "aspect",
+    "title": "了 for completed past action",
+    "level": "A1",
+    "shortExplanation": "Verb + 了 often shows that an action was completed.",
+    "fullExplanation": "When 了 follows a verb, it usually marks a completed event. It often refers to something that happened and finished.",
+    "examples": [
+    {
+    "chinese": "我买了咖啡。",
+    "pinyin": "Wǒ mǎi le kāfēi."
+    },
+    {
+    "chinese": "他下班了。",
+    "pinyin": "Tā xiàbān le."
+    },
+    {
+    "chinese": "我们看了那个电影。",
+    "pinyin": "Wǒmen kàn le nàge diànyǐng."
+    }
+    ],
+    "markers": ["了"]
+    },
+  
+  "zh_question_ne": {
+    "id": "zh_question_ne",
+    "category": "questions",
+    "title": "呢 for follow-up questions",
+    "level": "A1",
+    "shortExplanation": "呢 is often used to ask back about the same topic.",
+    "fullExplanation": "After one person gives information, 呢 can ask 'and you?' or 'what about...?' It often follows a noun or pronoun.",
+    "examples": [
+    {
+    "chinese": "我很好，你呢？",
+    "pinyin": "Wǒ hěn hǎo, nǐ ne?"
+    },
+    {
+    "chinese": "他是老师，你妈妈呢？",
+    "pinyin": "Tā shì lǎoshī, nǐ māma ne?"
+    },
+    {
+    "chinese": "我喝茶，你呢？",
+    "pinyin": "Wǒ hē chá, nǐ ne?"
+    }
+    ],
+    "markers": ["呢"]
+    },
+
+  "zh_basic_svo": {
+    "id": "zh_basic_svo",
+    "category": "sentence_structure",
+    "title": "Basic SVO word order",
+    "level": "A1",
+    "shortExplanation": "Chinese basic sentences usually follow Subject + Verb + Object order.",
+    "fullExplanation": "In simple Chinese statements, the normal order is Subject + Verb + Object. Time, place, and manner often come before the main verb. This basic order helps learners build clear sentences early.",
+    "examples": [
+      "我学中文。",
+      "他喝咖啡。",
+      "我们学习中文。"
+    ],
+    "markers": []
+  },
+
+  "zh_time_before_verb": {
+    "id": "zh_time_before_verb",
+    "category": "sentence_structure",
+    "title": "Time expressions before the verb",
+    "level": "A1",
+    "shortExplanation": "Time words usually come before the main verb.",
+    "fullExplanation": "In Chinese, time expressions are usually placed after the subject and before the main verb. This helps set the time frame before describing the action. This position is very common in everyday speech.",
+    "examples": [
+    {
+    "chinese": "我明天去北京。",
+    "pinyin": "Wǒ míngtiān qù Běijīng."
+    },
+    {
+    "chinese": "他昨天没来。",
+    "pinyin": "Tā zuótiān méi lái."
+    },
+    {
+    "chinese": "我们晚上吃面。",
+    "pinyin": "Wǒmen wǎnshang chī miàn."
+    }
+    ],
+    "markers": []
+    },
+
+  "zh_shi_noun_equation": {
+    "id": "zh_shi_noun_equation",
+    "category": "sentence_structure",
+    "title": "是 for identity and classification",
+    "level": "A1",
+    "shortExplanation": "是 connects a subject with a noun or identity.",
+    "fullExplanation": "Use 是 when saying who someone is, what something is, or what category something belongs to. It is commonly used with jobs, identities, and classifications.",
+    "examples": [
+    {
+    "chinese": "我是老师。",
+    "pinyin": "Wǒ shì lǎoshī."
+    },
+    {
+    "chinese": "她是我朋友。",
+    "pinyin": "Tā shì wǒ péngyou."
+    },
+    {
+    "chinese": "这个是我的手机。",
+    "pinyin": "Zhège shì wǒ de shǒujī."
+    }
+    ],
+    "markers": ["是"]
+  },
+
+  "zh_shi_existence": {
+    "id": "zh_shi_existence",
+    "category": "sentence_structure",
+    "title": "是 indicating existence or presence in a place or time",
+    "level": "A1",
+    "shortExplanation": "是 can introduce what is present in a certain place, time, or situation.",
+    "fullExplanation": "In some simple identifying sentences, Chinese uses 是 to say what is there in a place, time, or visible situation. This pattern presents what something is, rather than using 有 to introduce an indefinite item.",
+    "examples": [
+    {
+    "chinese": "门口是我的车。",
+    "pinyin": "Ménkǒu shì wǒ de chē."
+    },
+    {
+    "chinese": "今天是星期五。",
+    "pinyin": "Jīntiān shì Xīngqīwǔ."
+    },
+    {
+    "chinese": "桌上是你要的材料。",
+    "pinyin": "Zhuō shàng shì nǐ yào de cáiliào."
+    }
+    ],
+    "markers": ["是"]
+    },
+
+  "zh_adjective_predicate_no_shi": {
+  "id": "zh_adjective_predicate_no_shi",
+  "category": "adjectives",
+  "title": "Adjectives as predicates without 是",
+  "level": "A1",
+  "shortExplanation": "Chinese adjectives can directly describe the subject without 是.",
+  "fullExplanation": "When an adjective is the main predicate, Chinese usually does not use 是. A degree word such as 很 is often added in neutral statements.",
+  "examples": [
+  {
+  "chinese": "今天天气很好。",
+  "pinyin": "Jīntiān tiānqì hěn hǎo."
+  },
+  {
+  "chinese": "她很忙。",
+  "pinyin": "Tā hěn máng."
+  },
+  {
+  "chinese": "这个菜不辣。",
+  "pinyin": "Zhège cài bù là."
+  }
+  ],
+  "markers": ["很", "真", "太", "不"]
+  },
+
+"zh_question_ma": {
+  "id": "zh_question_ma",
+  "category": "questions",
+  "title": "吗 yes-no questions",
+  "level": "A1",
+  "shortExplanation": "Add 吗 at the end of a statement to make a yes-no question.",
+  "fullExplanation": "The simplest way to ask a yes-no question in Chinese is to keep the statement order and add 吗 at the end.",
+  "examples": [
+  {
+  "chinese": "你是中国人吗？",
+  "pinyin": "Nǐ shì Zhōngguórén ma?"
+  },
+  {
+  "chinese": "他今天上班吗？",
+  "pinyin": "Tā jīntiān shàngbān ma?"
+  },
+  {
+  "chinese": "你喜欢咖啡吗？",
+  "pinyin": "Nǐ xǐhuan kāfēi ma?"
+  }
+  ],
+  "markers": ["吗"]
+},
+  "zh_question_wh_words": {
+    "id": "zh_question_wh_words",
+    "category": "questions",
+    "title": "Question words",
+    "level": "A1",
+    "shortExplanation": "Chinese question words stay in the normal sentence position.",
+    "fullExplanation": "Words like 什么, 谁, 哪儿, 怎么, 几, and 什么时候 replace the unknown part of the sentence. They usually stay where the answer would go.",
+    "examples": [
+    {
+    "chinese": "你叫什么名字？",
+    "pinyin": "Nǐ jiào shénme míngzi?"
+    },
+    {
+    "chinese": "他在哪儿工作？",
+    "pinyin": "Tā zài nǎr gōngzuò?"
+    },
+    {
+    "chinese": "你要几杯水？",
+    "pinyin": "Nǐ yào jǐ bēi shuǐ?"
+    }
+    ],
+    "markers": ["什么", "谁", "哪", "哪儿", "哪里", "怎么", "几", "什么时候", "多少"]
+    },
+"zh_question_a_not_a": {
+  "id": "zh_question_a_not_a",
+  "category": "questions",
+  "title": "A-not-A questions",
+  "level": "A1",
+  "shortExplanation": "Repeat the verb or adjective in positive and negative form to ask a yes-no question.",
+  "fullExplanation": "Chinese often forms yes-no questions with patterns like A 不 A and 是不是. This is common in daily speech.",
+  "examples": [
+  {
+  "chinese": "你忙不忙？",
+  "pinyin": "Nǐ máng bù máng?"
+  },
+  {
+  "chinese": "他是不是老师？",
+  "pinyin": "Tā shì bú shì lǎoshī?"
+  },
+  {
+  "chinese": "这家店贵不贵？",
+  "pinyin": "Zhè jiā diàn guì bú guì?"
+  }
+  ],
+  "markers": ["不"]
+  },
+"zh_negation_bu": {
+  "id": "zh_negation_bu",
+  "category": "negation",
+  "title": "不 for general negation",
+  "level": "A1",
+  "shortExplanation": "不 is used to negate verbs, adjectives, and habitual actions.",
+  "fullExplanation": "Use 不 before a verb or adjective to say 'not' in present, future, or general situations.",
+  "examples": [
+  {
+  "chinese": "我不喝酒。",
+  "pinyin": "Wǒ bù hē jiǔ."
+  },
+  {
+  "chinese": "他今天不忙。",
+  "pinyin": "Tā jīntiān bù máng."
+  },
+  {
+  "chinese": "我们不去。",
+  "pinyin": "Wǒmen bú qù."
+  }
+  ],
+  "markers": ["不"]
+  },
+"zh_negation_mei_you": {
+  "id": "zh_negation_mei_you",
+  "category": "negation",
+  "title": "没 / 没有 for past and possession negation",
+  "level": "A1",
+  "shortExplanation": "没(有) is used for 'did not' and 'do not have'.",
+  "fullExplanation": "Use 没 or 没有 to say something did not happen or that someone does not have something. 没有 is also the normal negative form of 有.",
+  "examples": [
+  {
+  "chinese": "我昨天没去公司。",
+  "pinyin": "Wǒ zuótiān méi qù gōngsī."
+  },
+  {
+  "chinese": "他没有哥哥。",
+  "pinyin": "Tā méiyǒu gēge."
+  },
+  {
+  "chinese": "我们还没吃饭。",
+  "pinyin": "Wǒmen hái méi chīfàn."
+  }
+  ],
+  "markers": ["没", "没有"]
+  },
+"zh_you_possession": {
+  "id": "zh_you_possession",
+  "category": "verbs",
+  "title": "有 indicating possession",
+  "level": "A1",
+  "shortExplanation": "有 means 'have'.",
+  "fullExplanation": "Use 有 to say that someone has something. Its negative form is 没有, not 不有.",
+  "examples": [
+  {
+  "chinese": "我有一本中文书。",
+  "pinyin": "Wǒ yǒu yì běn Zhōngwén shū."
+  },
+  {
+  "chinese": "她有两个孩子。",
+  "pinyin": "Tā yǒu liǎng ge háizi."
+  },
+  {
+  "chinese": "你有时间吗？",
+  "pinyin": "Nǐ yǒu shíjiān ma?"
+  }
+  ],
+  "markers": ["有"]
+},
+"zh_you_existence": {
+  "id": "zh_you_existence",
+  "category": "verbs",
+  "title": "有 indicating existence",
+  "level": "A1",
+  "shortExplanation": "有 can mean 'there is' or 'there are'.",
+  "fullExplanation": "Use 有 to introduce the existence of something in a place, time, or situation. This is especially common when the thing is new or indefinite.",
+  "examples": [
+  {
+  "chinese": "桌子上有一本书。",
+  "pinyin": "Zhuōzi shàng yǒu yì běn shū."
+  },
+  {
+  "chinese": "附近有一家咖啡店。",
+  "pinyin": "Fùjìn yǒu yì jiā kāfēidiàn."
+  },
+  {
+  "chinese": "今天晚上有课。",
+  "pinyin": "Jīntiān wǎnshang yǒu kè."
+  }
+  ],
+  "markers": ["有"]
+},
+"zh_you_indefinite_subject": {
+  "id": "zh_you_indefinite_subject",
+  "category": "sentence_structure",
+  "title": "有 introducing an indefinite subject",
+  "level": "A1",
+  "shortExplanation": "有 can introduce a new, indefinite person or thing.",
+  "fullExplanation": "Chinese often uses 有 when introducing a person or thing that is not yet known in the conversation. This is common with expressions of place or time.",
+  "examples": [
+  {
+  "chinese": "外面有一个人在等你。",
+  "pinyin": "Wàimiàn yǒu yí ge rén zài děng nǐ."
+  },
+  {
+  "chinese": "昨天有很多人来参加活动。",
+  "pinyin": "Zuótiān yǒu hěn duō rén lái cānjiā huódòng."
+  },
+  {
+  "chinese": "楼下有一家新开的面馆。",
+  "pinyin": "Lóuxià yǒu yì jiā xīn kāi de miànguǎn."
+  }
+  ],
+  "markers": ["有"]
+},
+"zh_you_past_action_question": {
+  "id": "zh_you_past_action_question",
+  "category": "questions",
+  "title": "有 in affirmative-negative questions about past action",
+  "level": "A1",
+  "shortExplanation": "有没有 can ask whether an action happened or not.",
+  "fullExplanation": "In spoken Chinese, 有没有 is often used to ask whether something happened, especially in past or completed situations. It is very common in conversation.",
+  "examples": [
+  {
+  "chinese": "你昨天有没有去上课？",
+  "pinyin": "Nǐ zuótiān yǒu méiyǒu qù shàngkè?"
+  },
+  {
+  "chinese": "他有没有给你打电话？",
+  "pinyin": "Tā yǒu méiyǒu gěi nǐ dǎ diànhuà?"
+  },
+  {
+  "chinese": "你有没有看见我的包？",
+  "pinyin": "Nǐ yǒu méiyǒu kànjiàn wǒ de bāo?"
+  }
+  ],
+  "markers": ["有没有"]
+},
+
+"zh_modal_can_permission": {
+  "id": "zh_modal_can_permission",
+  "category": "modal_verbs",
+  "title": "Permission with 可以",
+  "level": "A1",
+  "shortExplanation": "可以 is used to ask for or give permission.",
+  "fullExplanation": "Use 可以 to say that something is allowed. It is very common in requests and everyday situations.",
+  "examples": [
+  {
+  "chinese": "我可以坐这儿吗？",
+  "pinyin": "Wǒ kěyǐ zuò zhèr ma?"
+  },
+  {
+  "chinese": "这里可以拍照。",
+  "pinyin": "Zhèlǐ kěyǐ pāizhào."
+  },
+  {
+  "chinese": "你可以进去。",
+  "pinyin": "Nǐ kěyǐ jìnqù."
+  }
+  ],
+  "markers": ["可以"]
+},
+"zh_modal_neng_possibility": {
+  "id": "zh_modal_neng_possibility",
+  "category": "modal_verbs",
+  "title": "Possibility with 能",
+  "level": "A1",
+  "shortExplanation": "能 can mean that something is possible because conditions allow it.",
+  "fullExplanation": "Use 能 when a person is able to do something because circumstances make it possible.",
+  "examples": [
+  {
+  "chinese": "今天我不能来。",
+  "pinyin": "Jīntiān wǒ bù néng lái."
+  },
+  {
+  "chinese": "这里能刷卡吗？",
+  "pinyin": "Zhèlǐ néng shuākǎ ma?"
+  },
+  {
+  "chinese": "现在你能进去。",
+  "pinyin": "Xiànzài nǐ néng jìnqù."
+  }
+  ],
+  "markers": ["能"]
+},
+"zh_modal_hui_ability": {
+  "id": "zh_modal_hui_ability",
+  "category": "modal_verbs",
+  "title": "Ability or skill with 会",
+  "level": "A1",
+  "shortExplanation": "会 is used for learned ability or skill.",
+  "fullExplanation": "Use 会 to say that someone knows how to do something because they learned it.",
+  "examples": [
+  {
+  "chinese": "我会说一点中文。",
+  "pinyin": "Wǒ huì shuō yìdiǎn Zhōngwén."
+  },
+  {
+  "chinese": "她会开车。",
+  "pinyin": "Tā huì kāichē."
+  },
+  {
+  "chinese": "你会做中国菜吗？",
+  "pinyin": "Nǐ huì zuò Zhōngguó cài ma?"
+  }
+  ],
+  "markers": ["会"]
+},
+
+"zh_modal_xiang_wishing": {
+  "id": "zh_modal_xiang_wishing",
+  "category": "modal_verbs",
+  "title": "Wishing with 想",
+  "level": "A1",
+  "shortExplanation": "想 is used to express wishes and desires.",
+  "fullExplanation": "Use 想 before a verb to say what someone wants to do. It sounds softer than 要.",
+  "examples": [
+  {
+  "chinese": "我想喝点水。",
+  "pinyin": "Wǒ xiǎng hē diǎn shuǐ."
+  },
+  {
+  "chinese": "她想去中国。",
+  "pinyin": "Tā xiǎng qù Zhōngguó."
+  },
+  {
+  "chinese": "你想看电影吗？",
+  "pinyin": "Nǐ xiǎng kàn diànyǐng ma?"
+  }
+  ],
+  "markers": ["想"]
+},
+"zh_modal_yao_future_will": {
+  "id": "zh_modal_yao_future_will",
+  "category": "modal_verbs",
+  "title": "Future meaning with 要",
+  "level": "A1",
+  "shortExplanation": "要 can express plan, intention, or near future.",
+  "fullExplanation": "Use 要 before a verb to express a plan, intention, or something that is going to happen soon.",
+  "examples": [
+  {
+  "chinese": "我明天要上班。",
+  "pinyin": "Wǒ míngtiān yào shàngbān."
+  },
+  {
+  "chinese": "我们要出发了。",
+  "pinyin": "Wǒmen yào chūfā le."
+  },
+  {
+  "chinese": "他下个月要搬家。",
+  "pinyin": "Tā xià ge yuè yào bānjiā."
+  }
+  ],
+  "markers": ["要"]
+},
+"zh_le_change_of_state": {
+  "id": "zh_le_change_of_state",
+  "category": "particles",
+  "title": "了 for change or reversal of a previous situation",
+  "level": "A1",
+  "shortExplanation": "Sentence-final 了 often shows that a new situation has appeared.",
+  "fullExplanation": "When 了 appears at the end of a sentence, it often means that a state has changed. The focus is on the new situation, not only on past time.",
+  "examples": [
+  {
+  "chinese": "我饿了。",
+  "pinyin": "Wǒ è le."
+  },
+  {
+  "chinese": "下雨了。",
+  "pinyin": "Xiàyǔ le."
+  },
+  {
+  "chinese": "他不住这儿了。",
+  "pinyin": "Tā bú zhù zhèr le."
+  }
+  ],
+  "markers": ["了"]
+},
+"zh_measure_words_basic": {
+  "id": "zh_measure_words_basic",
+  "category": "nouns_and_quantities",
+  "title": "Basic measure words",
+  "level": "A1",
+  "shortExplanation": "A number usually needs a measure word before a noun.",
+  "fullExplanation": "In Chinese, numbers normally do not go directly before nouns. Use Number + Measure Word + Noun.",
+  "examples": [
+  {
+  "chinese": "一个人。",
+  "pinyin": "Yí ge rén."
+  },
+  {
+  "chinese": "三本书。",
+  "pinyin": "Sān běn shū."
+  },
+  {
+  "chinese": "两杯茶。",
+  "pinyin": "Liǎng bēi chá."
+  }
+  ],
+  "markers": ["个", "本", "杯", "张", "位", "条", "只"]
+},
+"zh_de_possession": {
+  "id": "zh_de_possession",
+  "category": "particles",
+  "title": "的 for possession and simple modification",
+  "level": "A1",
+  "shortExplanation": "的 links an owner or modifier to a noun.",
+  "fullExplanation": "Use 的 to connect an owner, description, or other modifier to a noun. It is one of the most common particles in Chinese.",
+  "examples": [
+  {
+  "chinese": "这是我的书。",
+  "pinyin": "Zhè shì wǒ de shū."
+  },
+  {
+  "chinese": "她是新来的老师。",
+  "pinyin": "Tā shì xīn lái de lǎoshī."
+  },
+  {
+  "chinese": "那个是我们公司的车。",
+  "pinyin": "Nàge shì wǒmen gōngsī de chē."
+  }
+  ],
+  "markers": ["的"]
+},
+
+"zh_because_because_of_therefore": {
+  "id": "zh_because_because_of_therefore",
+  "category": "conjunctions",
+  "title": "Giving reasons: 因为, 由于, 所以",
+  "level": "A2",
+  "shortExplanation": "These forms express reasons and results.",
+  "fullExplanation": "因为 and 由于 introduce reasons, while 所以 introduces the result. 因为 is more common in everyday speech, and 由于 is slightly more formal.",
+  "examples": [
+  {
+  "chinese": "因为今天下雨，所以我没出去。",
+  "pinyin": "Yīnwèi jīntiān xiàyǔ, suǒyǐ wǒ méi chūqù."
+  },
+  {
+  "chinese": "由于路上很堵，我们迟到了。",
+  "pinyin": "Yóuyú lùshang hěn dǔ, wǒmen chídào le."
+  },
+  {
+  "chinese": "他因为身体不舒服，所以请假了。",
+  "pinyin": "Tā yīnwèi shēntǐ bù shūfu, suǒyǐ qǐngjià le."
+  }
+  ],
+  "markers": ["因为", "由于", "所以"]
+},
+"zh_since_inference_jiran": {
+  "id": "zh_since_inference_jiran",
+  "category": "conjunctions",
+  "title": "Making inferences with 既然",
+  "level": "A2",
+  "shortExplanation": "既然 means 'since' when the speaker treats something as already known.",
+  "fullExplanation": "Use 既然 when the reason is already accepted or obvious, and then give a conclusion or decision. It is often followed by 就.",
+  "examples": [
+  {
+  "chinese": "既然你没时间，我们就下次再约吧。",
+  "pinyin": "Jìrán nǐ méi shíjiān, wǒmen jiù xià cì zài yuē ba."
+  },
+  {
+  "chinese": "既然来了，就进去看看吧。",
+  "pinyin": "Jìrán lái le, jiù jìnqù kànkan ba."
+  },
+  {
+  "chinese": "既然大家都同意，我就不多说了。",
+  "pinyin": "Jìrán dàjiā dōu tóngyì, wǒ jiù bù duō shuō le."
+  }
+  ],
+  "markers": ["既然"]
+},
+"zh_only_if_only_when": {
+  "id": "zh_only_if_only_when",
+  "category": "conjunctions",
+  "title": "Stating conditions with 只有...才...",
+  "level": "A2",
+  "shortExplanation": "只有...才... means 'only if' or 'only when'.",
+  "fullExplanation": "Use 只有 before the condition and 才 before the result to show that the result happens only in that condition.",
+  "examples": [
+  {
+  "chinese": "只有多练习，你才会进步。",
+  "pinyin": "Zhǐyǒu duō liànxí, nǐ cái huì jìnbù."
+  },
+  {
+  "chinese": "只有下班以后，我才有时间。",
+  "pinyin": "Zhǐyǒu xiàbān yǐhòu, wǒ cái yǒu shíjiān."
+  },
+  {
+  "chinese": "只有你自己想学，别人才能帮你。",
+  "pinyin": "Zhǐyǒu nǐ zìjǐ xiǎng xué, biérén cái néng bāng nǐ."
+  }
+  ],
+  "markers": ["只有"]
+},
+"zh_concession_suiran_danshi": {
+  "id": "zh_concession_suiran_danshi",
+  "category": "conjunctions",
+  "title": "Offering concessions: 虽然...但是...",
+  "level": "A2",
+  "shortExplanation": "虽然...但是... expresses contrast.",
+  "fullExplanation": "Use 虽然 before one fact and 但是 before another fact that contrasts with it.",
+  "examples": [
+  {
+  "chinese": "虽然很晚，但是他还在工作。",
+  "pinyin": "Suīrán hěn wǎn, dànshì tā hái zài gōngzuò."
+  },
+  {
+  "chinese": "虽然这个菜有点辣，但是很好吃。",
+  "pinyin": "Suīrán zhège cài yǒudiǎn là, dànshì hěn hǎochī."
+  },
+  {
+  "chinese": "虽然我很累，但是我还想去。",
+  "pinyin": "Suīrán wǒ hěn lèi, dànshì wǒ hái xiǎng qù."
+  }
+  ],
+  "markers": ["虽然", "但是", "可是"]
+},
+"zh_time_when_after_before_as_soon_as": {
+  "id": "zh_time_when_after_before_as_soon_as",
+  "category": "time_expressions",
+  "title": "Clarifying time: when, after, before, as soon as",
+  "level": "A2",
+  "shortExplanation": "Chinese uses common patterns to organize actions in time.",
+  "fullExplanation": "的时候 means 'when', 以后 means 'after', 以前 or 之前 means 'before', and 一...就... means 'as soon as'. These forms are essential for daily narration.",
+  "examples": [
+  {
+  "chinese": "我到家的时候已经很晚了。",
+  "pinyin": "Wǒ dào jiā de shíhou yǐjīng hěn wǎn le."
+  },
+  {
+  "chinese": "吃完饭以后，我们去散步了。",
+  "pinyin": "Chī wán fàn yǐhòu, wǒmen qù sànbù le."
+  },
+  {
+  "chinese": "我一下课就给你打电话。",
+  "pinyin": "Wǒ yí xiàkè jiù gěi nǐ dǎ diànhuà."
+  }
+  ],
+  "markers": ["的时候", "以后", "以前", "之前"]
+},
+"zh_passive_bei_basic": {
+  "id": "zh_passive_bei_basic",
+  "category": "sentence_structure",
+  "title": "Passive voice with 被",
+  "level": "A2",
+  "shortExplanation": "被 is used when the focus is on the receiver of an action.",
+  "fullExplanation": "Use 被 when you want to focus on the person or thing affected by an action. The doer may be expressed or omitted.",
+  "examples": [
+  {
+  "chinese": "我的车被别人撞了。",
+  "pinyin": "Wǒ de chē bèi biérén zhuàng le."
+  },
+  {
+  "chinese": "这本书被他借走了。",
+  "pinyin": "Zhè běn shū bèi tā jiè zǒu le."
+  },
+  {
+  "chinese": "门被风吹开了。",
+  "pinyin": "Mén bèi fēng chuī kāi le."
+  }
+  ],
+  "markers": ["被"]
+},
+"zh_ba_disposal_basic": {
+  "id": "zh_ba_disposal_basic",
+  "category": "sentence_structure",
+  "title": "Introducing an object with 把",
+  "level": "A2",
+  "shortExplanation": "把 brings the object before the verb and focuses on what happens to it.",
+  "fullExplanation": "Use 把 when the speaker wants to highlight how an object is handled, changed, moved, or finished. The verb phrase usually includes a result, direction, or clear outcome.",
+  "examples": [
+  {
+  "chinese": "请把门关上。",
+  "pinyin": "Qǐng bǎ mén guān shàng."
+  },
+  {
+  "chinese": "我把作业写完了。",
+  "pinyin": "Wǒ bǎ zuòyè xiě wán le."
+  },
+  {
+  "chinese": "他把手机放在桌子上了。",
+  "pinyin": "Tā bǎ shǒujī fàng zài zhuōzi shàng le."
+  }
+  ],
+  "markers": ["把"]
+},
+"zh_de_degree_all_functions": {
+  "id": "zh_de_degree_all_functions",
+  "category": "particles",
+  "title": "得 all core functions",
+  "level": "A2",
+  "shortExplanation": "得 is used after verbs to introduce complements of degree, result, or possibility, and before verbs to express necessity.",
+  "fullExplanation": "After a verb, 得 introduces information about how well, how much, or how successfully an action is done. Before a verb, 得 can mean 'must' or 'have to'. These are different grammar patterns and should be learned separately.",
+  "examples": [
+  {
+  "chinese": "他说得很快。",
+  "pinyin": "Tā shuō de hěn kuài."
+  },
+  {
+  "chinese": "你写得不错。",
+  "pinyin": "Nǐ xiě de búcuò."
+  },
+  {
+  "chinese": "我得先走了。",
+  "pinyin": "Wǒ děi xiān zǒu le."
+  }
+  ],
+  "markers": ["得", "动词+得", "得+动词"]
+},
+"zh_di_adverbial": {
+  "id": "zh_di_adverbial",
+  "category": "particles",
+  "title": "地 for adverbial modification",
+  "level": "A2",
+  "shortExplanation": "地 links a descriptive phrase to a verb.",
+  "fullExplanation": "Use 地 when a word or phrase describes how an action is done. It often corresponds to 'in a ... way' or '-ly' in English.",
+  "examples": [
+  {
+  "chinese": "他认真地做作业。",
+  "pinyin": "Tā rènzhēn de zuò zuòyè."
+  },
+  {
+  "chinese": "孩子们高兴地跑出去。",
+  "pinyin": "Háizimen gāoxìng de pǎo chūqù."
+  },
+  {
+  "chinese": "她慢慢地说。",
+  "pinyin": "Tā mànmàn de shuō."
+  }
+  ],
+  "markers": ["地"]
+},
+"zh_zhe_durative_state": {
+  "id": "zh_zhe_durative_state",
+  "category": "aspect",
+  "title": "着 for continuing state",
+  "level": "A2",
+  "shortExplanation": "着 often shows a continuing state or position.",
+  "fullExplanation": "Use 着 after some verbs to describe a continuing state, such as something staying open, hanging, standing, or being worn.",
+  "examples": [
+  {
+  "chinese": "门开着。",
+  "pinyin": "Mén kāi zhe."
+  },
+  {
+  "chinese": "他穿着一件黑外套。",
+  "pinyin": "Tā chuān zhe yí jiàn hēi wàitào."
+  },
+  {
+  "chinese": "桌子上放着很多书。",
+  "pinyin": "Zhuōzi shàng fàng zhe hěn duō shū."
+  }
+  ],
+  "markers": ["着"]
+},
+"zh_zhe_doing_sth": {
+  "id": "zh_zhe_doing_sth",
+  "category": "aspect",
+  "title": "着 doing one thing while another happens",
+  "level": "A2",
+  "shortExplanation": "着 can connect one ongoing action or state with another action.",
+  "fullExplanation": "In patterns like V着V, the first action or state continues while the second action happens. This is common in narration and description.",
+  "examples": [
+  {
+  "chinese": "他听着音乐做饭。",
+  "pinyin": "Tā tīng zhe yīnyuè zuòfàn."
+  },
+  {
+  "chinese": "她笑着说谢谢。",
+  "pinyin": "Tā xiào zhe shuō xièxie."
+  },
+  {
+  "chinese": "孩子站着吃冰淇淋。",
+  "pinyin": "Háizi zhàn zhe chī bīngqílín."
+  }
+  ],
+  "markers": ["着"]
+},
+"zh_le_duration": {
+  "id": "zh_le_duration",
+  "category": "aspect",
+  "title": "了 describing duration of an action or state",
+  "level": "A2",
+  "shortExplanation": "Time expressions with 了 can show how long something has lasted.",
+  "fullExplanation": "Use a duration expression with 了 to show that an action or state started earlier and has lasted until now, or to show how long a completed event lasted depending on context.",
+  "examples": [
+  {
+  "chinese": "我学中文学了两年了。",
+  "pinyin": "Wǒ xué Zhōngwén xué le liǎng nián le."
+  },
+  {
+  "chinese": "他在北京住了五个月了。",
+  "pinyin": "Tā zài Běijīng zhù le wǔ ge yuè le."
+  },
+  {
+  "chinese": "我们认识三年了。",
+  "pinyin": "Wǒmen rènshi sān nián le."
+  }
+  ],
+  "markers": ["了"]
+},
+"zh_result_dao": {
+  "id": "zh_result_dao",
+  "category": "complements",
+  "title": "Result complement 到",
+  "level": "A2",
+  "shortExplanation": "到 often shows that a target or result is reached.",
+  "fullExplanation": "When 到 follows a verb, it often means the action successfully reaches something, such as hearing, finding, seeing, receiving, or arriving at a result.",
+  "examples": [
+  {
+  "chinese": "我听到了。",
+  "pinyin": "Wǒ tīng dào le."
+  },
+  {
+  "chinese": "你找到钥匙了吗？",
+  "pinyin": "Nǐ zhǎo dào yàoshi le ma?"
+  },
+  {
+  "chinese": "我们买到票了。",
+  "pinyin": "Wǒmen mǎi dào piào le."
+  }
+  ],
+  "markers": ["到"]
+},
+"zh_result_dong": {
+  "id": "zh_result_dong",
+  "category": "complements",
+  "title": "Result complement 懂",
+  "level": "A2",
+  "shortExplanation": "懂 shows successful understanding.",
+  "fullExplanation": "When 懂 follows a verb such as 听, 看, or 说, it means that the speaker understands successfully.",
+  "examples": [
+  {
+  "chinese": "我听懂了。",
+  "pinyin": "Wǒ tīng dǒng le."
+  },
+  {
+  "chinese": "你看懂这个意思了吗？",
+  "pinyin": "Nǐ kàn dǒng zhège yìsi le ma?"
+  },
+  {
+  "chinese": "他说得太快，我没听懂。",
+  "pinyin": "Tā shuō de tài kuài, wǒ méi tīng dǒng."
+  }
+  ],
+  "markers": ["懂"]
+},
+"zh_result_wan": {
+  "id": "zh_result_wan",
+  "category": "complements",
+  "title": "Result complement 完",
+  "level": "A2",
+  "shortExplanation": "完 shows that an action is finished completely.",
+  "fullExplanation": "Use 完 after a verb to show that something has been done to the end.",
+  "examples": [
+  {
+  "chinese": "我写完作业了。",
+  "pinyin": "Wǒ xiě wán zuòyè le."
+  },
+  {
+  "chinese": "你吃完了吗？",
+  "pinyin": "Nǐ chī wán le ma?"
+  },
+  {
+  "chinese": "他刚看完那本小说。",
+  "pinyin": "Tā gāng kàn wán nà běn xiǎoshuō."
+  }
+  ],
+  "markers": ["完"]
+},
+"zh_result_zhu": {
+  "id": "zh_result_zhu",
+  "category": "complements",
+  "title": "Result complement 住",
+  "level": "A2",
+  "shortExplanation": "住 often shows firmness, stopping, or successful control.",
+  "fullExplanation": "After another verb, 住 can mean holding firmly, stopping movement, or keeping something under control. It is common in spoken Chinese.",
+  "examples": [
+  {
+  "chinese": "你记住了吗？",
+  "pinyin": "Nǐ jì zhù le ma?"
+  },
+  {
+  "chinese": "他一把抓住了我的手。",
+  "pinyin": "Tā yì bǎ zhuā zhù le wǒ de shǒu."
+  },
+  {
+  "chinese": "请站住。",
+  "pinyin": "Qǐng zhàn zhù."
+  }
+  ],
+  "markers": ["住"]
+},
+"zh_directional_movement_basic": {
+  "id": "zh_directional_movement_basic",
+  "category": "complements",
+  "title": "Directional complements: 来, 去, 过, 上, 下",
+  "level": "A2",
+  "shortExplanation": "These complements show the direction of movement.",
+  "fullExplanation": "来 means movement toward the speaker or reference point, 去 means movement away, 过 often means crossing over, 上 indicates upward movement, and 下 indicates downward movement. They combine with verbs to show detailed direction.",
+  "examples": [
+  {
+  "chinese": "请进来。",
+  "pinyin": "Qǐng jìnlái."
+  },
+  {
+  "chinese": "他走过去了。",
+  "pinyin": "Tā zǒu guòqù le."
+  },
+  {
+  "chinese": "孩子跑上楼去了。",
+  "pinyin": "Háizi pǎo shàng lóu qù le."
+  }
+  ],
+  "markers": ["来", "去", "过", "上", "下"]
+},
+"zh_modal_probability_hui": {
+  "id": "zh_modal_probability_hui",
+  "category": "modal_verbs",
+  "title": "Probability with 会",
+  "level": "A2",
+  "shortExplanation": "会 can also express what is likely to happen.",
+  "fullExplanation": "Besides learned ability, 会 can mean future probability or expectation. In this use, it often means 'will probably' or 'is likely to'.",
+  "examples": [
+  {
+  "chinese": "他一会儿会来。",
+  "pinyin": "Tā yíhuìr huì lái."
+  },
+  {
+  "chinese": "明天会不会下雨？",
+  "pinyin": "Míngtiān huì bú huì xiàyǔ?"
+  },
+  {
+  "chinese": "你这样做会更快。",
+  "pinyin": "Nǐ zhèyàng zuò huì gèng kuài."
+  }
+  ],
+  "markers": ["会", "会不会"]
+},
+"zh_modal_obligation_should": {
+  "id": "zh_modal_obligation_should",
+  "category": "modal_verbs",
+  "title": "Obligation with 应该 and 得",
+  "level": "A2",
+  "shortExplanation": "应该 and 得 can express obligation or necessity.",
+  "fullExplanation": "应该 is often used for advice or expectation, while 得 before a verb can mean that something is necessary or required.",
+  "examples": [
+  {
+  "chinese": "你应该早点睡。",
+  "pinyin": "Nǐ yīnggāi zǎodiǎn shuì."
+  },
+  {
+  "chinese": "我们得现在出发。",
+  "pinyin": "Wǒmen děi xiànzài chūfā."
+  },
+  {
+  "chinese": "你应该先问老师。",
+  "pinyin": "Nǐ yīnggāi xiān wèn lǎoshī."
+  }
+  ],
+  "markers": ["应该", "得"]
+},
+"zh_modal_willingness_yuanyi": {
+  "id": "zh_modal_willingness_yuanyi",
+  "category": "modal_verbs",
+  "title": "Willingness with 愿意",
+  "level": "A2",
+  "shortExplanation": "愿意 is used to express willingness.",
+  "fullExplanation": "Use 愿意 to say that someone is willing to do something. It often carries a personal or emotional choice.",
+  "examples": [
+  {
+  "chinese": "我愿意帮你。",
+  "pinyin": "Wǒ yuànyì bāng nǐ."
+  },
+  {
+  "chinese": "他不愿意说这件事。",
+  "pinyin": "Tā bù yuànyì shuō zhè jiàn shì."
+  },
+  {
+  "chinese": "你愿意跟我们一起去吗？",
+  "pinyin": "Nǐ yuànyì gēn wǒmen yìqǐ qù ma?"
+  }
+  ],
+  "markers": ["愿意"]
+},
+
+"zh_you_degree_extent": {
+  "id": "zh_you_degree_extent",
+  "category": "verbs",
+  "title": "有 specifying degree or extent",
+  "level": "A2",
+  "shortExplanation": "有 can indicate that a quality reaches a certain degree.",
+  "fullExplanation": "In some patterns, 有 is used before adjectives or quantity expressions to indicate that something reaches a degree or has a certain extent. This use is common in spoken Chinese.",
+  "examples": [
+  {
+  "chinese": "这个房间有这么大。",
+  "pinyin": "Zhège fángjiān yǒu zhème dà."
+  },
+  {
+  "chinese": "他最近有点忙。",
+  "pinyin": "Tā zuìjìn yǒudiǎn máng."
+  },
+  {
+  "chinese": "这条路没有那么远。",
+  "pinyin": "Zhè tiáo lù méiyǒu nàme yuǎn."
+  }
+  ],
+  "markers": ["有这么", "有那么", "有点", "没有那么"]
+},
+"zh_you_comparison": {
+  "id": "zh_you_comparison",
+  "category": "comparisons",
+  "title": "有 introducing comparison",
+  "level": "A2",
+  "shortExplanation": "有 can be used in comparison patterns, often with 没有 or 有...这么/那么....",
+  "fullExplanation": "Chinese sometimes uses 有 in comparison to show degree or to ask whether something reaches a certain level. This often appears with 这么, 那么, or in contrast with 没有.",
+  "examples": [
+  {
+  "chinese": "他有你这么高吗？",
+  "pinyin": "Tā yǒu nǐ zhème gāo ma?"
+  },
+  {
+  "chinese": "这家店没有那家贵。",
+  "pinyin": "Zhè jiā diàn méiyǒu nà jiā guì."
+  },
+  {
+  "chinese": "这条裙子有那条好看吗？",
+  "pinyin": "Zhè tiáo qúnzi yǒu nà tiáo hǎokàn ma?"
+  }
+  ],
+  "markers": ["有", "没有"]
+},
+
+"zh_shi_emphasis_shi_de": {
+  "id": "zh_shi_emphasis_shi_de",
+  "category": "sentence_structure",
+  "title": "是...的 for emphasis",
+  "level": "B1",
+  "shortExplanation": "是...的 highlights a specific detail of a past action or situation.",
+  "fullExplanation": "Use 是...的 to emphasize time, place, manner, agent, or other details of an action that is already known or assumed to have happened. The focus is not on whether the action happened, but on one highlighted element.",
+  "examples": [
+  {
+  "chinese": "我是昨天来的。",
+  "pinyin": "Wǒ shì zuótiān lái de."
+  },
+  {
+  "chinese": "他是在上海认识她的。",
+  "pinyin": "Tā shì zài Shànghǎi rènshi tā de."
+  },
+  {
+  "chinese": "这本书是朋友送给我的。",
+  "pinyin": "Zhè běn shū shì péngyou sòng gěi wǒ de."
+  }
+  ],
+  "markers": ["是", "的"]
+},
+"zh_shi_overall_assessment": {
+  "id": "zh_shi_overall_assessment",
+  "category": "sentence_structure",
+  "title": "是 for assessing an overall situation",
+  "level": "B1",
+  "shortExplanation": "是 can present an overall judgment before adding a reservation, comment, or evaluation.",
+  "fullExplanation": "In spoken Chinese, 是 may be used to acknowledge or assess a situation before adding another point. This often appears in patterns such as 是...，不过... or 是...，就是....",
+  "examples": [
+  {
+  "chinese": "这个办法是不错，就是有点慢。",
+  "pinyin": "Zhège bànfǎ shì búcuò, jiùshì yǒudiǎn màn."
+  },
+  {
+  "chinese": "他人是很好，不过不太会表达。",
+  "pinyin": "Tā rén shì hěn hǎo, búguò bú tài huì biǎodá."
+  },
+  {
+  "chinese": "这里是方便，就是房租太贵了。",
+  "pinyin": "Zhèlǐ shì fāngbiàn, jiùshì fángzū tài guì le."
+  }
+  ],
+  "markers": ["是", "就是"]
+},
+"zh_you_adjectival_formative": {
+  "id": "zh_you_adjectival_formative",
+  "category": "adjectives",
+  "title": "有 as an adjectival formative",
+  "level": "B1",
+  "shortExplanation": "有 can help form descriptive meanings such as 有意思 or 有名.",
+  "fullExplanation": "In many common expressions, 有 works as part of a descriptive or adjectival meaning. These forms often describe possession of a quality rather than physical possession.",
+  "examples": [
+  {
+  "chinese": "这本书很有意思。",
+  "pinyin": "Zhè běn shū hěn yǒu yìsi."
+  },
+  {
+  "chinese": "他是一个很有经验的老师。",
+  "pinyin": "Tā shì yí ge hěn yǒu jīngyàn de lǎoshī."
+  },
+  {
+  "chinese": "这座城市很有活力。",
+  "pinyin": "Zhè zuò chéngshì hěn yǒu huólì."
+  }
+  ],
+  "markers": ["有"]
+},
+"zh_you_development_change": {
+  "id": "zh_you_development_change",
+  "category": "verbs",
+  "title": "有 expressing development and change",
+  "level": "B1",
+  "shortExplanation": "有 can indicate that a situation has changed or developed in some way.",
+  "fullExplanation": "In spoken Chinese, 有 can be used to indicate that some degree of development or change exists, often in contrast with an earlier state. It often appears in evaluative or comparative contexts.",
+  "examples": [
+  {
+  "chinese": "他的中文有进步了。",
+  "pinyin": "Tā de Zhōngwén yǒu jìnbù le."
+  },
+  {
+  "chinese": "这几年这里有很大的变化。",
+  "pinyin": "Zhè jǐ nián zhèlǐ yǒu hěn dà de biànhuà."
+  },
+  {
+  "chinese": "她比以前有自信多了。",
+  "pinyin": "Tā bǐ yǐqián yǒu zìxìn duō le."
+  }
+  ],
+  "markers": ["有"]
+},
+"zh_you_conditional_clause": {
+  "id": "zh_you_conditional_clause",
+  "category": "conjunctions",
+  "title": "有 introducing a conditional clause",
+  "level": "B1",
+  "shortExplanation": "有些 spoken patterns use 有 to introduce a condition or relevant circumstance.",
+  "fullExplanation": "In colloquial Chinese, 有 can appear in patterns that introduce a condition or relevant case, especially in speech influenced by regional usage. For standard teaching, this is less central than 如果 or 要是, but learners may hear it in real conversation.",
+  "examples": [
+  {
+  "chinese": "有问题的话，你就给我打电话。",
+  "pinyin": "Yǒu wèntí de huà, nǐ jiù gěi wǒ dǎ diànhuà."
+  },
+  {
+  "chinese": "有时间我们再见面。",
+  "pinyin": "Yǒu shíjiān wǒmen zài jiànmiàn."
+  },
+  {
+  "chinese": "有需要可以随时联系我。",
+  "pinyin": "Yǒu xūyào kěyǐ suíshí liánxì wǒ."
+  }
+  ],
+  "markers": ["有", "的话", "有需要"]
+},
+"zh_probability_keneng_yexu": {
+  "id": "zh_probability_keneng_yexu",
+  "category": "modal_verbs",
+  "title": "Probability with 可能, 也许, 大概",
+  "level": "B1",
+  "shortExplanation": "These words express possibility and probability.",
+  "fullExplanation": "Use 可能, 也许, and 大概 when you want to say that something is possible or probable but not certain. They are common in daily conversation and explanations.",
+  "examples": [
+  {
+  "chinese": "他可能已经到了。",
+  "pinyin": "Tā kěnéng yǐjīng dào le."
+  },
+  {
+  "chinese": "明天也许会下雨。",
+  "pinyin": "Míngtiān yěxǔ huì xiàyǔ."
+  },
+  {
+  "chinese": "她大概不来了。",
+  "pinyin": "Tā dàgài bù lái le."
+  }
+  ],
+  "markers": ["可能", "也许", "大概", "会不会"]
+},
+"zh_preference_would_rather": {
+  "id": "zh_preference_would_rather",
+  "category": "modal_verbs",
+  "title": "Indicating preference: 宁可 / 宁愿",
+  "level": "B1",
+  "shortExplanation": "宁可 and 宁愿 express strong preference, often with sacrifice or contrast.",
+  "fullExplanation": "Use 宁可 or 宁愿 when someone prefers one option even if it is difficult or less convenient. They often appear in patterns like 宁可...也不....",
+  "examples": [
+  {
+  "chinese": "我宁愿坐地铁，也不想开车。",
+  "pinyin": "Wǒ nìngyuàn zuò dìtiě, yě bù xiǎng kāichē."
+  },
+  {
+  "chinese": "他宁可早点出门，也不愿意迟到。",
+  "pinyin": "Tā nìngkě zǎodiǎn chūmén, yě bù yuànyì chídào."
+  },
+  {
+  "chinese": "我宁愿自己做，也不想麻烦别人。",
+  "pinyin": "Wǒ nìngyuàn zìjǐ zuò, yě bù xiǎng máfan biérén."
+  }
+  ],
+  "markers": ["宁可", "宁愿"]
+},
+"zh_purpose_in_order_to": {
+  "id": "zh_purpose_in_order_to",
+  "category": "conjunctions",
+  "title": "Purpose: 为了, 以便, 好让, 免得",
+  "level": "B1",
+  "shortExplanation": "These forms explain purpose: in order to, so as to, and so as not to.",
+  "fullExplanation": "为了 introduces purpose directly. 以便 and 好让 express 'so that'. 免得 introduces a purpose of avoiding an unwanted result, similar to 'so as not to' or 'lest'.",
+  "examples": [
+  {
+  "chinese": "为了提高口语，我每天都练习。",
+  "pinyin": "Wèile tígāo kǒuyǔ, wǒ měitiān dōu liànxí."
+  },
+  {
+  "chinese": "我把资料发给你，以便你提前看看。",
+  "pinyin": "Wǒ bǎ zīliào fā gěi nǐ, yǐbiàn nǐ tíqián kànkan."
+  },
+  {
+  "chinese": "我们早点出发，免得路上堵车。",
+  "pinyin": "Wǒmen zǎodiǎn chūfā, miǎnde lùshang dǔchē."
+  }
+  ],
+  "markers": ["为了", "以便", "好让", "免得"]
+},
+"zh_no_matter_buguan": {
+  "id": "zh_no_matter_buguan",
+  "category": "conjunctions",
+  "title": "Defying setbacks: 不管...都...",
+  "level": "B1",
+  "shortExplanation": "不管...都... means 'no matter'.",
+  "fullExplanation": "Use 不管 before the varying condition and 都 before the result to say that the result remains the same in all cases.",
+  "examples": [
+  {
+  "chinese": "不管多忙，我都要运动一下。",
+  "pinyin": "Bùguǎn duō máng, wǒ dōu yào yùndòng yíxià."
+  },
+  {
+  "chinese": "不管你去不去，我都会去。",
+  "pinyin": "Bùguǎn nǐ qù bú qù, wǒ dōu huì qù."
+  },
+  {
+  "chinese": "不管天气怎么样，他们都出门跑步。",
+  "pinyin": "Bùguǎn tiānqì zěnmeyàng, tāmen dōu chūmén pǎobù."
+  }
+  ],
+  "markers": ["不管", "都"]
+},
+"zh_apart_from_except_besides": {
+  "id": "zh_apart_from_except_besides",
+  "category": "conjunctions",
+  "title": "Apart from / besides: 除了...以外...",
+  "level": "B1",
+  "shortExplanation": "除了...以外... means 'apart from' or 'besides'.",
+  "fullExplanation": "Use 除了...以外... to add extra information or to exclude something depending on the sentence. It is often followed by 还, 也, or 都.",
+  "examples": [
+  {
+  "chinese": "除了中文以外，我还会一点儿韩语。",
+  "pinyin": "Chúle Zhōngwén yǐwài, wǒ hái huì yìdiǎnr Hányǔ."
+  },
+  {
+  "chinese": "除了他，大家都到了。",
+  "pinyin": "Chúle tā, dàjiā dōu dào le."
+  },
+  {
+  "chinese": "这家店除了咖啡，也卖甜点。",
+  "pinyin": "Zhè jiā diàn chúle kāfēi, yě mài tiándiǎn."
+  }
+  ],
+  "markers": ["除了", "以外", "还", "也", "都"]
+},
+"zh_let_alone": {
+  "id": "zh_let_alone",
+  "category": "conjunctions",
+  "title": "Let alone: 别说 / 更别说",
+  "level": "B1",
+  "shortExplanation": "别说 and 更别说 mean 'let alone'.",
+  "fullExplanation": "Use 别说 or 更别说 to say that if one thing is not true or not possible, an even stronger case is even less likely.",
+  "examples": [
+  {
+  "chinese": "他连中文都不会说，更别说写汉字了。",
+  "pinyin": "Tā lián Zhōngwén dōu bú huì shuō, gèng bié shuō xiě Hànzì le."
+  },
+  {
+  "chinese": "我今天连饭都没吃，别说出去玩了。",
+  "pinyin": "Wǒ jīntiān lián fàn dōu méi chī, bié shuō chūqù wán le."
+  },
+  {
+  "chinese": "这么难的问题，小孩子别说回答，连听都听不懂。",
+  "pinyin": "Zhème nán de wèntí, xiǎoháizi bié shuō huídá, lián tīng dōu tīng bù dǒng."
+  }
+  ],
+  "markers": ["别说", "更别说", "连"]
+},
+"zh_otherwise": {
+  "id": "zh_otherwise",
+  "category": "conjunctions",
+  "title": "Otherwise: 否则",
+  "level": "B1",
+  "shortExplanation": "否则 means 'otherwise'.",
+  "fullExplanation": "Use 否则 to introduce a negative result that will happen if the first instruction or condition is not followed.",
+  "examples": [
+  {
+  "chinese": "你得快一点，否则赶不上火车了。",
+  "pinyin": "Nǐ děi kuài yìdiǎn, fǒuzé gǎn bù shàng huǒchē le."
+  },
+  {
+  "chinese": "先把材料准备好，否则明天来不及。",
+  "pinyin": "Xiān bǎ cáiliào zhǔnbèi hǎo, fǒuzé míngtiān láibují."
+  },
+  {
+  "chinese": "你最好现在就问清楚，否则以后更麻烦。",
+  "pinyin": "Nǐ zuìhǎo xiànzài jiù wèn qīngchu, fǒuzé yǐhòu gèng máfan."
+  }
+  ],
+  "markers": ["否则"]
+},
+"zh_result_potential_complex": {
+  "id": "zh_result_potential_complex",
+  "category": "complements",
+  "title": "Potential complements with 到, 懂, 完, 住",
+  "level": "B1",
+  "shortExplanation": "Potential complements show whether a result can or cannot be achieved.",
+  "fullExplanation": "Use 得 or 不 between the verb and result complement to show possibility or impossibility. This pattern is especially common with complements such as 到, 懂, 完, and 住.",
+  "examples": [
+  {
+  "chinese": "这么小的字，我看不清，也看不到。",
+  "pinyin": "Zhème xiǎo de zì, wǒ kàn bù qīng, yě kàn bú dào."
+  },
+  {
+  "chinese": "他说得太快，我听不懂。",
+  "pinyin": "Tā shuō de tài kuài, wǒ tīng bù dǒng."
+  },
+  {
+  "chinese": "这么多菜，我们吃不完，也带不走。",
+  "pinyin": "Zhème duō cài, wǒmen chī bù wán, yě dài bù zǒu."
+  }
+  ],
+  "markers": ["得", "不", "看不到"]
+}
+}
+
+

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "cafe_a1",
+    "title": "At the café",
+    "topic": "Food and drink",
+    "level": "A1",
+    "description": "A short café dialogue.",
+    "text": "我想喝一杯咖啡。你想吃点什么？我想吃一个蛋糕。好的，我们一起去吧。"
+  },
+  {
+    "id": "library_a1",
+    "title": "In the library",
+    "topic": "Study",
+    "level": "A1",
+    "description": "A short text about studying in the library.",
+    "text": "我今天在图书馆学习中文。图书馆很安静。我喜欢在这里看书。"
+  }
+]

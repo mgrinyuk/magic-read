@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MagicRead</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+    <header class="app-header">
+      <div class="header-left" id="headerLeft">
+        <a class="brand" href="#">
+          <span class="brand-mark">✦</span>
+          <span class="brand-name">Magic Read</span>
+        </a>
+
+       <div class="header-language-controls">
+        <select id="sourceLang" class="language-select">
+          <option value="zh">Chinese</option>
+          <option value="ru">Russian</option>
+          <option value="tr">Turkish</option>
+          <option value="en">English</option>
+          <option value="de">German</option>
+        </select>
+
+        <select id="targetLang" class="language-select secondary-select">
+          <option value="en">English</option>
+          <option value="ru">Russian</option>
+          <option value="de">German</option>
+          <option value="tr">Turkish</option>
+          <option value="zh">Chinese</option>
+        </select>
+      </div>
+      </div>
+
+      <nav class="top-nav" id="topNav">
+        <button class="nav-link active" data-screen="reader">Reader</button>
+        <button class="nav-link" data-screen="speak">Speak</button>
+        <button class="nav-link" data-screen="words">Words</button>
+        <button class="nav-link" data-screen="grammar">Grammar Lens</button>
+        <button class="nav-link" data-screen="calligraphy">Calligraphy</button>
+      </nav>
+
+      <div class="header-right">
+        <button id="guestLoginBtn" class="primary-btn">Get Started</button>
+        <button id="logoutBtn" class="ghost-btn" hidden>Log out</button>
+        <button class="ghost-btn">Beta</button>
+        <button class="profile-btn">M</button>
+      </div>
+    </header>
+
+   
+  <section id="authScreen" class="auth-shell">
+      <div class="auth-card">
+        <div class="auth-left">
+          <p class="auth-eyebrow">Welcome to Magic Read</p>
+          <h1>Turn any text into a pronunciation lesson</h1>
+          <p>
+            Paste your text, split it into cards, listen, repeat, translate,
+            and check grammar on demand.
+          </p>
+
+          <div class="auth-feature">
+            <span>🎧</span>
+            <div>
+              <strong>Listen & Repeat</strong>
+              <small>Perfect your pronunciation</small>
+            </div>
+          </div>
+
+          <div class="auth-feature">
+            <span>📚</span>
+            <div>
+              <strong>Smart Cards</strong>
+              <small>Study with interactive cards</small>
+            </div>
+          </div>
+
+          <div class="auth-feature">
+            <span>🌍</span>
+            <div>
+              <strong>Translate & Learn</strong>
+              <small>Understand every sentence</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-right">
+          <h2>Welcome back 👋</h2>
+          <p class="subtle">Log in or create an account to continue.</p>
+
+          <label>Name</label>
+          <input id="authName" class="auth-input" type="text" placeholder="Your name" />
+
+          <label>Email</label>
+          <input id="authEmail" class="auth-input" type="email" placeholder="you@example.com" />
+
+          <label>Password</label>
+          <input id="authPassword" class="auth-input" type="password" placeholder="••••••••" />
+
+          <button id="loginBtn" class="auth-main-btn">Log in</button>
+
+          <div class="auth-divider">
+            <span></span>
+            <p>or</p>
+            <span></span>
+          </div>
+
+          <button id="signUpBtn" class="auth-secondary-btn">Create account</button>
+
+          <p id="authMessage" class="auth-message"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-how">
+      <div class="landing-section-head">
+        <p class="eyebrow">How it works</p>
+        <h2>From any text to active language practice</h2>
+        <p>
+          Magic Read helps learners turn real texts into listening, pronunciation,
+          vocabulary, grammar, and writing practice.
+        </p>
+      </div>
+
+      <div class="how-grid">
+        <div class="how-card">
+          <div class="how-number">1</div>
+          <h3>Paste any text</h3>
+          <p>
+            Add a text in Chinese, Russian, Turkish, English, or German.
+            Magic Read splits it into clear sentence cards.
+          </p>
+        </div>
+
+        <div class="how-card">
+          <div class="how-number">2</div>
+          <h3>Listen and repeat</h3>
+          <p>
+            Play each sentence, slow it down, record your voice,
+            and get a simple pronunciation score.
+          </p>
+        </div>
+
+        <div class="how-card">
+          <div class="how-number">3</div>
+          <h3>Understand deeply</h3>
+          <p>
+            Translate sentences, click words, save flashcards,
+            and inspect grammar inside the text.
+          </p>
+        </div>
+
+        <div class="how-card">
+          <div class="how-number">4</div>
+          <h3>Practice actively</h3>
+          <p>
+            Turn the same text into speaking games, flashcards,
+            and printable writing practice.
+          </p>
+        </div>
+      </div>
+    </section>
+      <!-- MAIN SCREEN -->
+     <main class="main">
+      <section id="screen-main" class="app-screen">
+        <section class="hero-panel">
+          <div class="hero-copy">
+            <p class="eyebrow">MagicRead workspace</p>
+            <h2>Turn any text into a pronunciation lesson</h2>
+            <p class="hero-text">
+              Paste your text, split it into cards, listen, repeat, translate, and check the grammar on demand.
+            </p>
+          </div>
+        </section>
+     
+        <section class="workspace-card">
+          <div class="workspace-head">
+            <div>
+              <h3>Your text</h3>
+              <p class="subtle">Paste a text in the language you want to practice.</p>
+            </div>
+          </div>
+
+          <textarea id="inputText" placeholder="Paste your text here..."></textarea>
+            <div class="action-group saved-text-actions">
+              <button id="createCardsBtn" class="primary-btn">Create cards</button>
+              <button id="saveTextBtn" class="game-nav-btn">Save text</button>
+              <button id="showSavedTextsBtn" class="game-nav-btn">Saved texts</button>
+            </div>
+
+            <div id="savedTextsPanel" class="saved-texts-panel" hidden>
+              <h3>Saved texts</h3>
+              <div id="savedTextsList"></div>
+            </div>
+        </section>
+        <section id="fullTextPanel" class="workspace-card" hidden>
+          <div class="workspace-head">
+            <div>
+              <h3>Full Text</h3>
+              <p class="subtle">Read the complete imported text.</p>
+            </div>
+           <div class="card-buttons">
+              <button id="readFullTextBtn" class="tts-btn">🔊 Play</button>
+              <button id="fullTextSlowBtn" class="slow-tts-btn">🐢 Slow: OFF</button>
+              <button id="translateFullTextBtn" class="translate-btn">🌐 Translate</button>
+              <button id="toggleFullTextPinyinBtn" class="translate-btn"> 🔤 Show pinyin</button>
+              <button id="checkFullTextGrammarBtn" class="translate-btn">🧠 Check grammar</button>
+            </div>
+          </div>
+
+          <div id="fullTextContent" class="full-text-box"></div>
+          <div id="fullTextPinyin" class="full-text-pinyin" hidden></div>
+          <div id="fullTextTranslation" class="translation-box panel-box"></div>
+        </section>
+        
+        <section class="cards-section">
+          <div class="section-head">
+            <h3>Practice cards</h3>
+            <p class="subtle">Listen, record, translate, and inspect grammar.</p>
+          </div>
+
+          <section id="cardsContainer" class="cards"></section>
+        </section>
+      </section>
+
+     <!-- GAME MODE SCREEN -->
+  <section id="screen-game" class="app-screen">
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Game mode</p>
+          <h2>Unlock the next card with your pronunciation</h2>
+          <p class="hero-text">
+            Choose a text, practice sentence by sentence, and move forward only after scoring 75% or higher.
+          </p>
+        </div>
+
+        <div class="game-badge">Target score: 75%</div>
+      </section>
+     
+      <section class="game-mode-screen">
+      <div class="game-layout">
+
+        <section class="game-stage">
+          <div class="game-library-toggle-row">
+            <button id="toggleGameLibraryBtn" class="game-nav-btn">
+              📚 Choose practice text
+            </button>
+          </div>
+
+          <div id="gameLibraryPanel" class="game-library-panel collapsed">
+            <h3>Practice texts</h3>
+            <p class="subtle">Choose a text for speaking practice.</p>
+            <div class="game-library-list" id="gameTextList"></div>
+          </div>
+            <div class="game-progress-card">
+              <div class="game-progress-top">
+                <span id="gameCardLabel" class="game-progress-label">Card 3 of 8</span>
+                <span id="gameLastScore" class="game-progress-score">Last score: 82%</span>
+              </div>
+
+              <div class="game-progress-bar">
+                <div id="gameProgressFill" class="game-progress-fill" style="width: 37.5%;"></div>
+              </div>
+            </div>
+
+            <div class="game-card">
+              <div class="game-card-top">
+                <span id="gameLangBadge" class="card-badge">ZH</span>
+                <span class="game-card-status unlocked">Unlocked</span>
+              </div>
+
+              <p id="gameSentence" class="game-sentence">我想喝一杯咖啡。</p>
+              <p id="gamePinyin" class="game-pinyin">Wǒ xiǎng hē yì bēi kāfēi.</p>
+
+              <div class="game-controls">
+                <button id="gamePlayBtn" class="game-btn game-btn-soft">🔊 Play</button>
+                <button id="gameTranslateBtn" class="game-btn game-btn-soft">🌐 Show translation</button>
+                <button id="gameRecordBtn" class="game-btn game-btn-primary">🎤 Record</button>
+              </div>
+
+              <div id="gameFeedback" class="game-feedback success">
+                <p><strong>Recognized:</strong> 我想喝一杯咖啡</p>
+                <p><strong>Accuracy:</strong> 82%</p>
+                <p>Great job. The next card is now unlocked.</p>
+              </div>
+
+              <div class="game-navigation">
+                <button id="gamePrevBtn" class="game-nav-btn" disabled>← Previous</button>
+                <button id="ttsSpeedToggle" class="game-nav-btn">🐢 Slow</button>
+                <button id="gameSkipBtn" class="game-nav-btn">Skip</button>
+                <button id="gameNextBtn" class="game-nav-btn game-nav-btn-primary">Next →</button>
+              </div>
+
+              <div id="gameEndScreen" class="game-end-screen" hidden>
+                <h3>Session complete 🎉</h3>
+                <p id="gameEndMessage">Great work!</p>
+                <div id="gameEndScore" class="game-end-score"></div>
+
+                <div class="game-end-actions">
+                  <button id="gameRestartBtn" class="game-nav-btn game-nav-btn-primary">Practice again</button>
+                  <button id="gameGoToReaderBtn" class="game-nav-btn">Go to Reader</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="game-locked-preview">
+              <h4>Next card</h4>
+              <p>This card will open after you score at least 75% on the current one.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+    </section>
+      <!-- FLASHCARDS SCREEN -->
+      <section id="screen-flashcards" class="app-screen">
+        <section class="hero-panel">
+          <div class="hero-copy">
+            <p class="eyebrow">Flashcards</p>
+            <h2>Train chosen words in card mode</h2>
+            <p class="hero-text">
+              Save useful words from texts and review them with sentence context.
+            </p>
+          </div>
+        </section>
+
+        <section class="workspace-card">
+          <div class="workspace-head">
+            <div>
+              <h3>Your flashcard deck</h3>
+              <p class="subtle">Tap the card to flip it.</p>
+            </div>
+            <div class="flashcard-top-actions">
+              <select id="flashcardDeckSelect" class="deck-select"></select>
+              <button id="flashcardNewDeckBtn" class="game-nav-btn">+ New deck</button>
+              <button id="flashcardDeleteDeckBtn" class="game-nav-btn">Delete deck</button>
+              <button id="flashcardClearBtn" class="game-nav-btn">Clear deck</button>
+              <button id="flashcardExportBtn" class="game-nav-btn game-nav-btn-primary">Export printable</button>
+            </div>
+          </div>
+
+          <div id="flashcardEmptyState" class="flashcard-empty">
+            No saved cards yet. Save words from the reader or game mode.
+          </div>
+
+          <div id="flashcardDeck" class="flashcard-deck" hidden>
+            <div class="flashcard-progress">
+              <span id="flashcardCounter">Card 1 of 1</span>
+            </div>
+
+            <div id="flashcardCard" class="flashcard-card">
+              <div class="flashcard-card-inner">
+                <div class="flashcard-face flashcard-front">
+                  <p class="flashcard-label">Word</p>
+                  <h3 id="flashcardWord">图书馆</h3>
+                  <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
+                    <button id="flashcardPlayWordBtn" class="flashcard-play-btn">
+                    🔊
+                  </button>
+                  <button id="flashcardSlowBtn" class="slow-tts-btn">🐢 Slow: OFF</button>
+                </div>
+
+                <div class="flashcard-face flashcard-back">
+                  <p class="flashcard-label">Context</p>
+                  <p id="flashcardSentence" class="flashcard-sentence">我在图书馆学习中文。</p>
+                  <p id="flashcardSentencePinyin" class="flashcard-pinyin">Wǒ zài túshūguǎn xuéxí Zhōngwén.</p>
+                  <p id="flashcardTranslation" class="flashcard-translation">I study Chinese in the library.</p>
+                   <button id="flashcardPlaySentenceBtn" class="flashcard-play-btn">
+                    🔊
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="game-navigation">
+              <button id="flashcardPrevBtn" class="game-nav-btn">← Previous</button>
+              <button id="flashcardDeleteBtn" class="game-nav-btn">Delete</button>
+              <button id="flashcardNextBtn" class="game-nav-btn game-nav-btn-primary">Next →</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+       <!-- FLASHCARDS SCREEN -->
+      <section id="screen-writing" class="app-screen">
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Writing</p>
+          <h2>Create printable Chinese writing sheets</h2>
+          <p class="hero-text">
+            Paste characters and generate a downloadable grid worksheet.
+          </p>
+        </div>
+      </section>
+
+      <section class="workspace-card">
+        <div class="workspace-head">
+          <div>
+            <h3>Your characters</h3>
+            <p class="subtle">Paste characters or short phrases.</p>
+          </div>
+        </div>
+
+        <textarea id="writingInput" placeholder="请输入汉字"></textarea>
+
+        <div class="action-group" style="margin-top:16px;">
+          <button id="createWritingSheetBtn" type="button" class="primary-btn">Create printable</button>
+        </div>
+
+        <div id="writingResult" class="translation-box panel-box"></div>
+      </section>
+    </section>
+
+    <!--grammar screen -->
+    <section id="screen-grammar" class="app-screen">
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Grammar Lens</p>
+          <h2>See how the sentence works</h2>
+          <p class="hero-text">
+            Paste a text, highlight grammar markers, hover for a short meaning, and click for a full explanation.
+          </p>
+        </div>
+      </section>
+
+      <section class="workspace-card grammar-lens-card">
+        <div class="workspace-head">
+          <div>
+            <h3>Check grammar</h3>
+            <p class="subtle">Paste a sentence or text in the selected source language.</p>
+          </div>
+        </div>
+
+        <textarea id="grammarLensInput" placeholder="Paste text for grammar analysis..."></textarea>
+
+        <div class="action-group" style="margin-top:16px;">
+          <button id="grammarLensAnalyzeBtn" class="primary-btn">Analyze grammar</button>
+        </div>
+      </section>
+
+      <section class="grammar-lens-layout">
+        <div class="workspace-card grammar-lens-result-card">
+          <h3>Grammar highlights</h3>
+          <p class="subtle">Hover over highlighted morphemes or particles. Click one to focus and open explanation.</p>
+          <div id="grammarLensResult" class="grammar-lens-result"></div>
+        </div>
+
+        <aside id="grammarSidePanel" class="grammar-side-panel">
+          <h3>Explanation</h3>
+          <p class="subtle">Click a highlighted grammar marker to see details here.</p>
+        </aside>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

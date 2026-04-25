@@ -1,0 +1,26 @@
+{
+  "tr_locative": {
+    "title": "Turkish locative case",
+    "fullExplanation": "The endings -de and -da often express location and mean 'in', 'at', or 'on'.",
+    "examples": [
+      "Evdeyim.",
+      "Okulda çalışıyorum."
+    ]
+  },
+  "tr_present_continuous": {
+    "title": "Turkish present continuous",
+    "fullExplanation": "The suffix -yor is used to describe actions happening now or around now.",
+    "examples": [
+      "Kitap okuyorum.",
+      "O geliyor."
+    ]
+  },
+  "tr_plural": {
+    "title": "Turkish plural suffix",
+    "fullExplanation": "The suffixes -lar and -ler are used to make nouns plural.",
+    "examples": [
+      "kitaplar",
+      "öğrenciler"
+    ]
+  }
+}

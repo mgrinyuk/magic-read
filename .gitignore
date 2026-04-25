@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+.env
+backend/google-tts-key.json
+backend/public/exports/
+backend/public/worksheets/
