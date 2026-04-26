@@ -353,7 +353,7 @@ async function openGrammarPage(id) {
 
   try {
     const response = await fetch(
-      `http://localhost:3000/api/grammar/${id}?lang=${sourceLangSelect.value}`
+      `https://magic-read.onrender.com/api/grammar/${id}?lang=${sourceLangSelect.value}`
     );
     const data = await response.json();
 
@@ -564,7 +564,7 @@ function renderDeckSelector() {
 
 async function loadGameTexts() {
   try {
-    const response = await fetch(`http://localhost:3000/api/game-texts?lang=${sourceLangSelect.value}`);
+    const response = await fetch(`https://magic-read.onrender.com/api/game-texts?lang=${sourceLangSelect.value}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -672,7 +672,7 @@ async function startGameText(textId) {
   }
   
   try {
-    const response = await fetch(`http://localhost:3000/api/game-texts/${textId}?lang=${sourceLangSelect.value}`);
+    const response = await fetch(`https://magic-read.onrender.com/api/game-texts/${textId}?lang=${sourceLangSelect.value}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -735,7 +735,7 @@ if (gameCardEl) {
 
   if (sourceLangSelect.value === "zh" && sentence) {
     try {
-      const response = await fetch("http://localhost:3000/api/segment", {
+      const response = await fetch("https://magic-read.onrender.com/api/segment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: sentence })
@@ -771,7 +771,7 @@ document.getElementById("gameTranslateBtn")?.addEventListener("click", async () 
   if (!sentence || !feedbackEl) return;
 
   try {
-    const response = await fetch("http://localhost:3000/api/translate", {
+    const response = await fetch("https://magic-read.onrender.com/api/translate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1005,7 +1005,7 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
   writingResult.textContent = "Creating PDF...";
 
   try {
-    const response = await fetch("http://localhost:3000/api/create-writing-sheet", {
+    const response = await fetch("https://magic-read.onrender.com/api/create-writing-sheet", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1053,7 +1053,7 @@ createBtn.addEventListener("click", async () => {
   }
 
   try {
-    const res = await fetch("http://localhost:3000/api/split-text", {
+    const res = await fetch("https://magic-read.onrender.com/api/split-text", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1208,7 +1208,7 @@ async function loadSavedTexts() {
 async function renderSavedTextAsCards(text) {
   if (!text) return;
 
-  const res = await fetch("http://localhost:3000/api/split-text", {
+  const res = await fetch("https://magic-read.onrender.com/api/split-text", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -1334,7 +1334,7 @@ function renderClickableSentence(sentence, lang) {
 
 
 async function renderChineseSentence(sentence) {
-  const response = await fetch("http://localhost:3000/api/segment", {
+  const response = await fetch("https://magic-read.onrender.com/api/segment", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -1476,7 +1476,7 @@ async function openGrammarArticle(articleId, card) {
 
   try {
     const response = await fetch(
-      `http://localhost:3000/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
+      `https://magic-read.onrender.com/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
     );
     const data = await response.json();
 
@@ -1547,7 +1547,7 @@ async function showImportedText(text) {
     attachWordListeners(contentEl);
 
     try {
-      const response = await fetch("http://localhost:3000/api/segment", {
+      const response = await fetch("https://magic-read.onrender.com/api/segment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -1604,7 +1604,7 @@ const screenGrammar = document.getElementById("screen-grammar");
 
 async function loadGrammarScreen() {
   try {
-    const response = await fetch(`http://localhost:3000/api/grammar-list?lang=${sourceLangSelect.value}`);  
+    const response = await fetch(`https://magic-read.onrender.com/api/grammar-list?lang=${sourceLangSelect.value}`);  
     const data = await response.json();
 
     if (!response.ok) {
@@ -1816,7 +1816,7 @@ async function openGrammarLensArticle(articleId) {
 
   try {
     const response = await fetch(
-      `http://localhost:3000/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
+      `https://magic-read.onrender.com/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
     );
 
     const data = await response.json();
@@ -1862,7 +1862,7 @@ async function analyzeGrammarLensText() {
   grammarLensResult.innerHTML = `<p class="subtle">Analyzing grammar...</p>`;
 
   try {
-    const response = await fetch("http://localhost:3000/api/grammar", {
+    const response = await fetch("https://magic-read.onrender.com/api/grammar", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1960,7 +1960,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
 
   try {
     // 1. Try dictionary first
-    const dictResponse = await fetch("http://localhost:3000/api/dictionary", {
+    const dictResponse = await fetch("https://magic-read.onrender.com/api/dictionary", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2001,7 +2001,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
     }
 
     // 2. Fallback to translator
-    const response = await fetch("http://localhost:3000/api/translate", {
+    const response = await fetch("https://magic-read.onrender.com/api/translate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2079,7 +2079,7 @@ async function translateSentence(sentence, card) {
   try {
     translationBox.textContent = "Translating...";
 
-    const response = await fetch("http://localhost:3000/api/translate", {
+    const response = await fetch("https://magic-read.onrender.com/api/translate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2121,7 +2121,7 @@ async function prepareTTSInput(text, lang) {
 
   if (lang === "zh") {
     try {
-      const response = await fetch("http://localhost:3000/api/segment", {
+      const response = await fetch("https://magic-read.onrender.com/api/segment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -2178,7 +2178,7 @@ async function playGoogleTTS(text, langOverride = null) {
   speechSynthesis.cancel();
 
   try {
-    const response = await fetch("http://localhost:3000/api/tts", {
+    const response = await fetch("https://magic-read.onrender.com/api/tts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2440,7 +2440,7 @@ async function grammar(sentence, card) {
   try {
     resultBox.innerHTML = "Analyzing grammar...";
 
-    const response = await fetch("http://localhost:3000/api/grammar", {
+    const response = await fetch("https://magic-read.onrender.com/api/grammar", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2538,7 +2538,7 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
   try {
     translationEl.textContent = "Translating...";
 
-    const response = await fetch("http://localhost:3000/api/translate", {
+    const response = await fetch("https://magic-read.onrender.com/api/translate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2627,7 +2627,7 @@ async function exportCurrentDeck() {
     .filter(Boolean);
 
   try {
-    const response = await fetch("http://localhost:3000/api/export-flashcard-deck", {
+    const response = await fetch("https://magic-read.onrender.com/api/export-flashcard-deck", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
