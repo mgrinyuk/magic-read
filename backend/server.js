@@ -22,7 +22,7 @@ const __dirname = path.dirname(__filename);
 
 addDict(CompleteDict);
 
-const cedictMap = loadCedict();
+const cedictMap = process.env.LOAD_CEDICT === "true" ? loadCedict() : {};
 
 //env
 const sheets = google.sheets({
