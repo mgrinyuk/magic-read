@@ -7,9 +7,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import textToSpeech from "@google-cloud/text-to-speech";
 import nodejieba from "nodejieba";
-import { pinyin, addDict } from "pinyin-pro";
+import { pinyin } from "pinyin-pro";
 import { google } from "googleapis";
-import CompleteDict from "@pinyin-pro/data/complete";
 import PDFDocument from "pdfkit";
 import Papa from "papaparse";
 
@@ -20,7 +19,6 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-addDict(CompleteDict);
 
 const cedictMap = process.env.LOAD_CEDICT === "true" ? loadCedict() : {};
 
