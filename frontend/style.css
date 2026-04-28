@@ -1744,3 +1744,13 @@ body.is-logged-in .header-right .ghost-btn {
   font-weight: 800;
   text-decoration: none;
 }
+.auth-link-btn {
+  margin-top: 10px;
+  border: none;
+  background: transparent;
+  color: var(--primary-dark);
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}

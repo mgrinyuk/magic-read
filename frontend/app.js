@@ -6,6 +6,8 @@ const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const authScreen = document.getElementById("authScreen");
+const authNameGroup = document.getElementById("authNameGroup");
+let authMode = "login";
 const mainApp = document.querySelector(".main");
 const landingHow = document.querySelector(".landing-how");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -82,7 +84,13 @@ const signUpBtn = document.getElementById("signUpBtn");
 console.log("signUpBtn found:", signUpBtn);
 
 signUpBtn?.addEventListener("click", async () => {
-  console.log("Create account clicked");
+  if (authMode === "login") {
+    authMode = "signup";
+    authNameGroup.hidden = false;
+    signUpBtn.textContent = "Create account";
+    authMessage.textContent = "Enter your name, email, and password to create an account.";
+    return;
+  }
 
   const name = document.getElementById("authName")?.value.trim();
   const email = document.getElementById("authEmail")?.value.trim();
@@ -124,6 +132,9 @@ signUpBtn?.addEventListener("click", async () => {
 });
 
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
+  authMode = "login";
+  if (authNameGroup) authNameGroup.hidden = true;
+
   const email = document.getElementById("authEmail").value.trim();
   const password = document.getElementById("authPassword").value.trim();
 
@@ -223,6 +234,19 @@ async function loadFlashcardsFromStorage() {
   }));
 
   ensureDefaultDeck();
+}
+
+async function autoplayCurrentFlashcardWord() {
+  const cards = getCurrentCards();
+  if (!cards.length) return;
+
+  const card = cards[currentFlashcardIndex];
+  const word = card?.word || "";
+  const lang = card?.lang || sourceLangSelect.value;
+
+  if (!word) return;
+
+  await playGoogleTTS(word, lang);
 }
 
 async function saveFlashcardsToStorage() {
@@ -498,6 +522,10 @@ function deleteCurrentFlashcard() {
 
   renderDeckSelector();
   renderFlashcards();
+
+  setTimeout(() => {
+  autoplayCurrentFlashcardWord();
+}, 250);
 }
 
 function clearFlashcards() {
