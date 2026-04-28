@@ -254,7 +254,7 @@ app.post("/api/create-writing-sheet", (req, res) => {
 
     stream.on("finish", () => {
       res.json({
-        fileUrl: `http://localhost:3000/worksheets/${filename}`
+        fileUrl: `${req.protocol}://${req.get("host")}/worksheets/${filename}`
       });
     });
   } catch (error) {
@@ -816,7 +816,7 @@ app.post("/api/export-flashcard-deck", (req, res) => {
 
     stream.on("finish", () => {
       res.json({
-        fileUrl: `http://localhost:3000/exports/${filename}`
+        fileUrl: `${req.protocol}://${req.get("host")}/exports/${filename}`
       });
     });
   } catch (error) {

@@ -2626,6 +2626,20 @@ async function exportCurrentDeck() {
     .map(card => (card.word || "").trim())
     .filter(Boolean);
 
+  const deckEl = document.getElementById("flashcardDeck");
+  let exportResult = document.getElementById("flashcardExportResult");
+
+  if (!exportResult && deckEl) {
+    exportResult = document.createElement("div");
+    exportResult.id = "flashcardExportResult";
+    exportResult.className = "translation-box panel-box";
+    deckEl.appendChild(exportResult);
+  }
+
+  if (exportResult) {
+    exportResult.textContent = "Creating printable deck...";
+  }
+
   try {
     const response = await fetch("https://magic-read.onrender.com/api/export-flashcard-deck", {
       method: "POST",
@@ -2643,22 +2657,27 @@ async function exportCurrentDeck() {
     if (!response.ok) {
       throw new Error(data.error || "Export failed");
     }
-    const pdfUrl = data.fileUrl;
 
-    alert("Printable deck ready.");
+    if (exportResult) {
+      exportResult.innerHTML = "";
 
-    const link = document.createElement("a");
-    link.href = pdfUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "Open printable deck";
-    link.style.display = "inline-block";
-    link.style.marginTop = "12px";
+      const link = document.createElement("a");
+      link.href = data.fileUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.className = "download-pdf-link";
+      link.textContent = "Open printable deck";
 
-    document.body.appendChild(link);
+      exportResult.appendChild(link);
+    }
   } catch (error) {
     console.error("Deck export error:", error);
-    alert("Could not export printable deck.");
+
+    if (exportResult) {
+      exportResult.textContent = `Could not export printable deck: ${error.message}`;
+    } else {
+      alert("Could not export printable deck.");
+    }
   }
 }
 
