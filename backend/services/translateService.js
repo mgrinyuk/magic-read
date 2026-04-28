@@ -3,9 +3,13 @@ import { v2 as translateV2 } from "@google-cloud/translate";
 
 dotenv.config();
 
-const translateClient = process.env.GOOGLE_APPLICATION_CREDENTIALS
+const credentials = process.env.GOOGLE_TTS_KEY_JSON
+  ? JSON.parse(process.env.GOOGLE_TTS_KEY_JSON)
+  : null;
+
+const translateClient = credentials
   ? new translateV2.Translate({
-      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
+      credentials
     })
   : null;
 
