@@ -150,6 +150,28 @@ logoutBtn?.addEventListener("click", async () => {
 
 checkAuth();
 
+document.getElementById("forgotPasswordBtn")?.addEventListener("click", async () => {
+  const email = document.getElementById("authEmail")?.value.trim();
+
+  if (!email) {
+    authMessage.textContent = "Please enter your email first.";
+    return;
+  }
+
+  authMessage.textContent = "Sending password recovery email...";
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
+  });
+
+  if (error) {
+    authMessage.textContent = error.message;
+    return;
+  }
+
+  authMessage.textContent = "Password recovery email sent. Please check your inbox.";
+});
+
 // flashcard logic
 async function loadFlashcardsFromStorage() {
   const {
