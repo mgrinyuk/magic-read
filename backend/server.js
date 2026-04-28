@@ -292,7 +292,15 @@ app.post("/api/segment", (req, res) => {
   }
 
   try {
-    const words = nodejieba.cut(text);
+    let words = [];
+
+    try {
+      words = nodejieba.cut(text);
+    } catch (jiebaError) {
+      console.error("nodejieba failed, using fallback:", jiebaError);
+
+      words = [...text].filter(char => char.trim());
+    }
 
     const result = words.map(word => ({
       word,
@@ -303,7 +311,7 @@ app.post("/api/segment", (req, res) => {
 
     res.json({ words: result });
   } catch (error) {
-    console.error("Segmentation error:", error);
+    console.error("Segmentation route error:", error);
     res.status(500).json({ error: "Segmentation failed" });
   }
 });
