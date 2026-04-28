@@ -83,7 +83,13 @@ function loadCedict() {
 
 const GRAMMAR_SHEET_ID = process.env.GRAMMAR_SHEET_ID;
 const app = express();
-const ttsClient = new textToSpeech.TextToSpeechClient();
+const googleCredentials = process.env.GOOGLE_TTS_KEY_JSON
+  ? JSON.parse(process.env.GOOGLE_TTS_KEY_JSON)
+  : undefined;
+
+const ttsClient = new textToSpeech.TextToSpeechClient({
+  credentials: googleCredentials
+});
 
 
 app.use(cors());
