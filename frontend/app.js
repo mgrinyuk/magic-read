@@ -183,6 +183,46 @@ document.getElementById("forgotPasswordBtn")?.addEventListener("click", async ()
   authMessage.textContent = "Password recovery email sent. Please check your inbox.";
 });
 
+
+//reset password
+const resetPasswordBox = document.getElementById("resetPasswordBox");
+const newPasswordInput = document.getElementById("newPasswordInput");
+const updatePasswordBtn = document.getElementById("updatePasswordBtn");
+
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "PASSWORD_RECOVERY") {
+    authScreen.hidden = false;
+    mainApp.hidden = true;
+
+    if (resetPasswordBox) {
+      resetPasswordBox.hidden = false;
+    }
+
+    authMessage.textContent = "Please create a new password.";
+  }
+});
+
+updatePasswordBtn?.addEventListener("click", async () => {
+  const newPassword = newPasswordInput.value.trim();
+
+  if (newPassword.length < 6) {
+    authMessage.textContent = "Password should be at least 6 characters.";
+    return;
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword
+  });
+
+  if (error) {
+    authMessage.textContent = error.message;
+    return;
+  }
+
+  authMessage.textContent = "Password updated. You can now use your new password.";
+  resetPasswordBox.hidden = true;
+});
+
 // flashcard logic
 async function loadFlashcardsFromStorage() {
   const {
