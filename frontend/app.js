@@ -95,6 +95,10 @@ signUpBtn?.addEventListener("click", async () => {
   const name = document.getElementById("authName")?.value.trim();
   const email = document.getElementById("authEmail")?.value.trim();
   const password = document.getElementById("authPassword")?.value.trim();
+  const resetPasswordScreen = document.getElementById("resetPasswordScreen");
+  const newPasswordInput = document.getElementById("newPasswordInput");
+  const updatePasswordBtn = document.getElementById("updatePasswordBtn");
+  const resetPasswordMessage = document.getElementById("resetPasswordMessage");
 
   if (!name || !email || !password) {
     authMessage.textContent = "Please enter name, email, and password.";
@@ -191,36 +195,53 @@ const updatePasswordBtn = document.getElementById("updatePasswordBtn");
 
 supabase.auth.onAuthStateChange((event) => {
   if (event === "PASSWORD_RECOVERY") {
-    authScreen.hidden = false;
+    document.body.classList.add("is-logged-out");
+    document.body.classList.remove("is-logged-in");
+
+    authScreen.hidden = true;
+    landingHow.hidden = true;
     mainApp.hidden = true;
+    resetPasswordScreen.hidden = false;
 
-    if (resetPasswordBox) {
-      resetPasswordBox.hidden = false;
-    }
-
-    authMessage.textContent = "Please create a new password.";
+    resetPasswordMessage.textContent = "Please create a new password.";
   }
-});
+}); 
 
 updatePasswordBtn?.addEventListener("click", async () => {
   const newPassword = newPasswordInput.value.trim();
 
   if (newPassword.length < 6) {
-    authMessage.textContent = "Password should be at least 6 characters.";
+    resetPasswordMessage.textContent = "Password should be at least 6 characters.";
     return;
   }
+
+  resetPasswordMessage.textContent = "Saving new password...";
 
   const { error } = await supabase.auth.updateUser({
     password: newPassword
   });
 
   if (error) {
-    authMessage.textContent = error.message;
+    resetPasswordMessage.textContent = error.message;
     return;
   }
 
-  authMessage.textContent = "Password updated. You can now use your new password.";
-  resetPasswordBox.hidden = true;
+  resetPasswordMessage.textContent = "Password updated.";
+
+  resetPasswordScreen.hidden = true;
+
+  document.body.classList.add("is-logged-in");
+  document.body.classList.remove("is-logged-out");
+
+  authScreen.hidden = true;
+  landingHow.hidden = true;
+  mainApp.hidden = false;
+
+  showScreen(document.getElementById("screen-main"));
+
+  document.querySelectorAll(".nav-link").forEach(link => {
+    link.classList.toggle("active", link.dataset.screen === "reader");
+  });
 });
 
 // flashcard logic

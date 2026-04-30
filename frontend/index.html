@@ -50,15 +50,6 @@
       </div>
     </header>
 
-  <div id="resetPasswordBox" hidden>
-  <label>New password</label>
-  <input id="newPasswordInput" class="auth-input" type="password" placeholder="New password" />
-
-    <button id="updatePasswordBtn" type="button" class="auth-main-btn">
-      Save new password
-    </button>
-  </div> 
-
   <section id="authScreen" class="auth-shell">
       <div class="auth-card">
         <div class="auth-left">
@@ -122,6 +113,32 @@
           <button id="signUpBtn" class="auth-secondary-btn">Create account</button>
 
           <p id="authMessage" class="auth-message"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="resetPasswordScreen" class="auth-shell" hidden>
+      <div class="auth-card reset-password-card">
+        <div class="auth-right reset-password-panel">
+          <p class="auth-eyebrow">Password recovery</p>
+          <h2>Create a new password</h2>
+          <p class="subtle">
+            Enter your new password below. After saving it, you will return to Reader.
+          </p>
+
+          <label>New password</label>
+          <input
+            id="newPasswordInput"
+            class="auth-input"
+            type="password"
+            placeholder="New password"
+          />
+
+          <button id="updatePasswordBtn" type="button" class="auth-main-btn">
+            Save new password
+          </button>
+
+          <p id="resetPasswordMessage" class="auth-message"></p>
         </div>
       </div>
     </section>
