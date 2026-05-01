@@ -179,30 +179,30 @@ sendRecoveryEmailBtn?.addEventListener("click", async () => {
   const email = recoveryEmailInput?.value.trim();
 
   if (!email) {
-    authMessage.textContent = "Please enter your email.";
+    if (authMessage) {
+      authMessage.textContent = "Please enter your email.";
+    }
     return;
   }
 
-  authMessage.textContent = "Sending password recovery email...";
+  if (authMessage) {
+    authMessage.textContent = "Sending password recovery email...";
+  }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}?reset=true`
   });
 
   if (error) {
-    authMessage.textContent = error.message;
+    if (authMessage) {
+      authMessage.textContent = error.message;
+    }
     return;
   }
 
-  authMessage.textContent = "Password recovery email sent. Please check your inbox.";
-});
-
-  if (error) {
-    authMessage.textContent = error.message;
-    return;
+  if (authMessage) {
+    authMessage.textContent = "Password recovery email sent. Please check your inbox.";
   }
-
-  authMessage.textContent = "Password recovery email sent. Please check your inbox.";
 });
 
 
