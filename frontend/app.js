@@ -36,6 +36,203 @@ const screenFlashcards = document.getElementById("screen-flashcards");
 const navButtons = document.querySelectorAll(".nav-btn");
 const backButtons = document.querySelectorAll(".back-btn");
 
+const UI_TEXT = {
+  en: {
+    reader: "Reader",
+    speak: "Speak",
+    words: "Words",
+    grammar: "Grammar Lens",
+    calligraphy: "Calligraphy",
+    getStarted: "Get Started",
+    logout: "Log out",
+    beta: "Beta",
+
+    authTitle: "Turn any text into a pronunciation lesson",
+    authSubtitle: "Paste your text, split it into cards, listen, repeat, translate, and check grammar on demand.",
+    welcomeBack: "Welcome back 👋",
+    loginHint: "Log in or create an account to continue.",
+    name: "Name",
+    email: "Email",
+    password: "Password",
+    forgotPassword: "Forgot password?",
+    login: "Log in",
+    createAccount: "Create account",
+
+    readerTitle: "Turn any text into a pronunciation lesson",
+    yourText: "Your text",
+    pasteHint: "Paste a text in the language you want to practice.",
+    createCards: "Create cards",
+    saveText: "Save text",
+    savedTexts: "Saved texts",
+
+    fullText: "Full Text",
+    readComplete: "Read the complete imported text.",
+    play: "🔊 Play",
+    slowOff: "🐢 Slow: OFF",
+    translate: "🌐 Translate",
+    showPinyin: "🔤 Show pinyin",
+    checkGrammar: "🧠 Check grammar",
+
+    practiceCards: "Practice cards",
+    practiceHint: "Listen, record, translate, and inspect grammar."
+  },
+
+  ru: {
+    reader: "Чтение",
+    speak: "Речь",
+    words: "Слова",
+    grammar: "Грамматика",
+    calligraphy: "Письмо",
+    getStarted: "Начать",
+    logout: "Выйти",
+    beta: "Бета",
+
+    authTitle: "Превратите любой текст в урок произношения",
+    authSubtitle: "Вставьте текст, разделите его на карточки, слушайте, повторяйте, переводите и проверяйте грамматику.",
+    welcomeBack: "С возвращением 👋",
+    loginHint: "Войдите или создайте аккаунт, чтобы продолжить.",
+    name: "Имя",
+    email: "Email",
+    password: "Пароль",
+    forgotPassword: "Забыли пароль?",
+    login: "Войти",
+    createAccount: "Создать аккаунт",
+
+    readerTitle: "Превратите любой текст в урок произношения",
+    yourText: "Ваш текст",
+    pasteHint: "Вставьте текст на языке, который хотите практиковать.",
+    createCards: "Создать карточки",
+    saveText: "Сохранить текст",
+    savedTexts: "Мои тексты",
+
+    fullText: "Полный текст",
+    readComplete: "Читайте весь импортированный текст.",
+    play: "🔊 Слушать",
+    slowOff: "🐢 Медленно: выкл.",
+    translate: "🌐 Перевести",
+    showPinyin: "🔤 Показать пиньинь",
+    checkGrammar: "🧠 Проверить грамматику",
+
+    practiceCards: "Карточки",
+    practiceHint: "Слушайте, записывайте голос, переводите и изучайте грамматику."
+  },
+
+  zh: {
+    reader: "阅读",
+    speak: "口语",
+    words: "词卡",
+    grammar: "语法镜头",
+    calligraphy: "书写",
+    getStarted: "开始",
+    logout: "退出",
+    beta: "测试版",
+
+    authTitle: "把任何文本变成发音练习课",
+    authSubtitle: "粘贴文本，生成句子卡片，听音频、跟读、翻译并检查语法。",
+    welcomeBack: "欢迎回来 👋",
+    loginHint: "登录或创建账户继续使用。",
+    name: "姓名",
+    email: "邮箱",
+    password: "密码",
+    forgotPassword: "忘记密码？",
+    login: "登录",
+    createAccount: "创建账户",
+
+    readerTitle: "把任何文本变成发音练习课",
+    yourText: "你的文本",
+    pasteHint: "粘贴你想练习的语言文本。",
+    createCards: "生成卡片",
+    saveText: "保存文本",
+    savedTexts: "已保存文本",
+
+    fullText: "全文",
+    readComplete: "阅读完整导入文本。",
+    play: "🔊 播放",
+    slowOff: "🐢 慢速：关",
+    translate: "🌐 翻译",
+    showPinyin: "🔤 显示拼音",
+    checkGrammar: "🧠 检查语法",
+
+    practiceCards: "练习卡片",
+    practiceHint: "听、录音、翻译并查看语法。"
+  },
+
+  tr: {
+    reader: "Okuma",
+    speak: "Konuşma",
+    words: "Kelimeler",
+    grammar: "Dilbilgisi",
+    calligraphy: "Yazı",
+    getStarted: "Başla",
+    logout: "Çıkış yap",
+    beta: "Beta",
+
+    authTitle: "Her metni telaffuz dersine dönüştür",
+    authSubtitle: "Metni yapıştır, kartlara böl, dinle, tekrar et, çevir ve dilbilgisini kontrol et.",
+    welcomeBack: "Tekrar hoş geldin 👋",
+    loginHint: "Devam etmek için giriş yap veya hesap oluştur.",
+    name: "Ad",
+    email: "E-posta",
+    password: "Şifre",
+    forgotPassword: "Şifremi unuttum",
+    login: "Giriş yap",
+    createAccount: "Hesap oluştur",
+
+    readerTitle: "Her metni telaffuz dersine dönüştür",
+    yourText: "Metnin",
+    pasteHint: "Pratik yapmak istediğin dilde bir metin yapıştır.",
+    createCards: "Kart oluştur",
+    saveText: "Metni kaydet",
+    savedTexts: "Kayıtlı metinler",
+
+    fullText: "Tam metin",
+    readComplete: "İçe aktarılan metnin tamamını oku.",
+    play: "🔊 Dinle",
+    slowOff: "🐢 Yavaş: kapalı",
+    translate: "🌐 Çevir",
+    showPinyin: "🔤 Pinyin göster",
+    checkGrammar: "🧠 Dilbilgisini kontrol et",
+
+    practiceCards: "Pratik kartları",
+    practiceHint: "Dinle, sesini kaydet, çevir ve dilbilgisini incele."
+  }
+};
+
+function applyLocalization(lang = "en") {
+  const t = UI_TEXT[lang] || UI_TEXT.en;
+
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.dataset.i18n;
+
+    if (t[key]) {
+      el.textContent = t[key];
+    }
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+
+    if (t[key]) {
+      el.placeholder = t[key];
+    }
+  });
+
+  localStorage.setItem("magicread_ui_lang", lang);
+}
+
+const uiLangSelect = document.getElementById("uiLang");
+const savedUiLang = localStorage.getItem("magicread_ui_lang") || "en";
+
+if (uiLangSelect) {
+  uiLangSelect.value = savedUiLang;
+
+  uiLangSelect.addEventListener("change", () => {
+    applyLocalization(uiLangSelect.value);
+  });
+}
+
+applyLocalization(savedUiLang);
+
 let gameTexts = [];
 let currentGameText = null;
 let currentGameSentences = [];
