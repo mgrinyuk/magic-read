@@ -161,18 +161,40 @@ logoutBtn?.addEventListener("click", async () => {
 
 checkAuth();
 
-document.getElementById("forgotPasswordBtn")?.addEventListener("click", async () => {
-  const email = document.getElementById("authEmail")?.value.trim();
+const forgotPasswordBox = document.getElementById("forgotPasswordBox");
+const recoveryEmailInput = document.getElementById("recoveryEmailInput");
+const sendRecoveryEmailBtn = document.getElementById("sendRecoveryEmailBtn");
+
+document.getElementById("forgotPasswordBtn")?.addEventListener("click", () => {
+  if (forgotPasswordBox) {
+    forgotPasswordBox.hidden = false;
+  }
+
+  if (authMessage) {
+    authMessage.textContent = "Enter your email and click Restore password.";
+  }
+});
+
+sendRecoveryEmailBtn?.addEventListener("click", async () => {
+  const email = recoveryEmailInput?.value.trim();
 
   if (!email) {
-    authMessage.textContent = "Please enter your email first.";
+    authMessage.textContent = "Please enter your email.";
     return;
   }
 
   authMessage.textContent = "Sending password recovery email...";
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: `${window.location.origin}?reset=true`
+    redirectTo: `${window.location.origin}?reset=true`
+  });
+
+  if (error) {
+    authMessage.textContent = error.message;
+    return;
+  }
+
+  authMessage.textContent = "Password recovery email sent. Please check your inbox.";
 });
 
   if (error) {
@@ -191,34 +213,37 @@ const newPasswordInput = document.getElementById("newPasswordInput");
 const updatePasswordBtn = document.getElementById("updatePasswordBtn");
 const resetPasswordMessage = document.getElementById("resetPasswordMessage");
 
+function showResetPasswordScreen() {
+  document.body.classList.add("is-logged-out");
+  document.body.classList.remove("is-logged-in");
+
+  authScreen.hidden = true;
+  landingHow.hidden = true;
+  mainApp.hidden = true;
+  logoutBtn.hidden = true;
+
+  if (resetPasswordScreen) {
+    resetPasswordScreen.hidden = false;
+  }
+
+  if (resetPasswordMessage) {
+    resetPasswordMessage.textContent = "Please create a new password.";
+  }
+}
+
 const isReset =
   window.location.search.includes("reset=true") ||
   window.location.hash.includes("type=recovery");
 
 if (isReset) {
-  authScreen.hidden = true;
-  landingHow.hidden = true;
-  mainApp.hidden = true;
-  if (resetPasswordScreen) {
-    resetPasswordScreen.hidden = false;
-  }
+  showResetPasswordScreen();
 }
 
 supabase.auth.onAuthStateChange((event) => {
   if (event === "PASSWORD_RECOVERY") {
-    document.body.classList.add("is-logged-out");
-    document.body.classList.remove("is-logged-in");
-
-    authScreen.hidden = true;
-    landingHow.hidden = true;
-    mainApp.hidden = true;
-    if (resetPasswordScreen) {
-    resetPasswordScreen.hidden = false;
+    showResetPasswordScreen();
   }
-
-    resetPasswordMessage.textContent = "Please create a new password.";
-  }
-}); 
+});
 
 updatePasswordBtn?.addEventListener("click", async () => {
   const newPassword = newPasswordInput.value.trim();
@@ -241,10 +266,13 @@ updatePasswordBtn?.addEventListener("click", async () => {
 
   resetPasswordMessage.textContent = "Password updated.";
 
-  await checkAuth();
+  if (resetPasswordScreen) {
+    resetPasswordScreen.hidden = true;
+  }
 
-  resetPasswordScreen.hidden = true;
-  mainApp.hidden = false;
+  window.history.replaceState({}, document.title, window.location.origin);
+
+  await checkAuth();
 
   showScreen(document.getElementById("screen-main"));
 
