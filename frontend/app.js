@@ -4,7 +4,7 @@ const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+const API_BASE = "https://magic-read.onrender.com";
 const authScreen = document.getElementById("authScreen");
 const authNameGroup = document.getElementById("authNameGroup");
 let authMode = "login";
@@ -95,10 +95,6 @@ signUpBtn?.addEventListener("click", async () => {
   const name = document.getElementById("authName")?.value.trim();
   const email = document.getElementById("authEmail")?.value.trim();
   const password = document.getElementById("authPassword")?.value.trim();
-  const resetPasswordScreen = document.getElementById("resetPasswordScreen");
-  const newPasswordInput = document.getElementById("newPasswordInput");
-  const updatePasswordBtn = document.getElementById("updatePasswordBtn");
-  const resetPasswordMessage = document.getElementById("resetPasswordMessage");
 
   if (!name || !email || !password) {
     authMessage.textContent = "Please enter name, email, and password.";
@@ -176,8 +172,8 @@ document.getElementById("forgotPasswordBtn")?.addEventListener("click", async ()
   authMessage.textContent = "Sending password recovery email...";
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin
-  });
+  redirectTo: `${window.location.origin}?reset=true`
+});
 
   if (error) {
     authMessage.textContent = error.message;
@@ -189,9 +185,24 @@ document.getElementById("forgotPasswordBtn")?.addEventListener("click", async ()
 
 
 //reset password
+const resetPasswordScreen = document.getElementById("resetPasswordScreen");
 const resetPasswordBox = document.getElementById("resetPasswordBox");
 const newPasswordInput = document.getElementById("newPasswordInput");
 const updatePasswordBtn = document.getElementById("updatePasswordBtn");
+const resetPasswordMessage = document.getElementById("resetPasswordMessage");
+
+const isReset =
+  window.location.search.includes("reset=true") ||
+  window.location.hash.includes("type=recovery");
+
+if (isReset) {
+  authScreen.hidden = true;
+  landingHow.hidden = true;
+  mainApp.hidden = true;
+  if (resetPasswordScreen) {
+    resetPasswordScreen.hidden = false;
+  }
+}
 
 supabase.auth.onAuthStateChange((event) => {
   if (event === "PASSWORD_RECOVERY") {
@@ -201,7 +212,9 @@ supabase.auth.onAuthStateChange((event) => {
     authScreen.hidden = true;
     landingHow.hidden = true;
     mainApp.hidden = true;
+    if (resetPasswordScreen) {
     resetPasswordScreen.hidden = false;
+  }
 
     resetPasswordMessage.textContent = "Please create a new password.";
   }
@@ -228,13 +241,9 @@ updatePasswordBtn?.addEventListener("click", async () => {
 
   resetPasswordMessage.textContent = "Password updated.";
 
+  await checkAuth();
+
   resetPasswordScreen.hidden = true;
-
-  document.body.classList.add("is-logged-in");
-  document.body.classList.remove("is-logged-out");
-
-  authScreen.hidden = true;
-  landingHow.hidden = true;
   mainApp.hidden = false;
 
   showScreen(document.getElementById("screen-main"));
@@ -306,7 +315,7 @@ async function autoplayCurrentFlashcardWord() {
   const lang = card?.lang || sourceLangSelect.value;
 
   if (!word) return;
-
+  stopAllTTS();
   await playGoogleTTS(word, lang);
 }
 
@@ -460,8 +469,8 @@ async function openGrammarPage(id) {
 
   try {
     const response = await fetch(
-      `https://magic-read.onrender.com/api/grammar/${id}?lang=${sourceLangSelect.value}`
-    );
+  `${API_BASE}/api/grammar/${id}?lang=${sourceLangSelect.value}`
+);
     const data = await response.json();
 
     const examples = [];
@@ -675,7 +684,7 @@ function renderDeckSelector() {
 
 async function loadGameTexts() {
   try {
-    const response = await fetch(`https://magic-read.onrender.com/api/game-texts?lang=${sourceLangSelect.value}`);
+    const response = await fetch(`${API_BASE}/api/game-texts?lang=${sourceLangSelect.value}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -783,7 +792,9 @@ async function startGameText(textId) {
   }
   
   try {
-    const response = await fetch(`https://magic-read.onrender.com/api/game-texts/${textId}?lang=${sourceLangSelect.value}`);
+    const response = await fetch(
+  `${API_BASE}/api/game-texts/${textId}?lang=${sourceLangSelect.value}`
+);
     const data = await response.json();
 
     if (!response.ok) {
@@ -846,7 +857,7 @@ if (gameCardEl) {
 
   if (sourceLangSelect.value === "zh" && sentence) {
     try {
-      const response = await fetch("https://magic-read.onrender.com/api/segment", {
+      const response = await fetch(`${API_BASE}/api/segment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: sentence })
@@ -872,6 +883,7 @@ if (gameCardEl) {
 document.getElementById("gamePlayBtn")?.addEventListener("click", async () => {
   const sentence = currentGameSentences[currentGameIndex];
   if (sentence) {
+    stopAllTTS();
     await playGoogleTTS(sentence);
   }
 });
@@ -882,7 +894,7 @@ document.getElementById("gameTranslateBtn")?.addEventListener("click", async () 
   if (!sentence || !feedbackEl) return;
 
   try {
-    const response = await fetch("https://magic-read.onrender.com/api/translate", {
+    const response = await fetch(`${API_BASE}/api/translate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1116,7 +1128,7 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
   writingResult.textContent = "Creating PDF...";
 
   try {
-    const response = await fetch("https://magic-read.onrender.com/api/create-writing-sheet", {
+    const response = await fetch(`${API_BASE}/api/create-writing-sheet`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1164,7 +1176,7 @@ createBtn.addEventListener("click", async () => {
   }
 
   try {
-    const res = await fetch("https://magic-read.onrender.com/api/split-text", {
+    const res = await fetch(`${API_BASE}/api/split-text`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1319,7 +1331,7 @@ async function loadSavedTexts() {
 async function renderSavedTextAsCards(text) {
   if (!text) return;
 
-  const res = await fetch("https://magic-read.onrender.com/api/split-text", {
+  const res = await fetch(`${API_BASE}/api/split-text`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -1445,7 +1457,7 @@ function renderClickableSentence(sentence, lang) {
 
 
 async function renderChineseSentence(sentence) {
-  const response = await fetch("https://magic-read.onrender.com/api/segment", {
+  const response = await fetch(`${API_BASE}/api/segment`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -1534,6 +1546,7 @@ async function renderCards(sentences) {
 
     ttsBtn.addEventListener("click", async () => {
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
+      stopAllTTS();
       await playGoogleTTS(cleanSentence, sourceLangSelect.value);
 
       if (currentAudio && currentAudioText === cleanSentence && !currentAudio.paused) {
@@ -1545,6 +1558,7 @@ async function renderCards(sentences) {
 
     sentenceEl.addEventListener("click", async () => {
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
+      stopAllTTS();
       await playGoogleTTS(cleanSentence, sourceLangSelect.value);
     });
 
@@ -1587,8 +1601,8 @@ async function openGrammarArticle(articleId, card) {
 
   try {
     const response = await fetch(
-      `https://magic-read.onrender.com/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
-    );
+    `${API_BASE}/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
+  );
     const data = await response.json();
 
     if (!response.ok) {
@@ -1658,7 +1672,7 @@ async function showImportedText(text) {
     attachWordListeners(contentEl);
 
     try {
-      const response = await fetch("https://magic-read.onrender.com/api/segment", {
+      const response = await fetch(`${API_BASE}/api/segment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -1698,24 +1712,13 @@ document.getElementById("toggleFullTextPinyinBtn")?.addEventListener("click", ()
 });
 
 
-//grammarscreen
-
-function loadGrammarLibrary(lang) {
-  try {
-    const filePath = path.join(__dirname, "data", "grammar", `${lang}.json`);
-    const fileContent = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(fileContent);
-  } catch (error) {
-    console.error(`Could not load grammar library for ${lang}:`, error);
-    return {};
-  }
-}
-
 const screenGrammar = document.getElementById("screen-grammar");
 
 async function loadGrammarScreen() {
   try {
-    const response = await fetch(`https://magic-read.onrender.com/api/grammar-list?lang=${sourceLangSelect.value}`);  
+    const response = await fetch(
+  `${API_BASE}/api/grammar-list?lang=${sourceLangSelect.value}`
+);  
     const data = await response.json();
 
     if (!response.ok) {
@@ -1927,8 +1930,8 @@ async function openGrammarLensArticle(articleId) {
 
   try {
     const response = await fetch(
-      `https://magic-read.onrender.com/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
-    );
+  `${API_BASE}/api/grammar/${articleId}?lang=${sourceLangSelect.value}`
+);
 
     const data = await response.json();
 
@@ -1973,7 +1976,7 @@ async function analyzeGrammarLensText() {
   grammarLensResult.innerHTML = `<p class="subtle">Analyzing grammar...</p>`;
 
   try {
-    const response = await fetch("https://magic-read.onrender.com/api/grammar", {
+    const response = await fetch(`${API_BASE}/api/grammar`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2071,7 +2074,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
 
   try {
     // 1. Try dictionary first
-    const dictResponse = await fetch("https://magic-read.onrender.com/api/dictionary", {
+    const dictResponse = await fetch(`${API_BASE}/api/dictionary`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2112,7 +2115,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
     }
 
     // 2. Fallback to translator
-    const response = await fetch("https://magic-read.onrender.com/api/translate", {
+    const response = await fetch(`${API_BASE}/api/translate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2190,7 +2193,7 @@ async function translateSentence(sentence, card) {
   try {
     translationBox.textContent = "Translating...";
 
-    const response = await fetch("https://magic-read.onrender.com/api/translate", {
+    const response = await fetch(`${API_BASE}/api/translate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2232,7 +2235,7 @@ async function prepareTTSInput(text, lang) {
 
   if (lang === "zh") {
     try {
-      const response = await fetch("https://magic-read.onrender.com/api/segment", {
+      const response = await fetch(`${API_BASE}/api/segment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -2289,7 +2292,7 @@ async function playGoogleTTS(text, langOverride = null) {
   speechSynthesis.cancel();
 
   try {
-    const response = await fetch("https://magic-read.onrender.com/api/tts", {
+    const response = await fetch(`${API_BASE}/api/tts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2551,7 +2554,7 @@ async function grammar(sentence, card) {
   try {
     resultBox.innerHTML = "Analyzing grammar...";
 
-    const response = await fetch("https://magic-read.onrender.com/api/grammar", {
+    const response = await fetch(`${API_BASE}/api/grammar`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2625,6 +2628,7 @@ document.getElementById("readFullTextBtn")?.addEventListener("click", async () =
   if (!text) return;
 
   const cleanText = await prepareTTSInput(text, sourceLangSelect.value);
+  stopAllTTS();
   await playGoogleTTS(cleanText, sourceLangSelect.value);
 });
 
@@ -2649,7 +2653,7 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
   try {
     translationEl.textContent = "Translating...";
 
-    const response = await fetch("https://magic-read.onrender.com/api/translate", {
+    const response = await fetch(`${API_BASE}/api/translate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2685,6 +2689,7 @@ document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async
   const lang = card?.lang;
 
   if (word) {
+    stopAllTTS();
     await playGoogleTTS(word, lang);
   }
 });
@@ -2702,6 +2707,7 @@ document.getElementById("flashcardPlaySentenceBtn")?.addEventListener("click", a
   const cleanSentence = await prepareTTSInput(sentence, lang);
 
   if (cleanSentence) {
+    stopAllTTS();
     await playGoogleTTS(cleanSentence, lang);
   }
 });
@@ -2752,7 +2758,7 @@ async function exportCurrentDeck() {
   }
 
   try {
-    const response = await fetch("https://magic-read.onrender.com/api/export-flashcard-deck", {
+    const response = await fetch(`${API_BASE}/api/export-flashcard-deck`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2839,7 +2845,7 @@ function attachWordListeners(sentenceEl) {
 
       const word = wordEl.dataset.word;
       if (!word) return;
-
+      stopAllTTS();
       playGoogleTTS(word);
       showWordPopup(wordEl, word, sentenceText, sentencePinyin).catch(console.error);
     });

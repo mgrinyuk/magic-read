@@ -300,11 +300,32 @@ app.post("/api/segment", (req, res) => {
   try {
     let words = [];
 
+    // 1. Best option: nodejieba
     try {
-      words = nodejieba.cut(text);
+      words = nodejieba.cut(text, true); // true = HMM mode, better for unknown words
     } catch (jiebaError) {
-      console.error("nodejieba failed, using fallback:", jiebaError);
+      console.error("nodejieba failed:", jiebaError);
+    }
 
+    // 2. If nodejieba fails or gives mostly single characters, use Intl.Segmenter
+    const mostlySingleChars =
+      words.length > 0 &&
+      words.filter(w => /[\u4e00-\u9fff]/.test(w) && w.length === 1).length / words.length > 0.7;
+
+    if (!words.length || mostlySingleChars) {
+      try {
+        const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
+
+        words = Array.from(segmenter.segment(text))
+          .map(item => item.segment)
+          .filter(item => item.trim());
+      } catch (intlError) {
+        console.error("Intl.Segmenter failed:", intlError);
+      }
+    }
+
+    // 3. Last fallback only
+    if (!words.length) {
       words = [...text].filter(char => char.trim());
     }
 
@@ -532,7 +553,7 @@ app.post("/api/admin/reload-grammar", async (req, res) => {
     };
 
     grammarCache.ru = {
-      data: await loadGrammarFromSheet("GrammarRU"),
+      data: await loadGrammarFromSheet("GrammarRu"),
       loadedAt: Date.now()
     };
 
@@ -718,8 +739,6 @@ app.get("/api/grammar-list", async (req, res) => {
 
 app.use("/exports", express.static(path.join(__dirname, "public", "exports")));
 
-app.use("/exports", express.static(path.join(__dirname, "public", "exports")));
-
 app.post("/api/export-flashcard-deck", (req, res) => {
   try {
     const { deckName, words } = req.body || {};
@@ -825,7 +844,6 @@ app.post("/api/export-flashcard-deck", (req, res) => {
   }
 });
 
-app.use("/exports", express.static(path.join(__dirname, "public", "exports")));
 
 const PORT = process.env.PORT || 3000;
 
