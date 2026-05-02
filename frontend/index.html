@@ -60,76 +60,77 @@
   <section id="authScreen" class="auth-shell">
       <div class="auth-card">
         <div class="auth-left">
-          <p class="auth-eyebrow">Welcome to Magic Read</p>
-          <h1>Turn any text into a pronunciation lesson</h1>
-          <p>
-            Paste your text, split it into cards, listen, repeat, translate,
-            and check grammar on demand.
-          </p>
+          <p class="auth-eyebrow" data-i18n="welcomeMagic">Welcome to Magic Read</p>
+          <h1 data-i18n="authTitle">Turn any text into a pronunciation lesson</h1>
+         <p data-i18n="authSubtitle">
+          Paste your text, split it into cards...
+        </p>
 
           <div class="auth-feature">
             <span>🎧</span>
             <div>
-              <strong>Listen & Repeat</strong>
-              <small>Perfect your pronunciation</small>
+              <strong data-i18n="listenRepeat">Listen & Repeat</strong>
+              <small data-i18n="perfectPronunciation">Perfect your pronunciation</small>
             </div>
           </div>
 
           <div class="auth-feature">
             <span>📚</span>
             <div>
-              <strong>Smart Cards</strong>
-              <small>Study with interactive cards</small>
+              <strong data-i18n="smartCards">Smart Cards</strong>
+              <small data-i18n="studyInteractive">Study with interactive cards</small>
             </div>
           </div>
 
           <div class="auth-feature">
             <span>🌍</span>
             <div>
-              <strong>Translate & Learn</strong>
-              <small>Understand every sentence</small>
+              <strong data-i18n="translateLearn">Translate & Learn</strong>
+              <small data-i18n="understandEverySentence">Understand every sentence</small>
             </div>
           </div>
         </div>
 
         <div class="auth-right">
-          <h2>Welcome back 👋</h2>
-          <p class="subtle">Log in or create an account to continue.</p>
+          <h2 data-i18n="welcomeBack">Welcome back 👋</h2>
+         <p class="subtle" data-i18n="loginHint">
+          Log in or create an account to continue.
+        </p>
 
           <div id="authNameGroup" hidden>
-            <label>Name</label>
+            <label data-i18n="name">Name</label>
             <input id="authName" class="auth-input" type="text" placeholder="Your name" />
           </div>
 
-          <label>Email</label>
+          <label data-i18n="email">Email</label>
           <input id="authEmail" class="auth-input" type="email" placeholder="you@example.com" />
 
-          <label>Password</label>
+          <label data-i18n="password">Password</label>
           <input id="authPassword" class="auth-input" type="password" placeholder="••••••••" />
-          <button id="forgotPasswordBtn" type="button" class="auth-link-btn">
+          <button id="forgotPasswordBtn" data-i18n="forgotPassword" type="button" class="auth-link-btn">
             Forgot password?
           </button>
           <div id="forgotPasswordBox" hidden> 
-            <label>Enter your email</label>
+            <label data-i18n="enterEmail">Enter your email</label>
             <input
               id="recoveryEmailInput"
               class="auth-input"
               type="email"
               placeholder="you@example.com"
             />
-            <button id="sendRecoveryEmailBtn" type="button" class="auth-main-btn">
+            <button id="sendRecoveryEmailBtn" data-i18n="restorePassword" type="button" class="auth-main-btn">
               Restore password
             </button>
           </div>
-          <button id="loginBtn" class="auth-main-btn">Log in</button>
+          <button id="loginBtn" data-i18n="login" class="auth-main-btn">Log in</button>
 
           <div class="auth-divider">
             <span></span>
-            <p>or</p>
+            <p data-i18n="or">or</p>
             <span></span>
           </div>
 
-          <button id="signUpBtn" class="auth-secondary-btn">Create account</button>
+          <button id="signUpBtn" data-i18n="createAccount" class="auth-secondary-btn">Create account</button>
 
           <p id="authMessage" class="auth-message"></p>
         </div>
@@ -216,8 +217,8 @@
         <section class="hero-panel">
           <div class="hero-copy">
             <p class="eyebrow">MagicRead workspace</p>
-            <h2>Turn any text into a pronunciation lesson</h2>
-            <p class="hero-text">
+            <h2 data-i18n="readerTitle">Turn any text into a pronunciation lesson</h2>
+            <p class="hero-text" data-i18n="heroText">
               Paste your text, split it into cards, listen, repeat, translate, and check the grammar on demand.
             </p>
           </div>
@@ -226,38 +227,38 @@
         <section class="workspace-card">
           <div class="workspace-head">
             <div>
-              <h3>Your text</h3>
-              <p class="subtle">Paste a text in the language you want to practice.</p>
+              <h3 data-i18n="yourText">Your text</h3>
+              <p class="subtle" data-i18n="pasteHint">Paste a text in the language you want to practice.</p>
             </div>
           </div>
 
-          <textarea id="inputText" placeholder="Paste your text here..."></textarea>
+          <textarea id="inputText" data-i18n-placeholder="inputPlaceholder" placeholder="Paste your text here..."></textarea>
             <div class="action-group saved-text-actions">
-              <button id="createCardsBtn" class="primary-btn">Create cards</button>
-              <button id="saveTextBtn" class="game-nav-btn">Save text</button>
-              <button id="showSavedTextsBtn" class="game-nav-btn">Saved texts</button>
+              <button id="createCardsBtn" data-i18n="createCards" class="primary-btn">Create cards</button>
+              <button id="saveTextBtn" data-i18n="saveText" class="game-nav-btn">Save text</button>
+              <button id="showSavedTextsBtn" data-i18n="savedTexts" class="game-nav-btn">Saved texts</button>
             </div>
 
             <div id="savedTextsPanel" class="saved-texts-panel" hidden>
-              <h3>Saved texts</h3>
+              <h3 data-i18n="savedTextsTitle">Saved texts</h3>
               <div id="savedTextsList"></div>
             </div>
         </section>
         <section id="fullTextPanel" class="workspace-card" hidden>
           <div class="workspace-head">
             <div>
-              <h3>Full Text</h3>
-              <p class="subtle">Read the complete imported text.</p>
+              <h3 data-i18n="fullText">Full Text</h3>
+              <p class="subtle" data-i18n="readComplete">Read the complete imported text.</p>
             </div>
            <div class="card-buttons">
-              <button id="readFullTextBtn" class="tts-btn">🔊 Play</button>
-              <button id="fullTextSlowBtn" class="slow-tts-btn">🐢 Slow: OFF</button>
-              <button id="translateFullTextBtn" class="translate-btn">🌐 Translate</button>
-              <button id="toggleFullTextPinyinBtn" class="translate-btn"> 🔤 Show pinyin</button>
-              <button id="checkFullTextGrammarBtn" class="translate-btn">🧠 Check grammar</button>
+              <button id="readFullTextBtn" data-i18n="play" class="tts-btn">🔊 Play</button>
+              <button id="fullTextSlowBtn" data-i18n="slowOff" class="slow-tts-btn">🐢 Slow: OFF</button>
+              <button id="translateFullTextBtn" data-i18n="translate" class="translate-btn">🌐 Translate</button>
+              <button id="toggleFullTextPinyinBtn" data-i18n="showPinyin" class="translate-btn"> 🔤 Show pinyin</button>
+              <button id="checkFullTextGrammarBtn" data-i18n="checkGrammar" class="translate-btn">🧠 Check grammar</button>
             </div>
           </div>
-
+          
           <div id="fullTextContent" class="full-text-box"></div>
           <div id="fullTextPinyin" class="full-text-pinyin" hidden></div>
           <div id="fullTextTranslation" class="translation-box panel-box"></div>
@@ -265,8 +266,8 @@
         
         <section class="cards-section">
           <div class="section-head">
-            <h3>Practice cards</h3>
-            <p class="subtle">Listen, record, translate, and inspect grammar.</p>
+            <h3 data-i18n="practiceCards">Practice cards</h3>
+            <p class="subtle" data-i18n="practiceHint">Listen, record, translate, and inspect grammar.</p>
           </div>
 
           <section id="cardsContainer" class="cards"></section>

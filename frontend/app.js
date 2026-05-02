@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
+import { UI_TEXT } from "./ui-text.js";
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
 
@@ -35,168 +35,6 @@ const screenFlashcards = document.getElementById("screen-flashcards");
 
 const navButtons = document.querySelectorAll(".nav-btn");
 const backButtons = document.querySelectorAll(".back-btn");
-
-const UI_TEXT = {
-  en: {
-    reader: "Reader",
-    speak: "Speak",
-    words: "Words",
-    grammar: "Grammar Lens",
-    calligraphy: "Calligraphy",
-    getStarted: "Get Started",
-    logout: "Log out",
-    beta: "Beta",
-
-    authTitle: "Turn any text into a pronunciation lesson",
-    authSubtitle: "Paste your text, split it into cards, listen, repeat, translate, and check grammar on demand.",
-    welcomeBack: "Welcome back 👋",
-    loginHint: "Log in or create an account to continue.",
-    name: "Name",
-    email: "Email",
-    password: "Password",
-    forgotPassword: "Forgot password?",
-    login: "Log in",
-    createAccount: "Create account",
-
-    readerTitle: "Turn any text into a pronunciation lesson",
-    yourText: "Your text",
-    pasteHint: "Paste a text in the language you want to practice.",
-    createCards: "Create cards",
-    saveText: "Save text",
-    savedTexts: "Saved texts",
-
-    fullText: "Full Text",
-    readComplete: "Read the complete imported text.",
-    play: "🔊 Play",
-    slowOff: "🐢 Slow: OFF",
-    translate: "🌐 Translate",
-    showPinyin: "🔤 Show pinyin",
-    checkGrammar: "🧠 Check grammar",
-
-    practiceCards: "Practice cards",
-    practiceHint: "Listen, record, translate, and inspect grammar."
-  },
-
-  ru: {
-    reader: "Чтение",
-    speak: "Речь",
-    words: "Слова",
-    grammar: "Грамматика",
-    calligraphy: "Письмо",
-    getStarted: "Начать",
-    logout: "Выйти",
-    beta: "Бета",
-
-    authTitle: "Превратите любой текст в урок произношения",
-    authSubtitle: "Вставьте текст, разделите его на карточки, слушайте, повторяйте, переводите и проверяйте грамматику.",
-    welcomeBack: "С возвращением 👋",
-    loginHint: "Войдите или создайте аккаунт, чтобы продолжить.",
-    name: "Имя",
-    email: "Email",
-    password: "Пароль",
-    forgotPassword: "Забыли пароль?",
-    login: "Войти",
-    createAccount: "Создать аккаунт",
-
-    readerTitle: "Превратите любой текст в урок произношения",
-    yourText: "Ваш текст",
-    pasteHint: "Вставьте текст на языке, который хотите практиковать.",
-    createCards: "Создать карточки",
-    saveText: "Сохранить текст",
-    savedTexts: "Мои тексты",
-
-    fullText: "Полный текст",
-    readComplete: "Читайте весь импортированный текст.",
-    play: "🔊 Слушать",
-    slowOff: "🐢 Медленно: выкл.",
-    translate: "🌐 Перевести",
-    showPinyin: "🔤 Показать пиньинь",
-    checkGrammar: "🧠 Проверить грамматику",
-
-    practiceCards: "Карточки",
-    practiceHint: "Слушайте, записывайте голос, переводите и изучайте грамматику."
-  },
-
-  zh: {
-    reader: "阅读",
-    speak: "口语",
-    words: "词卡",
-    grammar: "语法镜头",
-    calligraphy: "书写",
-    getStarted: "开始",
-    logout: "退出",
-    beta: "测试版",
-
-    authTitle: "把任何文本变成发音练习课",
-    authSubtitle: "粘贴文本，生成句子卡片，听音频、跟读、翻译并检查语法。",
-    welcomeBack: "欢迎回来 👋",
-    loginHint: "登录或创建账户继续使用。",
-    name: "姓名",
-    email: "邮箱",
-    password: "密码",
-    forgotPassword: "忘记密码？",
-    login: "登录",
-    createAccount: "创建账户",
-
-    readerTitle: "把任何文本变成发音练习课",
-    yourText: "你的文本",
-    pasteHint: "粘贴你想练习的语言文本。",
-    createCards: "生成卡片",
-    saveText: "保存文本",
-    savedTexts: "已保存文本",
-
-    fullText: "全文",
-    readComplete: "阅读完整导入文本。",
-    play: "🔊 播放",
-    slowOff: "🐢 慢速：关",
-    translate: "🌐 翻译",
-    showPinyin: "🔤 显示拼音",
-    checkGrammar: "🧠 检查语法",
-
-    practiceCards: "练习卡片",
-    practiceHint: "听、录音、翻译并查看语法。"
-  },
-
-  tr: {
-    reader: "Okuma",
-    speak: "Konuşma",
-    words: "Kelimeler",
-    grammar: "Dilbilgisi",
-    calligraphy: "Yazı",
-    getStarted: "Başla",
-    logout: "Çıkış yap",
-    beta: "Beta",
-
-    authTitle: "Her metni telaffuz dersine dönüştür",
-    authSubtitle: "Metni yapıştır, kartlara böl, dinle, tekrar et, çevir ve dilbilgisini kontrol et.",
-    welcomeBack: "Tekrar hoş geldin 👋",
-    loginHint: "Devam etmek için giriş yap veya hesap oluştur.",
-    name: "Ad",
-    email: "E-posta",
-    password: "Şifre",
-    forgotPassword: "Şifremi unuttum",
-    login: "Giriş yap",
-    createAccount: "Hesap oluştur",
-
-    readerTitle: "Her metni telaffuz dersine dönüştür",
-    yourText: "Metnin",
-    pasteHint: "Pratik yapmak istediğin dilde bir metin yapıştır.",
-    createCards: "Kart oluştur",
-    saveText: "Metni kaydet",
-    savedTexts: "Kayıtlı metinler",
-
-    fullText: "Tam metin",
-    readComplete: "İçe aktarılan metnin tamamını oku.",
-    play: "🔊 Dinle",
-    slowOff: "🐢 Yavaş: kapalı",
-    translate: "🌐 Çevir",
-    showPinyin: "🔤 Pinyin göster",
-    checkGrammar: "🧠 Dilbilgisini kontrol et",
-
-    practiceCards: "Pratik kartları",
-    practiceHint: "Dinle, sesini kaydet, çevir ve dilbilgisini incele."
-  }
-};
 
 function applyLocalization(lang = "en") {
   const t = UI_TEXT[lang] || UI_TEXT.en;
@@ -250,6 +88,12 @@ let popupTimeout = null;
 let customGameText = null;
 let customGameSentences = [];
 
+// t helper
+function getT() {
+  const lang = localStorage.getItem("magicread_ui_lang") || "en";
+  return UI_TEXT[lang] || UI_TEXT.en;
+}
+
 async function checkAuth() {
   const { data } = await supabase.auth.getSession();
 
@@ -280,12 +124,15 @@ const signUpBtn = document.getElementById("signUpBtn");
 
 console.log("signUpBtn found:", signUpBtn);
 
+
+
 signUpBtn?.addEventListener("click", async () => {
+  const t = getT();
   if (authMode === "login") {
     authMode = "signup";
     authNameGroup.hidden = false;
-    signUpBtn.textContent = "Create account";
-    authMessage.textContent = "Enter your name, email, and password to create an account.";
+    signUpBtn.textContent = t.createAccount;
+    authMessage.textContent = t.enterAllFields;
     return;
   }
 
@@ -294,12 +141,12 @@ signUpBtn?.addEventListener("click", async () => {
   const password = document.getElementById("authPassword")?.value.trim();
 
   if (!name || !email || !password) {
-    authMessage.textContent = "Please enter name, email, and password.";
+    authMessage.textContent = t.enterAllFields;
     return;
   }
 
   signUpBtn.disabled = true;
-  authMessage.textContent = "Creating account...";
+  authMessage.textContent = t.creatingAccount;
 
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -319,10 +166,10 @@ signUpBtn?.addEventListener("click", async () => {
       return;
     }
 
-    authMessage.textContent = "Account created. Please check your email, then log in.";
+    authMessage.textContent = t.accountCreated;
   } catch (err) {
     console.error("Signup failed:", err);
-    authMessage.textContent = "Signup failed. Check console.";
+    authMessage.textContent = t.signupFailed;
   } finally {
     signUpBtn.disabled = false;
   }
@@ -334,8 +181,8 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
 
   const email = document.getElementById("authEmail").value.trim();
   const password = document.getElementById("authPassword").value.trim();
-
-  authMessage.textContent = "Logging in...";
+  const t = getT();
+  authMessage.textContent = t.loggingIn;
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -362,28 +209,31 @@ const forgotPasswordBox = document.getElementById("forgotPasswordBox");
 const recoveryEmailInput = document.getElementById("recoveryEmailInput");
 const sendRecoveryEmailBtn = document.getElementById("sendRecoveryEmailBtn");
 
+
 document.getElementById("forgotPasswordBtn")?.addEventListener("click", () => {
+  const t = getT();
   if (forgotPasswordBox) {
     forgotPasswordBox.hidden = false;
   }
 
   if (authMessage) {
-    authMessage.textContent = "Enter your email and click Restore password.";
+    authMessage.textContent = t.enterEmailInstruction;
   }
 });
 
 sendRecoveryEmailBtn?.addEventListener("click", async () => {
+  const t = getT();
   const email = recoveryEmailInput?.value.trim();
 
   if (!email) {
     if (authMessage) {
-      authMessage.textContent = "Please enter your email.";
+      authMessage.textContent = t.enterEmailError;
     }
     return;
   }
 
   if (authMessage) {
-    authMessage.textContent = "Sending password recovery email...";
+    authMessage.textContent = t.sendingRecovery;
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -398,7 +248,7 @@ sendRecoveryEmailBtn?.addEventListener("click", async () => {
   }
 
   if (authMessage) {
-    authMessage.textContent = "Password recovery email sent. Please check your inbox.";
+    authMessage.textContent = t.recoverySent;
   }
 });
 
@@ -411,6 +261,7 @@ const updatePasswordBtn = document.getElementById("updatePasswordBtn");
 const resetPasswordMessage = document.getElementById("resetPasswordMessage");
 
 function showResetPasswordScreen() {
+  const t = getT();
   document.body.classList.add("is-logged-out");
   document.body.classList.remove("is-logged-in");
 
@@ -424,7 +275,7 @@ function showResetPasswordScreen() {
   }
 
   if (resetPasswordMessage) {
-    resetPasswordMessage.textContent = "Please create a new password.";
+    resetPasswordMessage.textContent = t.createNewPassword;
   }
 }
 
@@ -443,14 +294,15 @@ supabase.auth.onAuthStateChange((event) => {
 });
 
 updatePasswordBtn?.addEventListener("click", async () => {
+  const t = getT();
   const newPassword = newPasswordInput.value.trim();
 
   if (newPassword.length < 6) {
-    resetPasswordMessage.textContent = "Password should be at least 6 characters.";
+    resetPasswordMessage.textContent = t.passwordTooShort;
     return;
   }
 
-  resetPasswordMessage.textContent = "Saving new password...";
+  resetPasswordMessage.textContent = t.savingPassword;
 
   const { error } = await supabase.auth.updateUser({
     password: newPassword
@@ -461,7 +313,7 @@ updatePasswordBtn?.addEventListener("click", async () => {
     return;
   }
 
-  resetPasswordMessage.textContent = "Password updated.";
+  resetPasswordMessage.textContent = t.passwordUpdated;
 
   if (resetPasswordScreen) {
     resetPasswordScreen.hidden = true;
@@ -1392,7 +1244,7 @@ writingResult.appendChild(link);
   }
 });
 
-createBtn.addEventListener("click", async () => {
+createBtn?.addEventListener("click", async () => {
   const text = inputText.value.trim();
 
   if (!text) {
@@ -1651,7 +1503,7 @@ document.getElementById("toggleGameLibraryBtn")?.addEventListener("click", () =>
     : "📚 Hide practice texts";
 });
 
-sourceLangSelect.addEventListener("change", async () => {
+sourceLangSelect?.addEventListener("change", async () => {
   updateWritingPlaceholder();
 
   if (screenGame.classList.contains("active")) {
@@ -1718,7 +1570,7 @@ async function renderCards(sentences) {
     en: "EN",
     de: "DE"
   };
-
+  const t = getT();
   const badgeText =
     labels[sourceLangSelect.value] ||
     sourceLangSelect.value.toUpperCase();
@@ -1741,11 +1593,11 @@ async function renderCards(sentences) {
       <p class="sentence clickable-sentence">${sentenceHtml}</p>
 
       <div class="card-buttons">
-        <button class="tts-btn">🔊 Play</button>
-        <button class="slow-tts-btn">🐢 Slow: OFF</button>
-        <button class="translate-btn">🌐 Translate</button>
-        <button class="record-btn">🎤 Record</button>
-        <button class="grammar-btn">🧠 Grammar</button>
+        <button class="tts-btn">${t.play}</button>
+        <button class="slow-tts-btn">${t.slowOff}</button>
+        <button class="translate-btn">${t.translate}</button>
+        <button class="record-btn">${t.record}</button>
+        <button class="grammar-btn">${t.checkGrammar}</button>
       </div>
 
       <div class="translation-box panel-box"></div>
@@ -1764,20 +1616,23 @@ async function renderCards(sentences) {
       e.stopPropagation();
       ttsSlowMode = !ttsSlowMode;
       stopAllTTS();
-      slowTtsBtn.textContent = ttsSlowMode ? "🐢 Slow: ON" : "🐢 Slow: OFF";
+      const t = getT();
+      slowTtsBtn.textContent = ttsSlowMode ? t.slowOn : t.slowOff;
     });
 
     attachWordListeners(sentenceEl);
+    
 
     ttsBtn.addEventListener("click", async () => {
+      const t = getT();
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
       stopAllTTS();
       await playGoogleTTS(cleanSentence, sourceLangSelect.value);
 
       if (currentAudio && currentAudioText === cleanSentence && !currentAudio.paused) {
-        ttsBtn.textContent = "⏸ Pause";
+        ttsBtn.textContent = t.pause;
       } else {
-        ttsBtn.textContent = "🔊 Play";
+        ttsBtn.textContent = t.play;
       }
     });
 
@@ -1923,7 +1778,8 @@ async function showImportedText(text) {
 
   const toggleBtn = document.getElementById("toggleFullTextPinyinBtn");
   if (toggleBtn) {
-    toggleBtn.textContent = "🔤 Show pinyin";
+    const t = getT();
+    toggleBtn.textContent = t.showPinyin;
   }
 }
 
