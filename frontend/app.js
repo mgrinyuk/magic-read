@@ -1143,6 +1143,7 @@ function showScreen(screen) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  loadTextLibrary();
   showScreen(screenMain);
 });
 
@@ -1493,6 +1494,7 @@ document.getElementById("toggleGameLibraryBtn")?.addEventListener("click", () =>
 sourceLangSelect?.addEventListener("change", () => {
   updateWritingPlaceholder();
   updateLanguageBasedUI();
+  loadTextLibrary();
 });
 
 updateWritingPlaceholder();
@@ -1718,6 +1720,56 @@ async function openGrammarArticle(articleId, card) {
   } catch (error) {
     console.error("openGrammarArticle error:", error);
     resultBox.innerHTML = "Failed to load grammar explanation.";
+  }
+}
+
+//add library 
+async function loadTextLibrary() {
+  try {
+    const lang = sourceLangSelect.value;
+
+    const res = await fetch(`/api/game-texts?lang=${lang}`);
+    const data = await res.json();
+
+    const container = document.getElementById("textLibraryList");
+    container.innerHTML = "";
+
+    data.texts.forEach(text => {
+      const el = document.createElement("div");
+      el.className = "text-library-item";
+
+      el.innerHTML = `
+        <div class="text-library-title">${text.title}</div>
+        <div class="text-library-meta">${text.level} • ${text.topic}</div>
+      `;
+
+      el.addEventListener("click", () => loadLibraryText(text.id));
+
+      container.appendChild(el);
+    });
+
+  } catch (err) {
+    console.error("Library load error:", err);
+  }
+}
+
+//loadfull text on click
+async function loadLibraryText(id) {
+  try {
+    const lang = sourceLangSelect.value;
+
+    const res = await fetch(`/api/game-texts/${id}?lang=${lang}`);
+    const data = await res.json();
+
+    const fullText = data.sentences.join(" ");
+
+    document.getElementById("inputText").value = fullText;
+
+    // reuse your existing logic
+    createCardsFromText(fullText);
+
+  } catch (err) {
+    console.error("Text load error:", err);
   }
 }
 

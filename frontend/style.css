@@ -1820,3 +1820,37 @@ body.is-logged-in .header-right .ghost-btn {
 #screen-grammar {
   display: none !important;
 }
+.text-library {
+  margin-bottom: 20px;
+}
+
+.text-library-list {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-top: 10px;
+}
+
+.text-library-item {
+  min-width: 220px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.text-library-item:hover {
+  background: var(--primary-soft);
+}
+
+.text-library-title {
+  font-weight: 800;
+}
+
+.text-library-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
