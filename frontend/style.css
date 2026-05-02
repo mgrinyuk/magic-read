@@ -1,26 +1,28 @@
 :root {
-  --bg: #0f1115;
-  --surface: #171a21;
-  --surface-2: #1f2430;
-  --surface-3: #252b38;
+  /* Background */
+  --bg: #FFFFFF;
 
-  --text: #ffffff;
-  --text-soft: #a8b0c0;
-  --text-muted: #6b7280;
+  /* Cards (dark blue, not black) */
+  --card: #1C2230;
+  --card-soft: #242B3A;
 
-  --yellow: #f4d35e;
-  --blue: #7db3e8;
-  --orange: #f28c38;
+  /* Text */
+  --text: #111318;
+  --text-soft: #5B6472;
+  --text-on-dark: #FFFFFF;
+  --text-on-dark-soft: #AAB3C5;
 
-  --danger: #ff6b6b;
-  --success: #7ee081;
+  /* Accent */
+  --yellow: #F4D35E;
+  --blue: #7DB3E8;
 
-  --radius-sm: 12px;
-  --radius-md: 18px;
+  /* UI */
+  --border: #E6EAF0;
+
+  --radius: 18px;
   --radius-lg: 26px;
   --radius-pill: 999px;
 
-  --page-width: 960px;
   --transition: 0.2s ease;
 }
 
@@ -63,8 +65,8 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--surface-2);
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border);
 }
 
 .header-left,
@@ -1012,4 +1014,62 @@ body.is-logged-in .header-right .ghost-btn {
   .how-grid {
     grid-template-columns: 1fr;
   }
+}
+.card,
+.workspace-card,
+.cards-section,
+.hero-panel {
+  background: var(--card);
+  color: var(--text-on-dark);
+  border-radius: var(--radius-lg);
+}
+.card:hover {
+  background: var(--card-soft);
+}
+.sentence {
+  background: transparent;
+  color: var(--text-on-dark);
+
+  font-size: 20px;
+  line-height: 1.6;
+}
+.subtle,
+.hero-text,
+.workspace-head p {
+  color: var(--text-on-dark-soft);
+}
+.primary-btn {
+  background: var(--yellow);
+  color: #111;
+}
+.game-nav-btn,
+.tts-btn,
+.translate-btn {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-on-dark-soft);
+}
+
+.game-nav-btn:hover,
+.tts-btn:hover,
+.translate-btn:hover {
+  background: rgba(255,255,255,0.16);
+  color: var(--text-on-dark);
+}
+.full-text-box {
+  background: #F7F9FC;
+  color: var(--text);
+  border-radius: var(--radius);
+}
+.word:hover {
+  background: rgba(244, 211, 94, 0.25);
+  border-radius: 4px;
+}
+.flashcard-face {
+  background: var(--card);
+  color: var(--text-on-dark);
+}
+textarea {
+  background: #F7F9FC;
+  color: var(--text);
+  border: 1px solid var(--border);
 }
