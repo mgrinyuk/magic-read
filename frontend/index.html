@@ -41,19 +41,18 @@
       </div>
       </div>
 
-      <nav class="top-nav" id="topNav">
-        <button class="nav-link active" data-screen="reader" data-i18n="reader">Reader</button>
-        <button class="nav-link" data-screen="speak" data-i18n="speak">Speak</button>
-        <button class="nav-link" data-screen="words" data-i18n="words">Words</button>
-        <button class="nav-link" data-screen="grammar" data-i18n="grammar">Grammar Lens</button>
-        <button class="nav-link" data-screen="calligraphy" data-i18n="calligraphy">Calligraphy</button>
-      </nav>
-
       <div class="header-right">
         <button id="guestLoginBtn" class="primary-btn" data-i18n="getStarted">Get Started</button>
         <button id="logoutBtn" class="ghost-btn" data-i18n="logout" hidden>Log out</button>
         <button class="ghost-btn">Beta</button>
-        <button class="profile-btn">M</button>
+        <div class="profile-menu">
+          <button id="profileMenuBtn" class="profile-btn">M</button>
+
+          <div id="profileDropdown" class="profile-dropdown" hidden>
+            <button type="button" data-tool-screen="flashcards">Flashcards</button>
+            <button type="button" data-tool-screen="calligraphy">Calligraphy</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -258,7 +257,7 @@
               <button id="checkFullTextGrammarBtn" data-i18n="checkGrammar" class="translate-btn">🧠 Check grammar</button>
             </div>
           </div>
-          
+
           <div id="fullTextContent" class="full-text-box"></div>
           <div id="fullTextPinyin" class="full-text-pinyin" hidden></div>
           <div id="fullTextTranslation" class="translation-box panel-box"></div>

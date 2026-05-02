@@ -1627,7 +1627,6 @@ select {
 }
 /* AUTH GATE — default state: app is locked */
 .main,
-.top-nav,
 .header-language-controls,
 #logoutBtn {
   display: none !important;
@@ -1635,10 +1634,9 @@ select {
 
 /* Logged out */
 body.is-logged-out .main,
-body.is-logged-out .top-nav,
 body.is-logged-out .header-language-controls,
 body.is-logged-out #logoutBtn,
-body.is-logged-out .profile-btn,
+body.is-logged-out .profile-menu,
 body.is-logged-out .header-right .ghost-btn {
   display: none !important;
 }
@@ -1658,7 +1656,6 @@ body.is-logged-in .main {
   display: block !important;
 }
 
-body.is-logged-in .top-nav,
 body.is-logged-in .header-language-controls,
 body.is-logged-in .header-right,
 body.is-logged-in #logoutBtn {
@@ -1786,4 +1783,40 @@ body.is-logged-in .header-right .ghost-btn {
 .top-nav {
   flex-wrap: nowrap;
   overflow-x: auto;
+}
+.profile-menu {
+  position: relative;
+}
+
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: 54px;
+  z-index: 200;
+  min-width: 180px;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+.profile-dropdown button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 11px 12px;
+  border-radius: 12px;
+  text-align: left;
+  font-weight: 800;
+  color: var(--text-soft);
+}
+
+.profile-dropdown button:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+#screen-game,
+#screen-grammar {
+  display: none !important;
 }

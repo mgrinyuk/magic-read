@@ -991,6 +991,21 @@ document.getElementById("gameTranslateBtn")?.addEventListener("click", async () 
   }
 });
 
+//pinyin only for zh
+function updateLanguageBasedUI() {
+  const pinyinBtn = document.getElementById("toggleFullTextPinyinBtn");
+  const calligraphyBtn = document.querySelector('[data-tool-screen="calligraphy"]');
+
+  if (pinyinBtn) {
+    pinyinBtn.style.display = sourceLangSelect.value === "zh" ? "inline-flex" : "none";
+  }
+
+  if (calligraphyBtn) {
+    calligraphyBtn.style.display =
+      ["zh", "ru"].includes(sourceLangSelect.value) ? "block" : "none";
+  }
+}
+
 function recordGameSentence() {
   const feedbackEl = document.getElementById("gameFeedback");
   const sentence = currentGameSentences[currentGameIndex];
@@ -1128,54 +1143,26 @@ function showScreen(screen) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  const savedScreenId = sessionStorage.getItem("activeScreenId") || "screen-main";
-  const savedScreen = document.getElementById(savedScreenId);
-
-  showScreen(savedScreen || screenMain);
-
-  document.querySelectorAll(".nav-link").forEach(link => {
-    const screenMap = {
-      reader: "screen-main",
-      speak: "screen-game",
-      words: "screen-flashcards",
-      grammar: "screen-grammar",
-      calligraphy: "screen-writing"
-    };
-
-    link.classList.toggle(
-      "active",
-      screenMap[link.dataset.screen] === savedScreenId
-    );
-  });
+  showScreen(screenMain);
 });
 
-const navLinks = document.querySelectorAll(".nav-link");
+const profileMenuBtn = document.getElementById("profileMenuBtn");
+const profileDropdown = document.getElementById("profileDropdown");
 
-navLinks.forEach(btn => {
+profileMenuBtn?.addEventListener("click", () => {
+  profileDropdown.hidden = !profileDropdown.hidden;
+});
+
+document.querySelectorAll("[data-tool-screen]").forEach(btn => {
   btn.addEventListener("click", async () => {
-    navLinks.forEach(link => link.classList.remove("active"));
-    btn.classList.add("active");
+    const screen = btn.dataset.toolScreen;
 
-    const screen = btn.dataset.screen;
+    profileDropdown.hidden = true;
 
-    if (screen === "reader") {
-      showScreen(document.getElementById("screen-main"));
-    }
-
-    if (screen === "speak") {
-      showScreen(document.getElementById("screen-game"));
-      await loadGameTexts();
-    }
-
-    if (screen === "words") {
+    if (screen === "flashcards") {
       showScreen(document.getElementById("screen-flashcards"));
       renderDeckSelector();
       renderFlashcards();
-    }
-
-    if (screen === "grammar") {
-      showScreen(document.getElementById("screen-grammar"));
-      await loadGrammarScreen();
     }
 
     if (screen === "calligraphy") {
@@ -1503,15 +1490,13 @@ document.getElementById("toggleGameLibraryBtn")?.addEventListener("click", () =>
     : "📚 Hide practice texts";
 });
 
-sourceLangSelect?.addEventListener("change", async () => {
+sourceLangSelect?.addEventListener("change", () => {
   updateWritingPlaceholder();
-
-  if (screenGame.classList.contains("active")) {
-    await loadGameTexts();
-  }
+  updateLanguageBasedUI();
 });
 
 updateWritingPlaceholder();
+updateLanguageBasedUI();
 
 function renderClickableSentence(sentence, lang) {
   if (lang === "zh") {
