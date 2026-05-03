@@ -1433,7 +1433,12 @@ function stopAllTTS() {
 
 function stopRecognition() {
   if (currentRecognition) {
-    currentRecognition.abort();
+    try {
+      currentRecognition.abort();
+    } catch (error) {
+      console.warn("Recognition already stopped:", error);
+    }
+
     currentRecognition = null;
   }
 }
@@ -1576,6 +1581,11 @@ function record(sentence, card, recordBtn = null) {
   };
 
   recognition.onerror = (event) => {
+    if (event.error === "aborted") {
+      resultBox.innerHTML = "";
+      return;
+    }
+
     resultBox.innerHTML = `Recognition error: ${escapeHtml(event.error)}`;
   };
 
