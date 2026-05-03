@@ -64,6 +64,7 @@ export const UI_TEXT = {
     showTranslation: "Show translation",
     meaning: "Meaning",
     showPinyin: "Pinyin",
+    done: "Done",
 
     practiceCards: "Practice",
     practiceHint: "Listen, speak, and save useful words.",
@@ -148,6 +149,7 @@ export const UI_TEXT = {
     showTranslation: "Показать перевод",
     meaning: "Значение",
     showPinyin: "Пиньинь",
+    done: "Готово",
 
     practiceCards: "Практика",
     practiceHint: "Слушайте, говорите и сохраняйте полезные слова.",
@@ -232,6 +234,7 @@ export const UI_TEXT = {
     showTranslation: "显示翻译",
     meaning: "意思",
     showPinyin: "拼音",
+    done: "完成",
 
     practiceCards: "练习",
     practiceHint: "听、说，并保存有用的词语。",
@@ -316,6 +319,7 @@ export const UI_TEXT = {
     showTranslation: "Çeviriyi göster",
     meaning: "Anlam",
     showPinyin: "Pinyin",
+    done: "Bitti",
 
     practiceCards: "Pratik",
     practiceHint: "Dinle, konuş ve yararlı kelimeleri kaydet.",

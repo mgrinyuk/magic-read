@@ -1540,13 +1540,18 @@ function record(sentence, card, recordBtn = null) {
     return;
   }
 
+  // If already recording, finish normally.
+  // IMPORTANT: use stop(), not abort().
   if (currentRecognition) {
-    stopRecognition();
-    if (recordBtn) recordBtn.textContent = t.yourTurn;
+    try {
+      currentRecognition.stop();
+    } catch (error) {
+      console.warn("Recognition already stopped:", error);
+    }
+
     return;
   }
 
-  stopRecognition();
   stopAllTTS();
 
   const recognition = new SpeechRecognition();
@@ -1554,11 +1559,15 @@ function record(sentence, card, recordBtn = null) {
 
   const lang = mapToSpeechLang(sourceLangSelect.value);
   recognition.lang = lang;
+  recognition.continuous = false;
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
-  if (recordBtn) recordBtn.textContent = t.stop;
-  resultBox.innerHTML = t.listening;
+  if (recordBtn) {
+    recordBtn.textContent = t.done || "Done";
+  }
+
+  resultBox.innerHTML = t.listening || "Listening…";
 
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript || "";
@@ -1571,8 +1580,7 @@ function record(sentence, card, recordBtn = null) {
     `;
 
     if (result.score >= 70) {
-      const currentCard = card;
-      const nextCard = currentCard.nextElementSibling;
+      const nextCard = card.nextElementSibling;
 
       setTimeout(() => {
         nextCard?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1582,7 +1590,6 @@ function record(sentence, card, recordBtn = null) {
 
   recognition.onerror = (event) => {
     if (event.error === "aborted") {
-      resultBox.innerHTML = "";
       return;
     }
 
@@ -1591,7 +1598,10 @@ function record(sentence, card, recordBtn = null) {
 
   recognition.onend = () => {
     currentRecognition = null;
-    if (recordBtn) recordBtn.textContent = t.yourTurn;
+
+    if (recordBtn) {
+      recordBtn.textContent = t.yourTurn;
+    }
   };
 
   try {
@@ -1600,7 +1610,10 @@ function record(sentence, card, recordBtn = null) {
     console.error("Recognition start error:", err);
     resultBox.innerHTML = "Could not start recognition.";
     currentRecognition = null;
-    if (recordBtn) recordBtn.textContent = t.yourTurn;
+
+    if (recordBtn) {
+      recordBtn.textContent = t.yourTurn;
+    }
   }
 }
 
