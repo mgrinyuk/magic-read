@@ -784,7 +784,6 @@ function updateSlowLabels() {
   const label = ttsSlowMode ? t.slowOn : t.slowOff;
 
   document.getElementById("globalSlowBtn")?.replaceChildren(document.createTextNode(label));
-  document.getElementById("fullTextSlowBtn")?.replaceChildren(document.createTextNode(label));
   document.getElementById("flashcardSlowBtn")?.replaceChildren(document.createTextNode(label));
 }
 
