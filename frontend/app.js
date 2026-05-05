@@ -1194,6 +1194,20 @@ function removeExistingPopup() {
   }
 }
 
+function renderPopupDeckSelect() {
+  if (!flashcardDecks.length) return "";
+
+  return `
+    <select class="popup-deck-select">
+      ${flashcardDecks.map(deck => `
+        <option value="${escapeHtml(deck.id)}" ${deck.id === currentDeckId ? "selected" : ""}>
+          ${escapeHtml(deck.name)}
+        </option>
+      `).join("")}
+    </select>
+  `;
+}
+
 async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
   removeExistingPopup();
 
@@ -1212,6 +1226,11 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
   function attachSaveButton(saveBtn, translationText, py = "") {
     saveBtn?.addEventListener("click", async () => {
       const saved = await addFlashcard({
+        const selectedDeckId = popup.querySelector(".popup-deck-select")?.value;
+
+        if (selectedDeckId) {
+          currentDeckId = selectedDeckId;
+        }
         word,
         pinyin: py || pinyinText || "",
         sentence,
@@ -1244,6 +1263,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
         <strong>${escapeHtml(word)}</strong><br/>
         ${py ? `<div class="popup-pinyin">${escapeHtml(py)}</div>` : ""}
         <div>${escapeHtml(definitions)}</div>
+        ${renderPopupDeckSelect()}
         <button class="popup-save-btn">${escapeHtml(getT().save)}</button>
       `;
 

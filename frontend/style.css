@@ -1634,3 +1634,83 @@ body.is-logged-in .auth-note {
   border-radius: 16px;
   display: block;
 }
+/* FLASHCARDS — cleaner spacing */
+
+#screen-flashcards .workspace-head {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+}
+
+#screen-flashcards .flashcard-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  max-width: 100%;
+}
+
+#screen-flashcards .deck-select {
+  min-width: 260px;
+  height: 48px;
+  padding: 0 18px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+
+#screen-flashcards .game-nav-btn,
+#screen-flashcards .game-nav-btn-primary {
+  height: 48px;
+  padding: 0 20px;
+}
+
+#screen-flashcards .flashcard-progress {
+  margin: 26px 0 16px;
+  font-size: 1rem;
+}
+
+#screen-flashcards .flashcard-card {
+  margin-top: 12px;
+}
+
+#screen-flashcards .game-navigation {
+  margin-top: 22px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+#screen-flashcards .flashcard-face {
+  min-height: 360px;
+}
+
+#flashcardSlowBtn {
+  position: static;
+  margin-top: 14px;
+}
+
+@media (min-width: 900px) {
+  #screen-flashcards .workspace-head {
+    grid-template-columns: 320px 1fr;
+    align-items: start;
+  }
+
+  #screen-flashcards .flashcard-top-actions {
+    justify-content: flex-start;
+  }
+}
+.word-save-hint {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+.popup-deck-select {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  font-weight: 800;
+}
