@@ -1224,24 +1224,36 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
   const pinyinText = wordEl.dataset.pinyin || "";
 
   function attachSaveButton(saveBtn, translationText, py = "") {
-    saveBtn?.addEventListener("click", async () => {
-      const saved = await addFlashcard({
-        const selectedDeckId = popup.querySelector(".popup-deck-select")?.value;
+  saveBtn?.addEventListener("click", async () => {
+    const selectedDeckId = popup.querySelector(".popup-deck-select")?.value;
 
-        if (selectedDeckId) {
-          currentDeckId = selectedDeckId;
-        }
-        word,
-        pinyin: py || pinyinText || "",
-        sentence,
-        sentencePinyin,
-        translation: translationText || "",
-        lang: sourceLangSelect.value
-      });
+    if (selectedDeckId) {
+      currentDeckId = selectedDeckId;
+    }
 
-      saveBtn.textContent = saved ? getT().saved : "Already saved";
+    const saved = await addFlashcard({
+      word,
+      pinyin: py || pinyinText || "",
+      sentence,
+      sentencePinyin,
+      translation: translationText || "",
+      lang: sourceLangSelect.value
     });
-  }
+
+    if (saved) {
+    saveBtn.textContent = getT().saved;
+    wordEl.classList.add("word-saved");
+    popup.style.transform = "scale(0.95)";
+    popup.style.opacity = "0.6";
+
+    setTimeout(() => {
+      popup.remove();
+    }, 350);
+    } else {
+      saveBtn.textContent = "Already saved";
+    }
+  });
+}
 
   try {
     const dictResponse = await fetch(`${API_BASE}/api/dictionary`, {
@@ -1295,6 +1307,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
       <strong>${escapeHtml(word)}</strong><br/>
       ${pinyinText ? `<div class="popup-pinyin">${escapeHtml(pinyinText)}</div>` : ""}
       <div>${escapeHtml(translation)}</div>
+      ${renderPopupDeckSelect()}
       <button class="popup-save-btn">${escapeHtml(getT().save)}</button>
     `;
 
@@ -1304,6 +1317,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
       <strong>${escapeHtml(word)}</strong><br/>
       ${pinyinText ? `<div class="popup-pinyin">${escapeHtml(pinyinText)}</div>` : ""}
       <div>Lookup failed</div>
+      ${renderPopupDeckSelect()}
       <button class="popup-save-btn">${escapeHtml(getT().save)}</button>
     `;
 

@@ -1479,50 +1479,41 @@ body.is-logged-in .profile-menu {
    READER CARDS — FLAT
 ========================= */
 
+/* READER CARDS — restore dark card style */
+
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  box-shadow: none;
+  background: var(--brand-dark);
+  color: var(--text-on-dark);
+  box-shadow: var(--shadow-pop);
+  border: none;
 }
 
 .card:hover {
-  background: var(--surface);
+  background: var(--brand);
+}
+
+.card-head h3 {
+  color: var(--text-on-dark-soft);
 }
 
 .sentence {
-  color: var(--text);
-  font-size: 1.25rem;
+  color: var(--text-on-dark);
 }
 
-/* buttons inside card */
 .card-primary-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--yellow);
+  border: none;
+  color: var(--brand-dark);
 }
 
-.card-primary-btn:hover {
-  background: var(--surface-soft);
-}
-
-/* more button */
 .more-btn {
-  background: transparent;
-  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
 }
 
 .more-btn:hover {
-  color: var(--text);
-}
-
-/* panels */
-.panel-box,
-.translation-box,
-.result {
-  background: var(--surface-soft);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
 }
 
 /* =========================
