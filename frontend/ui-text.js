@@ -77,7 +77,7 @@ export const UI_TEXT = {
 
     grammar: "Grammar",
     save: "Save",
-    saved: "Saved ✓",
+    flashcards: "Flashcards",
 
     noWords: "No words yet",
     clickToSave: "Click any word in a text to save it.",
@@ -162,7 +162,7 @@ export const UI_TEXT = {
 
     grammar: "Грамматика",
     save: "Сохранить",
-    saved: "Сохранено ✓",
+    flashcards: "Карточки",
 
     noWords: "Пока нет слов",
     clickToSave: "Нажмите на любое слово в тексте, чтобы сохранить его.",
@@ -247,7 +247,7 @@ export const UI_TEXT = {
 
     grammar: "语法",
     save: "保存",
-    saved: "已保存 ✓",
+    flashcards: "词卡",
 
     noWords: "还没有词语",
     clickToSave: "点击文本中的任意词语即可保存。",
@@ -332,7 +332,7 @@ export const UI_TEXT = {
 
     grammar: "Dilbilgisi",
     save: "Kaydet",
-    saved: "Kaydedildi ✓",
+    flashcards: "Kartlar",
 
     noWords: "Henüz kelime yok",
     clickToSave: "Kaydetmek için metindeki herhangi bir kelimeye tıkla.",

@@ -64,6 +64,12 @@ p {
   margin-top: 0;
 }
 
+h1 {
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
 /* HEADER */
 
 .app-header {
@@ -1152,6 +1158,14 @@ textarea::placeholder {
   display: none !important;
 }
 
+body.is-logged-out .landing-page {
+  display: block;
+}
+
+body.is-logged-out #guestLoginBtn {
+  display: inline-flex !important;
+}
+
 body.is-logged-out .main,
 body.is-logged-out .header-language-controls,
 body.is-logged-out #logoutBtn,
@@ -1160,12 +1174,8 @@ body.is-logged-out .header-right .ghost-btn {
   display: none !important;
 }
 
-body.is-logged-out #guestLoginBtn {
-  display: inline-flex !important;
-}
-
 body.is-logged-in #authScreen,
-body.is-logged-in .landing-how,
+body.is-logged-in .landing-page,
 body.is-logged-in #guestLoginBtn {
   display: none !important;
 }
@@ -1299,4 +1309,328 @@ body.is-logged-in .profile-menu {
   .how-grid {
     grid-template-columns: 1fr;
   }
+}
+
+
+/* =========================
+   LANDING — FLAT DESIGN
+========================= */
+
+.landing-page {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+/* HERO */
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin: 60px 0 80px;
+  align-items: center;
+}
+
+.landing-hero-copy h1 {
+  font-size: clamp(2.4rem, 4vw, 3.2rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin-bottom: 18px;
+  max-width: 560px;
+}
+
+.landing-hero-copy p {
+  color: var(--text-soft);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.landing-actions {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.landing-actions a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.landing-actions a:hover {
+  color: var(--text);
+}
+
+/* DEMO CARD */
+
+.product-demo-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  background: var(--surface);
+}
+
+/* top line */
+.demo-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+/* input text */
+.demo-input {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* result block */
+.demo-result {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.demo-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.demo-sentence {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.demo-translation {
+  font-size: 0.95rem;
+  color: var(--text-soft);
+  margin-bottom: 12px;
+}
+
+/* buttons */
+.demo-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.demo-buttons span {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+/* saved words */
+.demo-saved {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* =========================
+   BENEFITS — FLAT
+========================= */
+
+.landing-benefits {
+  margin-top: 60px;
+}
+
+.benefit-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  background: var(--surface);
+}
+
+.benefit-card.dark {
+  background: var(--brand-dark);
+  color: white;
+  border: none;
+}
+
+.benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* =========================
+   HEADER — CLEAN
+========================= */
+
+.app-header {
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: none;
+}
+
+/* =========================
+   READER CARDS — FLAT
+========================= */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.card:hover {
+  background: var(--surface);
+}
+
+.sentence {
+  color: var(--text);
+  font-size: 1.25rem;
+}
+
+/* buttons inside card */
+.card-primary-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.card-primary-btn:hover {
+  background: var(--surface-soft);
+}
+
+/* more button */
+.more-btn {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.more-btn:hover {
+  color: var(--text);
+}
+
+/* panels */
+.panel-box,
+.translation-box,
+.result {
+  background: var(--surface-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 900px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .benefit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* FINAL TYPOGRAPHY FIX */
+
+.auth-left h1,
+.start-copy h1,
+.landing-hero-copy h1,
+.landing-section-head h2,
+.reset-password-panel h2 {
+  letter-spacing: -0.01em !important;
+  line-height: 1.15 !important;
+  font-weight: 750;
+}
+/* FINAL CTA + AUTH NOTE */
+
+.landing-final-cta {
+  margin: 56px auto 72px;
+  padding: 40px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.landing-final-cta h2 {
+  margin-bottom: 12px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.landing-final-cta p {
+  margin: 0 auto 22px;
+  max-width: 520px;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+.auth-note {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto 14px;
+  color: var(--text-soft);
+  text-align: center;
+  font-weight: 650;
+}
+body.is-logged-in .auth-note {
+  display: none !important;
+}
+/* HERO SUPPORT TEXT */
+.hero-support {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* DEMO SPEAKING ELEMENTS */
+
+.demo-repeat {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 8px 0 10px;
+}
+
+.demo-btn-primary {
+  border: 1px solid var(--text);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.demo-speaking-cue {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.product-demo-card {
+  max-width: 520px;
+}
+.demo-video {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 16px;
+}
+.demo-video {
+  max-height: 420px;
+  object-fit: cover;
+}
+.product-demo-card {
+  max-width: 520px;
+}
+
+.demo-video {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: 16px;
+  display: block;
 }

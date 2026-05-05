@@ -15,7 +15,7 @@ const authScreen = document.getElementById("authScreen");
 const authNameGroup = document.getElementById("authNameGroup");
 const authMessage = document.getElementById("authMessage");
 const mainApp = document.querySelector(".main");
-const landingHow = document.querySelector(".landing-how");
+const landingHow = document.querySelector(".landing-page");
 
 const logoutBtn = document.getElementById("logoutBtn");
 const guestLoginBtn = document.getElementById("guestLoginBtn");
@@ -343,6 +343,12 @@ function showScreen(screen) {
 
 profileMenuBtn?.addEventListener("click", () => {
   if (profileDropdown) profileDropdown.hidden = !profileDropdown.hidden;
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".profile-menu")) {
+    profileDropdown.hidden = true;
+  }
 });
 
 document.querySelectorAll("[data-tool-screen]").forEach(btn => {
@@ -794,7 +800,6 @@ function toggleSlowMode() {
 }
 
 globalSlowBtn?.addEventListener("click", toggleSlowMode);
-document.getElementById("fullTextSlowBtn")?.addEventListener("click", toggleSlowMode);
 document.getElementById("flashcardSlowBtn")?.addEventListener("click", (e) => {
   e.stopPropagation();
   toggleSlowMode();
@@ -848,7 +853,7 @@ async function renderChineseSentence(sentence) {
 async function renderCards(sentences) {
   if (!container) return;
 
-  container.innerHTML = "";
+  container.innerHTML = `<p class="subtle">Creating practice cards...</p>`;
 
   const labels = {
     zh: "中文",
@@ -863,41 +868,47 @@ async function renderCards(sentences) {
     labels[sourceLangSelect.value] ||
     sourceLangSelect.value.toUpperCase();
 
-  for (const [index, sentence] of sentences.entries()) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.dataset.cardIndex = String(index);
+  const cardHtmlList = await Promise.all(
+    sentences.map(async (sentence, index) => {
+      const sentenceHtml =
+        sourceLangSelect.value === "zh"
+          ? await renderChineseSentence(sentence)
+          : renderClickableSentence(sentence, sourceLangSelect.value);
 
-    const sentenceHtml =
-      sourceLangSelect.value === "zh"
-        ? await renderChineseSentence(sentence)
-        : renderClickableSentence(sentence, sourceLangSelect.value);
-
-    card.innerHTML = `
-      <div class="card-head">
-        <h3>Sentence ${index + 1}</h3>
-        <span class="card-badge">${badgeText}</span>
-      </div>
-
-      <p class="sentence clickable-sentence">${sentenceHtml}</p>
-
-      <div class="card-action-row">
-        <button class="tts-btn card-primary-btn">${escapeHtml(t.listen)}</button>
-        <button class="record-btn card-primary-btn" hidden>${escapeHtml(t.yourTurn)}</button>
-
-        <div class="card-more">
-          <button class="more-btn" type="button" aria-label="More">⋯</button>
-          <div class="more-menu" hidden>
-            <button class="translate-btn" type="button">${escapeHtml(t.showTranslation)}</button>
-            <button class="grammar-btn" type="button">${escapeHtml(t.grammar)}</button>
+      return `
+        <div class="card" data-card-index="${index}">
+          <div class="card-head">
+            <h3>Sentence ${index + 1}</h3>
+            <span class="card-badge">${badgeText}</span>
           </div>
-        </div>
-      </div>
 
-      <div class="translation-box panel-box"></div>
-      <div class="grammar-box panel-box"></div>
-      <div class="pronunciation-box panel-box"></div>
-    `;
+          <p class="sentence clickable-sentence">${sentenceHtml}</p>
+
+          <div class="card-action-row">
+            <button class="tts-btn card-primary-btn">${escapeHtml(t.listen)}</button>
+            <button class="record-btn card-primary-btn" hidden>${escapeHtml(t.yourTurn)}</button>
+
+            <div class="card-more">
+              <button class="more-btn" type="button" aria-label="More">⋯</button>
+              <div class="more-menu" hidden>
+                <button class="translate-btn" type="button">${escapeHtml(t.showTranslation)}</button>
+                <button class="grammar-btn" type="button">${escapeHtml(t.grammar)}</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="translation-box panel-box"></div>
+          <div class="grammar-box panel-box"></div>
+          <div class="pronunciation-box panel-box"></div>
+        </div>
+      `;
+    })
+  );
+
+  container.innerHTML = cardHtmlList.join("");
+
+  container.querySelectorAll(".card").forEach((card, index) => {
+    const sentence = sentences[index];
 
     const ttsBtn = card.querySelector(".tts-btn");
     const recordBtn = card.querySelector(".record-btn");
@@ -963,9 +974,7 @@ async function renderCards(sentences) {
         });
       });
     });
-
-    container.appendChild(card);
-  }
+  });
 }
 
 /* -----------------------------

@@ -32,7 +32,7 @@
             <option value="tr">Türkçe</option>
           </select>
 
-          <button type="button" data-tool-screen="flashcards" data-i18n="saved">
+          <button type="button" data-tool-screen="flashcards" data-i18n="flashcards">
             Flashcards
           </button>
 
@@ -48,7 +48,120 @@
     </div>
   </header>
 
-  <section id="authScreen" class="auth-shell">
+  <section class="landing-page">
+
+  <section class="landing-hero">
+    <div class="landing-hero-copy">
+      <p class="eyebrow">Magic Read</p>
+
+      <h1>Turn any course book into speaking practice</h1>
+
+      <p>
+        Practice speaking directly from the material you already use —
+        homework, articles, or real conversations
+      </p>
+
+      <p class="hero-support">
+        Works with course books, articles, and classroom materials
+      </p>
+
+      <div class="landing-actions">
+        <button class="primary-btn" type="button"
+          onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
+          Try with your text
+        </button>
+
+        <a href="#how-it-works">See how it works</a>
+      </div>
+    </div>
+
+    <div class="product-demo-card">
+      <video
+        class="demo-video"
+        autoplay
+        muted
+        loop
+        playsinline
+      >
+        <source src="demo.mp4" type="video/mp4" />
+      </video>
+    </div>
+  </section>
+
+  <section id="how-it-works" class="landing-how">
+    <div class="landing-section-head">
+      <p class="eyebrow">How it works</p>
+      <h2>From text to practice in seconds</h2>
+      <p>No course setup. No lesson planning. Just paste a text and begin.</p>
+    </div>
+
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-number">1</div>
+        <h3>Paste or choose a text</h3>
+        <p>Use articles, dialogues, lessons, or classroom materials.</p>
+      </div>
+
+      <div class="how-card">
+        <div class="how-number">2</div>
+        <h3>Read sentence by sentence</h3>
+        <p>Stay focused without getting lost in the full text.</p>
+      </div>
+
+      <div class="how-card">
+        <div class="how-number">3</div>
+        <h3>Listen and repeat</h3>
+        <p>Move from passive reading to speaking practice.</p>
+      </div>
+
+      <div class="how-card">
+        <div class="how-number">4</div>
+        <h3>Save useful words</h3>
+        <p>Build flashcards from vocabulary you met in context.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-benefits">
+    <div class="benefit-card dark">
+      <h2>Not another course.</h2>
+      <p>
+        Magic Read works with the texts you already have — real content,
+        teacher materials, dialogues, articles, and everyday language.
+      </p>
+    </div>
+
+    <div class="benefit-grid">
+      <div class="benefit-card">
+        <h3>For learners</h3>
+        <p>Practice with content you actually want to understand.</p>
+      </div>
+
+      <div class="benefit-card">
+        <h3>For teachers</h3>
+        <p>Turn texts into listening, speaking, vocabulary, and writing tasks.</p>
+      </div>
+
+      <div class="benefit-card">
+        <h3>For real use</h3>
+        <p>Learn language as it appears in context, not as isolated exercises.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-final-cta">
+    <h2>Start learning from real texts</h2>
+    <p>No course. No setup. Just paste a text and begin.</p>
+    <button class="primary-btn" type="button" onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
+      Start reading
+    </button>
+  </section>
+
+</section>
+
+<p class="auth-note">Create an account to start reading with your own texts.</p>
+
+<section id="authScreen" class="auth-shell">
     <div class="auth-card">
       <div class="auth-left">
         <p class="auth-eyebrow" data-i18n="welcomeMagic">Welcome to Magic Read</p>
@@ -179,42 +292,6 @@
     </div>
   </section>
 
-  <section class="landing-how">
-    <div class="landing-section-head">
-      <p class="eyebrow">Magic Read</p>
-      <h2 data-i18n="authTitle">Turn any text into active practice</h2>
-      <p data-i18n="authSubtitle">
-        Paste a text, listen sentence by sentence, speak, translate, and save useful words.
-      </p>
-    </div>
-
-    <div class="how-grid">
-      <div class="how-card">
-        <div class="how-number">1</div>
-        <h3 data-i18n="pasteToStart">Paste a text to start</h3>
-        <p data-i18n="orLibrary">or choose one from the library</p>
-      </div>
-
-      <div class="how-card">
-        <div class="how-number">2</div>
-        <h3 data-i18n="listen">Listen</h3>
-        <p data-i18n="listenRepeat">Listen & repeat</p>
-      </div>
-
-      <div class="how-card">
-        <div class="how-number">3</div>
-        <h3 data-i18n="yourTurn">Your turn</h3>
-        <p data-i18n="practiceHint">Listen, speak, and save useful words.</p>
-      </div>
-
-      <div class="how-card">
-        <div class="how-number">4</div>
-        <h3 data-i18n="save">Save</h3>
-        <p data-i18n="clickToSave">Click any word in a text to save it.</p>
-      </div>
-    </div>
-  </section>
-
   <main class="main">
     <section id="screen-main" class="app-screen">
       <section class="start-panel workspace-card">
@@ -329,7 +406,7 @@
       <section class="workspace-card">
         <div class="workspace-head">
           <div>
-            <p class="eyebrow" data-i18n="saved">Saved ✓</p>
+            <p class="eyebrow" data-i18n="flashcards">Flashcards</p>
             <h3 data-i18n="savedTexts">My texts</h3>
             <p class="subtle" data-i18n="clickToSave">Click any word in a text to save it.</p>
           </div>
