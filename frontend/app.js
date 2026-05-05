@@ -1241,14 +1241,13 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
     });
 
     if (saved) {
-    saveBtn.textContent = getT().saved;
-    wordEl.classList.add("word-saved");
-    popup.style.transform = "scale(0.95)";
-    popup.style.opacity = "0.6";
+      saveBtn.textContent = getT().saved;
+      wordEl.classList.add("word-saved");
 
-    setTimeout(() => {
-      popup.remove();
-    }, 350);
+      popup.style.transform = "scale(0.95)";
+      popup.style.opacity = "0.6";
+
+      setTimeout(() => popup.remove(), 350);
     } else {
       saveBtn.textContent = "Already saved";
     }
