@@ -189,19 +189,22 @@ app.post("/api/create-writing-sheet", (req, res) => {
         }
       }
     } else {
-      const chars = [...text.replace(/\s+/g, "")];
+      const words = text
+        .split(/[\n,，、;；]+/)
+        .map(w => w.trim())
+        .filter(Boolean);
 
       const boxSize = 40;
       const cols = 12;
       const rows = 18;
-      const charsPerPage = rows;
+      const itemsPerPage = rows;
 
       const startX = 50;
       const startY = 70;
 
       const zhFontPath = path.join(__dirname, "fonts", "NotoSansSC-Regular.ttf");
 
-      const totalPages = Math.max(1, Math.ceil(chars.length / charsPerPage));
+      const totalPages = Math.max(1, Math.ceil(words.length / itemsPerPage));
 
       for (let page = 0; page < totalPages; page++) {
         if (page > 0) doc.addPage();
@@ -212,13 +215,13 @@ app.post("/api/create-writing-sheet", (req, res) => {
           .fillColor("#333")
           .text("Chinese writing practice", 50, 40);
 
-        const pageChars = chars.slice(
-          page * charsPerPage,
-          page * charsPerPage + charsPerPage
+        const pageWords = words.slice(
+          page * itemsPerPage,
+          page * itemsPerPage + itemsPerPage
         );
 
         for (let row = 0; row < rows; row++) {
-          const char = pageChars[row];
+          const word = pageWords[row];
 
           for (let col = 0; col < cols; col++) {
             const x = startX + col * boxSize;
@@ -230,7 +233,7 @@ app.post("/api/create-writing-sheet", (req, res) => {
             doc.moveTo(x, y).lineTo(x + boxSize, y + boxSize).stroke("#ddd");
             doc.moveTo(x + boxSize, y).lineTo(x, y + boxSize).stroke("#ddd");
 
-            if (char && col === 0) {
+            if (word && col === 0) {
               if (fs.existsSync(zhFontPath)) {
                 doc.font(zhFontPath);
               } else {
@@ -240,8 +243,8 @@ app.post("/api/create-writing-sheet", (req, res) => {
               doc
                 .fontSize(22)
                 .fillColor("#333")
-                .text(char, x, y + 5, {
-                  width: boxSize,
+                .text(word, x + 4, y + 5, {
+                  width: boxSize * cols - 10,
                   align: "center"
                 });
             }

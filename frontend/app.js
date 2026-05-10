@@ -369,6 +369,12 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
   });
 });
 
+  const backToReaderBtn = document.getElementById("backToReaderBtn");
+
+  backToReaderBtn?.addEventListener("click", () => {
+    showScreen(screenMain);
+  });
+
 /* -----------------------------
    LANGUAGE-BASED UI
 ----------------------------- */
@@ -623,7 +629,10 @@ async function loadSavedTexts() {
         <strong>${escapeHtml(item.title || "Untitled text")}</strong>
         <p>${escapeHtml(item.source_lang || "")} → ${escapeHtml(item.target_lang || "")}</p>
       </div>
-      <button class="load-saved-text-btn" data-id="${escapeHtml(item.id)}">Open</button>
+      <div class="saved-text-actions">
+        <button class="load-saved-text-btn" data-id="${escapeHtml(item.id)}">Open</button>
+        <button class="delete-saved-text-btn" data-id="${escapeHtml(item.id)}">Delete</button>
+      </div>
     </div>
   `).join("");
 
@@ -641,6 +650,26 @@ async function loadSavedTexts() {
       savedTextsPanel.hidden = true;
     });
   });
+
+  savedTextsList.querySelectorAll(".delete-saved-text-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const confirmed = confirm("Delete this saved text?");
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("saved_texts")
+      .delete()
+      .eq("id", btn.dataset.id);
+
+    if (error) {
+      console.error("Delete saved text error:", error);
+      alert("Could not delete saved text.");
+      return;
+    }
+
+    await loadSavedTexts();
+  });
+});
 }
 
 document.getElementById("saveTextBtn")?.addEventListener("click", async () => {
@@ -781,6 +810,8 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
   }
 });
 
+
+
 /* -----------------------------
    SLOW MODE
 ----------------------------- */
@@ -883,6 +914,7 @@ async function renderCards(sentences) {
           </div>
 
           <p class="sentence clickable-sentence">${sentenceHtml}</p>
+          <div class="sentence-pinyin-box panel-box" hidden></div>
 
           <div class="card-action-row">
             <button class="tts-btn card-primary-btn">${escapeHtml(t.listen)}</button>
@@ -891,6 +923,9 @@ async function renderCards(sentences) {
             <div class="card-more">
               <button class="more-btn" type="button" aria-label="More">⋯</button>
               <div class="more-menu" hidden>
+                ${sourceLangSelect.value === "zh"
+                  ? `<button class="sentence-pinyin-btn" type="button">Show pinyin</button>`
+                  : ""}
                 <button class="translate-btn" type="button">${escapeHtml(t.showTranslation)}</button>
                 <button class="grammar-btn" type="button">${escapeHtml(t.grammar)}</button>
               </div>
@@ -914,6 +949,8 @@ async function renderCards(sentences) {
     const recordBtn = card.querySelector(".record-btn");
     const translateBtn = card.querySelector(".translate-btn");
     const grammarBtn = card.querySelector(".grammar-btn");
+    const sentencePinyinBtn = card.querySelector(".sentence-pinyin-btn");
+    const sentencePinyinBox = card.querySelector(".sentence-pinyin-box");
     const moreBtn = card.querySelector(".more-btn");
     const moreMenu = card.querySelector(".more-menu");
     const sentenceEl = card.querySelector(".clickable-sentence");
@@ -931,15 +968,16 @@ async function renderCards(sentences) {
       stopAllTTS();
       ttsBtn.textContent = t.listening;
 
-      try {
-        await playGoogleTTS(cleanSentence, sourceLangSelect.value);
-      } finally {
+      ttsBtn.textContent = "Pause";
+
+      await playGoogleTTS(cleanSentence, sourceLangSelect.value, () => {
         ttsBtn.textContent = t.listen;
+
         if (recordBtn) {
           recordBtn.hidden = false;
           recordBtn.textContent = t.yourTurn;
         }
-      }
+      });
     });
 
     sentenceEl?.addEventListener("click", async () => {
@@ -956,6 +994,43 @@ async function renderCards(sentences) {
     translateBtn?.addEventListener("click", () => {
       if (moreMenu) moreMenu.hidden = true;
       translateSentence(sentence, card);
+    });
+
+    sentencePinyinBtn?.addEventListener("click", async () => {
+      if (moreMenu) moreMenu.hidden = true;
+      if (!sentencePinyinBox) return;
+
+      if (!sentencePinyinBox.textContent.trim()) {
+        sentencePinyinBox.textContent = "Loading pinyin...";
+
+        try {
+          const response = await fetch(`${API_BASE}/api/segment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ text: sentence })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Pinyin failed");
+          }
+
+          sentencePinyinBox.textContent = (data.words || [])
+            .map(item => item.pinyin || item.word)
+            .join(" ");
+        } catch (err) {
+          console.error("Sentence pinyin error:", err);
+          sentencePinyinBox.textContent = "Could not load pinyin.";
+        }
+      }
+
+      sentencePinyinBox.hidden = !sentencePinyinBox.hidden;
+      sentencePinyinBtn.textContent = sentencePinyinBox.hidden
+        ? "Show pinyin"
+        : "Hide pinyin";
     });
 
     recordBtn?.addEventListener("click", () => {
@@ -1377,7 +1452,7 @@ async function prepareTTSInput(text, lang) {
   return text.trim();
 }
 
-async function playGoogleTTS(text, langOverride = null) {
+async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   if (!text) return;
 
   const effectiveLang = langOverride || sourceLangSelect.value;
@@ -1410,9 +1485,7 @@ async function playGoogleTTS(text, langOverride = null) {
   try {
     const response = await fetch(`${API_BASE}/api/tts`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text,
         sourceLang: effectiveLang,
@@ -1435,6 +1508,11 @@ async function playGoogleTTS(text, langOverride = null) {
       currentAudio = null;
       currentAudioText = "";
       currentAudioRate = 1.0;
+      if (typeof onEnd === "function") onEnd();
+    };
+
+    audio.onpause = () => {
+      if (typeof onEnd === "function") onEnd();
     };
 
     await audio.play();
@@ -1444,6 +1522,7 @@ async function playGoogleTTS(text, langOverride = null) {
     currentAudioText = "";
     currentAudioRate = 1.0;
     playBrowserTTS(text);
+    if (typeof onEnd === "function") onEnd();
   }
 }
 
