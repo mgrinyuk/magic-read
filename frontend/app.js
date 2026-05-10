@@ -969,8 +969,22 @@ async function renderCards(sentences) {
     ttsBtn?.addEventListener("click", async () => {
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
 
-      stopAllTTS();
-      ttsBtn.textContent = t.listening;
+      const isSameAudio =
+        currentAudio &&
+        currentAudioText === cleanSentence &&
+        currentAudioRate === (ttsSlowMode ? 0.75 : 1.0);
+
+      if (isSameAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        ttsBtn.textContent = t.listen;
+        return;
+      }
+
+      if (isSameAudio && currentAudio.paused) {
+        await currentAudio.play();
+        ttsBtn.textContent = "Pause";
+        return;
+      }
 
       ttsBtn.textContent = "Pause";
 
@@ -982,17 +996,6 @@ async function renderCards(sentences) {
           recordBtn.textContent = t.yourTurn;
         }
       });
-    });
-
-    sentenceEl?.addEventListener("click", async () => {
-      const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
-      stopAllTTS();
-      await playGoogleTTS(cleanSentence, sourceLangSelect.value);
-
-      if (recordBtn) {
-        recordBtn.hidden = false;
-        recordBtn.textContent = t.yourTurn;
-      }
     });
 
     translateBtn?.addEventListener("click", () => {
@@ -1515,9 +1518,6 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
       if (typeof onEnd === "function") onEnd();
     };
 
-    audio.onpause = () => {
-      if (typeof onEnd === "function") onEnd();
-    };
 
     await audio.play();
   } catch (error) {
