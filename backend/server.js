@@ -233,7 +233,9 @@ app.post("/api/create-writing-sheet", (req, res) => {
             doc.moveTo(x, y).lineTo(x + boxSize, y + boxSize).stroke("#ddd");
             doc.moveTo(x + boxSize, y).lineTo(x, y + boxSize).stroke("#ddd");
 
-            if (word && col === 0) {
+            const currentChar = word?.[col];
+
+            if (currentChar) {
               if (fs.existsSync(zhFontPath)) {
                 doc.font(zhFontPath);
               } else {
@@ -243,9 +245,10 @@ app.post("/api/create-writing-sheet", (req, res) => {
               doc
                 .fontSize(22)
                 .fillColor("#333")
-                .text(word, x + 4, y + 5, {
-                  width: boxSize * cols - 10,
-                  align: "center"
+                .text(currentChar, x, y + 5, {
+                  width: boxSize,
+                  align: "center",
+                  lineBreak: false
                 });
             }
           }
@@ -812,9 +815,11 @@ app.post("/api/export-flashcard-deck", (req, res) => {
           doc.moveTo(x, y).lineTo(x + boxSize, y + boxSize).stroke("#ddd");
           doc.moveTo(x + boxSize, y).lineTo(x, y + boxSize).stroke("#ddd");
 
-          if (item && col === 0) { 
-            if (fs.existsSync(fontPath)) {
-              doc.font(fontPath);
+          const currentChar = item?.[col];
+
+          if (currentChar) {
+            if (fs.existsSync(zhFontPath)) {
+              doc.font(zhFontPath);
             } else {
               doc.font("Helvetica");
             }
@@ -822,13 +827,13 @@ app.post("/api/export-flashcard-deck", (req, res) => {
             doc
               .fontSize(22)
               .fillColor("#333")
-              .text(item, x + 4, y + 5, {
-                width: boxSize * cols - 10,
+              .text(currentChar, x, y + 5, {
+                width: boxSize,
                 align: "center",
                 lineBreak: false
               });
           }
-        }
+                  }
       }
     }
 
