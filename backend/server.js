@@ -750,14 +750,11 @@ app.post("/api/export-flashcard-deck", (req, res) => {
       return res.status(400).json({ error: "deckName and words are required" });
     }
 
-    const chars = words
+    const items = words
       .map(w => String(w).trim())
-      .filter(Boolean)
-      .join("")
-      .replace(/\s+/g, "")
-      .split("");
+      .filter(Boolean);
 
-    if (!chars.length) {
+    if (!items.length) {
       return res.status(400).json({ error: "No characters to export" });
     }
 
@@ -781,12 +778,12 @@ app.post("/api/export-flashcard-deck", (req, res) => {
     const boxSize = 40;
     const cols = 12;
     const rows = 18;
-    const charsPerPage = rows;
+    const itemsPerPage = rows;
     const startX = 50;
     const startY = 70;
 
     const fontPath = path.join(__dirname, "fonts", "NotoSansSC-Regular.ttf");
-    const totalPages = Math.max(1, Math.ceil(chars.length / charsPerPage));
+    const totalPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
 
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) doc.addPage();
@@ -797,13 +794,13 @@ app.post("/api/export-flashcard-deck", (req, res) => {
         .fillColor("#333")
         .text(`Deck: ${deckName}`, 50, 40);
 
-      const pageChars = chars.slice(
-        page * charsPerPage,
-        page * charsPerPage + charsPerPage
+      const pageItems = items.slice(
+        page * itemsPerPage,
+        page * itemsPerPage + itemsPerPage
       );
 
       for (let row = 0; row < rows; row++) {
-        const char = pageChars[row];
+        const item = pageItems[row];
 
         for (let col = 0; col < cols; col++) {
           const x = startX + col * boxSize;
@@ -815,7 +812,7 @@ app.post("/api/export-flashcard-deck", (req, res) => {
           doc.moveTo(x, y).lineTo(x + boxSize, y + boxSize).stroke("#ddd");
           doc.moveTo(x + boxSize, y).lineTo(x, y + boxSize).stroke("#ddd");
 
-          if (char && col === 0) {
+          if (item && col === 0) { 
             if (fs.existsSync(fontPath)) {
               doc.font(fontPath);
             } else {
@@ -825,9 +822,10 @@ app.post("/api/export-flashcard-deck", (req, res) => {
             doc
               .fontSize(22)
               .fillColor("#333")
-              .text(char, x, y + 5, {
-                width: boxSize,
-                align: "center"
+              .text(item, x + 4, y + 5, {
+                width: boxSize * cols - 10,
+                align: "center",
+                lineBreak: false
               });
           }
         }
