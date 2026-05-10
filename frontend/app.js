@@ -370,10 +370,14 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
 });
 
   const backToReaderBtn = document.getElementById("backToReaderBtn");
+  const backToReaderBtnWriting = document.getElementById("backToReaderBtnWriting");
 
   backToReaderBtn?.addEventListener("click", () => {
     showScreen(screenMain);
   });
+  backToReaderBtnWriting?.addEventListener("click", () => {
+  showScreen(screenMain);
+});
 
 /* -----------------------------
    LANGUAGE-BASED UI
