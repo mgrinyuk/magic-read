@@ -818,8 +818,8 @@ app.post("/api/export-flashcard-deck", (req, res) => {
           const currentChar = item?.[col];
 
           if (currentChar) {
-            if (fs.existsSync(zhFontPath)) {
-              doc.font(zhFontPath);
+            if (fs.existsSync(fontPath)) {
+              doc.font(fontPath);
             } else {
               doc.font("Helvetica");
             }
