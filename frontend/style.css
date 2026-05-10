@@ -1736,3 +1736,87 @@ body.is-logged-in .auth-note {
 .delete-saved-text-btn:hover {
   background: rgba(255, 80, 80, 0.2);
 }
+/* =========================
+   FLASHCARDS — AIR & SPACING
+========================= */
+
+#screen-flashcards .workspace-card {
+  padding: 40px;
+}
+
+#screen-flashcards .workspace-head {
+  margin-bottom: 30px;
+}
+
+#screen-flashcards .flashcard-top-actions {
+  gap: 14px;
+  margin-top: 10px;
+}
+
+#screen-flashcards .flashcard-deck {
+  margin-top: 34px;
+}
+
+#screen-flashcards .flashcard-progress {
+  margin: 0 0 24px;
+  font-size: 1rem;
+}
+
+#screen-flashcards .flashcard-card {
+  margin: 26px 0;
+}
+
+#screen-flashcards .flashcard-face {
+  padding: 44px;
+  gap: 14px;
+}
+
+#screen-flashcards .flashcard-front h3 {
+  margin: 18px 0 14px;
+}
+
+#screen-flashcards .flashcard-pinyin {
+  margin-top: 10px;
+}
+
+#screen-flashcards .flashcard-sentence {
+  margin: 18px 0;
+  line-height: 1.9;
+}
+
+#screen-flashcards .flashcard-translation {
+  margin-top: 18px;
+  line-height: 1.8;
+}
+
+#screen-flashcards .game-navigation {
+  margin-top: 34px;
+  gap: 14px;
+}
+
+#screen-flashcards .game-nav-btn,
+#screen-flashcards .game-nav-btn-primary,
+#screen-flashcards .deck-select {
+  height: 52px;
+}
+
+#screen-flashcards .flashcard-play-btn {
+  right: 24px;
+  bottom: 24px;
+}
+
+/* mobile */
+
+@media (max-width: 640px) {
+  #screen-flashcards .workspace-card {
+    padding: 24px;
+  }
+
+  #screen-flashcards .flashcard-face {
+    padding: 28px;
+  }
+
+  #screen-flashcards .flashcard-front h3 {
+    font-size: 2.1rem;
+  }
+}

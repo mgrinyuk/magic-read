@@ -236,8 +236,8 @@ app.post("/api/create-writing-sheet", (req, res) => {
             const currentChar = word?.[col];
 
             if (currentChar) {
-              if (fs.existsSync(zhFontPath)) {
-                doc.font(zhFontPath);
+              if (fs.existsSync(fontPath)) {
+                doc.font(fontPath);
               } else {
                 doc.font("Helvetica");
               }
