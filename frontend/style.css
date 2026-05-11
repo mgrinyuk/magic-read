@@ -1820,3 +1820,49 @@ body.is-logged-in .auth-note {
     font-size: 2.1rem;
   }
 }
+/* MOBILE FLASHCARD FIX */
+
+@media (max-width: 640px) {
+  #screen-flashcards .workspace-card {
+    padding: 18px;
+    overflow: hidden;
+  }
+
+  #screen-flashcards .flashcard-card {
+    margin: 20px 0 28px;
+  }
+
+  #screen-flashcards .flashcard-card-inner {
+    min-height: 520px;
+  }
+
+  #screen-flashcards .flashcard-face {
+    position: absolute;
+    min-height: 520px;
+    padding: 28px 24px 70px;
+    overflow-y: auto;
+  }
+
+  #screen-flashcards .flashcard-sentence {
+    font-size: 1.45rem;
+    line-height: 1.7;
+    word-break: break-word;
+  }
+
+  #screen-flashcards .flashcard-pinyin {
+    font-size: 1.05rem;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  #screen-flashcards .flashcard-play-btn {
+    bottom: 22px;
+    right: 22px;
+  }
+
+  #screen-flashcards .game-navigation {
+    margin-top: 42px;
+    position: relative;
+    z-index: 5;
+  }
+}
