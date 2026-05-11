@@ -590,10 +590,16 @@ async function loadLibraryText(id) {
 
 showSavedTextsBtn?.addEventListener("click", async () => {
   if (textLibraryPanel) textLibraryPanel.hidden = true;
-  await loadSavedTexts();
+
+  if (!savedTextsPanel.hidden) {
+    savedTextsPanel.hidden = true;
+    return;
+  }
+
+  await loadSavedTexts(true);
 });
 
-async function loadSavedTexts() {
+async function loadSavedTexts(forceOpen = false) {
   if (!savedTextsPanel || !savedTextsList) return;
 
   const {
@@ -605,7 +611,11 @@ async function loadSavedTexts() {
     return;
   }
 
-  savedTextsPanel.hidden = !savedTextsPanel.hidden;
+  if (!forceOpen) {
+    savedTextsPanel.hidden = !savedTextsPanel.hidden;
+  } else {
+    savedTextsPanel.hidden = false;
+  }
 
   if (savedTextsPanel.hidden) return;
 
@@ -682,7 +692,7 @@ async function loadSavedTexts() {
     }
     savedTextsCache = null;
     savedTextsPanel.hidden = true;
-    await loadSavedTexts();
+    await loadSavedTexts(true);
   });
 });
 }
