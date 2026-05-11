@@ -74,6 +74,7 @@ let popupTimeout = null;
 
 let currentText = "";
 let currentSentences = [];
+let savedTextsCache = null;
 
 const FLASHCARD_STORAGE_KEY = "magicread_flashcard_decks";
 let flashcardDecks = [];
@@ -460,8 +461,8 @@ async function startReadingFromText(text) {
 
     inputText.value = cleanText;
 
-    await renderCards(sentences);
-    await showImportedText(cleanText);
+   showImportedText(cleanText);
+   await renderCards(sentences);
 
     if (fullTextTranslation) fullTextTranslation.textContent = "";
     if (readingControlStrip) readingControlStrip.hidden = false;
@@ -610,11 +611,20 @@ async function loadSavedTexts() {
 
   savedTextsList.innerHTML = "Loading saved texts...";
 
-  const { data, error } = await supabase
-    .from("saved_texts")
-    .select("id, title, text, source_lang, target_lang, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  let data = savedTextsCache;
+  let error = null;
+
+  if (!data) {
+    const result = await supabase
+      .from("saved_texts")
+      .select("id, title, text, source_lang, target_lang, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    data = result.data;
+    error = result.error;
+    savedTextsCache = data;
+  }
 
   if (error) {
     console.error("Load saved texts error:", error);
@@ -670,7 +680,8 @@ async function loadSavedTexts() {
       alert("Could not delete saved text.");
       return;
     }
-
+    savedTextsCache = null;
+    savedTextsPanel.hidden = true;
     await loadSavedTexts();
   });
 });
@@ -708,7 +719,7 @@ document.getElementById("saveTextBtn")?.addEventListener("click", async () => {
     alert("Could not save text.");
     return;
   }
-
+  savedTextsCache = null;
   alert("Text saved.");
 });
 
