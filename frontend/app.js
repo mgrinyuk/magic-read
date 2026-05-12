@@ -460,6 +460,7 @@ async function startReadingFromText(text) {
     currentSentences = sentences;
 
     inputText.value = cleanText;
+    inputText.hidden = true;
 
    showImportedText(cleanText);
    await renderCards(sentences);
@@ -493,6 +494,7 @@ replaceTextBtn?.addEventListener("click", () => {
   currentSentences = [];
 
   if (inputText) inputText.value = "";
+  if (inputText) inputText.hidden = false;
   if (container) container.innerHTML = "";
   if (fullTextContent) fullTextContent.innerHTML = "";
   if (fullTextPinyin) fullTextPinyin.textContent = "";
@@ -504,6 +506,18 @@ replaceTextBtn?.addEventListener("click", () => {
   inputText?.focus();
 });
 
+document.getElementById("toggleFullTextBtn")?.addEventListener("click", () => {
+  if (!fullTextContent) return;
+
+  const btn = document.getElementById("toggleFullTextBtn");
+  const isHidden = fullTextContent.hidden;
+
+  fullTextContent.hidden = !isHidden;
+
+  if (btn) {
+    btn.textContent = isHidden ? "Hide full text" : "Show full text";
+  }
+});
 /* -----------------------------
    LIBRARY
 ----------------------------- */
@@ -745,7 +759,6 @@ async function showImportedText(text) {
   if (sourceLangSelect.value === "zh") {
     const html = await renderChineseSentence(text);
     fullTextContent.innerHTML = html;
-    fullTextContent.dataset.fullSentence = text;
     attachWordListeners(fullTextContent);
 
     try {
@@ -767,7 +780,6 @@ async function showImportedText(text) {
     }
   } else {
     fullTextContent.innerHTML = renderClickableSentence(text, sourceLangSelect.value);
-    fullTextContent.dataset.fullSentence = text;
     fullTextPinyin.textContent = "";
     attachWordListeners(fullTextContent);
   }
@@ -943,7 +955,7 @@ async function renderCards(sentences) {
             <span class="card-badge">${badgeText}</span>
           </div>
 
-          <p class="sentence clickable-sentence">${sentenceHtml}</p>
+          <p class="sentence clickable-sentence" data-full-sentence="${escapeHtml(sentence)}">${sentenceHtml}</p>
           <div class="sentence-pinyin-box panel-box" hidden></div>
 
           <div class="card-action-row">
@@ -1278,6 +1290,13 @@ function attachWordListeners(sentenceEl) {
   wordEls.forEach(wordEl => {
     if (wordEl.dataset.listenerAttached === "true") return;
 
+    wordEl.addEventListener("mouseenter", () => {
+  const word = wordEl.dataset.word;
+  if (!word) return;
+
+  showWordPopup(wordEl, word, sentenceText, sentencePinyin, false).catch(console.error);
+});
+
     wordEl.addEventListener("click", (event) => {
       event.stopPropagation();
 
@@ -1285,8 +1304,8 @@ function attachWordListeners(sentenceEl) {
       if (!word) return;
 
       stopAllTTS();
-      playGoogleTTS(word);
-      showWordPopup(wordEl, word, sentenceText, sentencePinyin).catch(console.error);
+      playGoogleTTS(word, sourceLangSelect.value);
+      showWordPopup(wordEl, word, sentenceText, sentencePinyin, true).catch(console.error);
     });
 
     wordEl.dataset.listenerAttached = "true";
@@ -1316,7 +1335,7 @@ function renderPopupDeckSelect() {
   `;
 }
 
-async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
+async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", allowSave = true) {
   removeExistingPopup();
 
   const popup = document.createElement("div");
@@ -1332,35 +1351,53 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
   const pinyinText = wordEl.dataset.pinyin || "";
 
   function attachSaveButton(saveBtn, translationText, py = "") {
-  saveBtn?.addEventListener("click", async () => {
-    const selectedDeckId = popup.querySelector(".popup-deck-select")?.value;
+    saveBtn?.addEventListener("click", async () => {
+      const selectedDeckId = popup.querySelector(".popup-deck-select")?.value;
 
-    if (selectedDeckId) {
-      currentDeckId = selectedDeckId;
-    }
+      if (selectedDeckId) {
+        currentDeckId = selectedDeckId;
+      }
 
-    const saved = await addFlashcard({
-      word,
-      pinyin: py || pinyinText || "",
-      sentence,
-      sentencePinyin,
-      translation: translationText || "",
-      lang: sourceLangSelect.value
+      const saved = await addFlashcard({
+        word,
+        pinyin: py || pinyinText || "",
+        sentence: allowSave ? sentence : "",
+        sentencePinyin: allowSave ? sentencePinyin : "",
+        translation: translationText || "",
+        lang: sourceLangSelect.value
+      });
+
+      if (saved) {
+        saveBtn.textContent = getT().saved || "Saved";
+        wordEl.classList.add("word-saved");
+
+        popup.style.transform = "scale(0.95)";
+        popup.style.opacity = "0.6";
+
+        setTimeout(() => popup.remove(), 350);
+      } else {
+        saveBtn.textContent = "Already saved";
+      }
     });
+  }
 
-    if (saved) {
-      saveBtn.textContent = getT().saved;
-      wordEl.classList.add("word-saved");
+  function renderPopupContent({ translation = "", pinyin = "" }) {
+    popup.innerHTML = `
+      <strong>${escapeHtml(word)}</strong><br/>
+      ${pinyin ? `<div class="popup-pinyin">${escapeHtml(pinyin)}</div>` : ""}
+      <div>${escapeHtml(translation)}</div>
+      ${allowSave ? renderPopupDeckSelect() : ""}
+      ${allowSave ? `<button class="popup-save-btn">${escapeHtml(getT().save || "Save")}</button>` : ""}
+    `;
 
-      popup.style.transform = "scale(0.95)";
-      popup.style.opacity = "0.6";
-
-      setTimeout(() => popup.remove(), 350);
-    } else {
-      saveBtn.textContent = "Already saved";
+    if (allowSave) {
+      attachSaveButton(
+        popup.querySelector(".popup-save-btn"),
+        translation,
+        pinyin
+      );
     }
-  });
-}
+  }
 
   try {
     const dictResponse = await fetch(`${API_BASE}/api/dictionary`, {
@@ -1378,15 +1415,11 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
       const definitions = firstEntry.definitions.slice(0, 3).join("; ");
       const py = firstEntry.pinyin || pinyinText;
 
-      popup.innerHTML = `
-        <strong>${escapeHtml(word)}</strong><br/>
-        ${py ? `<div class="popup-pinyin">${escapeHtml(py)}</div>` : ""}
-        <div>${escapeHtml(definitions)}</div>
-        ${renderPopupDeckSelect()}
-        <button class="popup-save-btn">${escapeHtml(getT().save)}</button>
-      `;
+      renderPopupContent({
+        translation: definitions,
+        pinyin: py
+      });
 
-      attachSaveButton(popup.querySelector(".popup-save-btn"), definitions, py);
       return;
     }
 
@@ -1408,27 +1441,17 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "") {
       throw new Error(data.error || "Translation failed");
     }
 
-    const translation = data.translation || "";
-
-    popup.innerHTML = `
-      <strong>${escapeHtml(word)}</strong><br/>
-      ${pinyinText ? `<div class="popup-pinyin">${escapeHtml(pinyinText)}</div>` : ""}
-      <div>${escapeHtml(translation)}</div>
-      ${renderPopupDeckSelect()}
-      <button class="popup-save-btn">${escapeHtml(getT().save)}</button>
-    `;
-
-    attachSaveButton(popup.querySelector(".popup-save-btn"), translation, pinyinText);
+    renderPopupContent({
+      translation: data.translation || "",
+      pinyin: pinyinText
+    });
   } catch (err) {
-    popup.innerHTML = `
-      <strong>${escapeHtml(word)}</strong><br/>
-      ${pinyinText ? `<div class="popup-pinyin">${escapeHtml(pinyinText)}</div>` : ""}
-      <div>Lookup failed</div>
-      ${renderPopupDeckSelect()}
-      <button class="popup-save-btn">${escapeHtml(getT().save)}</button>
-    `;
+    console.error("Word popup error:", err);
 
-    attachSaveButton(popup.querySelector(".popup-save-btn"), "Lookup failed", pinyinText);
+    renderPopupContent({
+      translation: "Lookup failed",
+      pinyin: pinyinText
+    });
   }
 
   popupTimeout = setTimeout(() => {

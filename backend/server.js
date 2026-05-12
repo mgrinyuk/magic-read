@@ -278,8 +278,6 @@ let grammarCache = {
   de: { data: null, loadedAt: 0 },
   es: { data: null, loadedAt: 0 },
   fr: { data: null, loadedAt: 0 },
-  hy: { data: null, loadedAt: 0 },
-  ka: { data: null, loadedAt: 0 },
   ja: { data: null, loadedAt: 0 }
 };
 
@@ -419,13 +417,6 @@ app.post("/api/tts", async (req, res) => {
         languageCode: "fr-FR",
         name: "fr-FR-Wavenet-D"
       },
-
-      hy: {
-        languageCode: "hy-AM"
-      },
-      ka: {
-        languageCode: "ka-GE"
-      },
       ja: {
         languageCode: "ja-JP"
       }
@@ -478,7 +469,7 @@ app.post("/api/translate", async (req, res) => {
 async function analyzeGrammar(sentence, sourceLang) {
   const items = [];
 
-  if (!["zh", "ru", "tr", "de", "es", "fr", "hy", "ka", "ja"].includes(sourceLang)) {
+  if (!["zh", "ru", "tr", "de", "es", "fr", "ja"].includes(sourceLang)) {
     return items;
   }
 
@@ -604,16 +595,6 @@ app.post("/api/admin/reload-grammar", async (req, res) => {
 
     grammarCache.fr = {
       data: await loadGrammarFromSheet("GrammarFr"),
-      loadedAt: Date.now()
-    };
-
-    grammarCache.hy = {
-      data: await loadGrammarFromSheet("GrammarHy"),
-      loadedAt: Date.now()
-    };
-
-    grammarCache.ka = {
-      data: await loadGrammarFromSheet("GrammarKa"),
       loadedAt: Date.now()
     };
 
@@ -769,10 +750,6 @@ async function getGrammarLibrary(lang) {
     sheetName = "GrammarEs";
   } else if (lang === "fr") {
     sheetName = "GrammarFr";
-  } else if (lang === "hy") {
-    sheetName = "GrammarHy";
-  } else if (lang === "ka") {
-    sheetName = "GrammarKa";
   } else if (lang === "ja") {
     sheetName = "GrammarJa";
   }else {
