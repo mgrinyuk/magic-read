@@ -277,7 +277,10 @@ let grammarCache = {
   tr: { data: null, loadedAt: 0 },
   de: { data: null, loadedAt: 0 },
   es: { data: null, loadedAt: 0 },
-  fr: { data: null, loadedAt: 0 }
+  fr: { data: null, loadedAt: 0 },
+  hy: { data: null, loadedAt: 0 },
+  ka: { data: null, loadedAt: 0 },
+  ja: { data: null, loadedAt: 0 }
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -415,6 +418,19 @@ app.post("/api/tts", async (req, res) => {
       fr: {
         languageCode: "fr-FR",
         name: "fr-FR-Wavenet-D"
+      },
+
+      hy: {
+        languageCode: "hy-AM",
+        name: "hy-AM-Standard-A"
+      },
+      ka: {
+        languageCode: "ka-GE",
+        name: "ka-GE-Standard-A"
+      },
+      ja: {
+        languageCode: "ja-JP",
+        name: "ja-JP-Wavenet-B"
       }
     };
 
@@ -465,7 +481,7 @@ app.post("/api/translate", async (req, res) => {
 async function analyzeGrammar(sentence, sourceLang) {
   const items = [];
 
-  if (!["zh", "ru", "tr", "de", "es", "fr"].includes(sourceLang)) {
+  if (!["zh", "ru", "tr", "de", "es", "fr", "hy", "ka", "ja"].includes(sourceLang)) {
     return items;
   }
 
@@ -580,17 +596,32 @@ app.post("/api/admin/reload-grammar", async (req, res) => {
     };
 
     grammarCache.de = {
-      data: await loadGrammarFromSheet("GrammarDE"),
+      data: await loadGrammarFromSheet("GrammarDe"),
       loadedAt: Date.now()
     };
 
     grammarCache.es = {
-      data: await loadGrammarFromSheet("GrammarES"),
+      data: await loadGrammarFromSheet("GrammarEs"),
       loadedAt: Date.now()
     };
 
     grammarCache.fr = {
-      data: await loadGrammarFromSheet("GrammarFR"),
+      data: await loadGrammarFromSheet("GrammarFr"),
+      loadedAt: Date.now()
+    };
+
+    grammarCache.hy = {
+      data: await loadGrammarFromSheet("GrammarHy"),
+      loadedAt: Date.now()
+    };
+
+    grammarCache.ka = {
+      data: await loadGrammarFromSheet("GrammarKa"),
+      loadedAt: Date.now()
+    };
+
+    grammarCache.ja = {
+      data: await loadGrammarFromSheet("GrammarJa"),
       loadedAt: Date.now()
     };
 
@@ -736,12 +767,18 @@ async function getGrammarLibrary(lang) {
   } else if (lang === "tr") {
     sheetName = "GrammarTR";
   } else if (lang === "de") {
-    sheetName = "GrammarDE";
+    sheetName = "GrammarDe";
   } else if (lang === "es") {
-    sheetName = "GrammarES";
+    sheetName = "GrammarEs";
   } else if (lang === "fr") {
-    sheetName = "GrammarFR";
-  } else {
+    sheetName = "GrammarFr";
+  } else if (lang === "hy") {
+    sheetName = "GrammarHy";
+  } else if (lang === "ka") {
+    sheetName = "GrammarKa";
+  } else if (lang === "ja") {
+    sheetName = "GrammarJa";
+  }else {
     return {};
   }
 
