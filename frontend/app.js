@@ -1556,15 +1556,15 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
     currentAudio = null;
     currentAudioText = "";
     currentAudioRate = 1.0;
-    playBrowserTTS(text);
+    playBrowserTTS(text, effectiveLang);
     if (typeof onEnd === "function") onEnd();
   }
 }
 
-function playBrowserTTS(text) {
+function playBrowserTTS(text, langOverride = null) {
   if (!text) return;
 
-  const lang = mapToSpeechLang(sourceLangSelect.value);
+  const lang = mapToSpeechLang(langOverride || sourceLangSelect.value);
 
   speechSynthesis.cancel();
 

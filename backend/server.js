@@ -421,16 +421,13 @@ app.post("/api/tts", async (req, res) => {
       },
 
       hy: {
-        languageCode: "hy-AM",
-        name: "hy-AM-Standard-A"
+        languageCode: "hy-AM"
       },
       ka: {
-        languageCode: "ka-GE",
-        name: "ka-GE-Standard-A"
+        languageCode: "ka-GE"
       },
       ja: {
-        languageCode: "ja-JP",
-        name: "ja-JP-Wavenet-B"
+        languageCode: "ja-JP"
       }
     };
 
