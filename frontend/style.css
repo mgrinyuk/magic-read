@@ -117,6 +117,11 @@ h1 {
   gap: 12px;
 }
 
+.top-ui-language .menu-select {
+  min-width: 150px;
+  height: 42px;
+}
+
 .profile-menu {
   position: relative;
 }
@@ -1191,6 +1196,13 @@ body.is-logged-in #logoutBtn {
 }
 
 body.is-logged-in .profile-menu {
+  display: block !important;
+}
+body.is-logged-out .top-ui-language {
+  display: none !important;
+}
+
+body.is-logged-in .top-ui-language {
   display: block !important;
 }
 

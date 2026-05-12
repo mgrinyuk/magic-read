@@ -19,29 +19,22 @@
         Get Started
       </button>
 
+      <div class="top-ui-language">
+        <select id="uiLang" class="menu-select">
+          <option value="en">English</option>
+          <option value="ru">Русский</option>
+          <option value="zh">中文</option>
+          <option value="tr">Türkçe</option>
+          <option value="de">Deutsch</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+        </select>
+      </div>
+
       <div class="profile-menu">
         <button id="profileMenuBtn" class="profile-btn" type="button">M</button>
 
         <div id="profileDropdown" class="profile-dropdown" hidden>
-          <label class="menu-label" for="uiLang">Interface language</label>
-
-          <select id="uiLang" class="menu-select">
-            <option value="en">English</option>
-            <option value="ru">Русский</option>
-            <option value="zh">中文</option>
-            <option value="tr">Türkçe</option>
-            <option value="es">Español</option>
-            <option value="fr">Français</option>
-            <option value="de">Deutsch</option>
-          </select>
-
-          <button type="button" data-tool-screen="flashcards" data-i18n="flashcards">
-            Flashcards
-          </button>
-
-          <button type="button" data-tool-screen="calligraphy" data-i18n="calligraphy">
-            Calligraphy
-          </button>
 
           <button id="logoutBtn" type="button" data-i18n="logout" hidden>
             Log out
@@ -305,6 +298,24 @@
 
           <button id="showSavedTextsBtn" type="button" class="workspace-tab" data-i18n="myTexts">
             My texts
+          </button>
+
+          <button
+            type="button"
+            class="workspace-tab"
+            data-tool-screen="flashcards"
+            data-i18n="flashcards"
+          >
+            Flashcards
+          </button>
+
+          <button
+            type="button"
+            class="workspace-tab"
+            data-tool-screen="calligraphy"
+            data-i18n="calligraphy"
+          >
+            Calligraphy
           </button>
         </div>
 
