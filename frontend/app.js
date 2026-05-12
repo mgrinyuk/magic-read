@@ -916,7 +916,9 @@ async function renderCards(sentences) {
     ru: "RU",
     tr: "TR",
     en: "EN",
-    de: "DE"
+    de: "DE",
+    es: "ES",
+    fr: "FR"
   };
 
   const t = getT();
@@ -1442,7 +1444,9 @@ function mapToSpeechLang(lang) {
     tr: "tr-TR",
     zh: "zh-CN",
     en: "en-US",
-    de: "de-DE"
+    de: "de-DE",
+    es: "es-ES",
+    fr: "fr-FR"
   };
 
   return map[lang] || "en-US";

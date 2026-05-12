@@ -274,7 +274,10 @@ app.use("/worksheets", express.static(path.join(__dirname, "public", "worksheets
 let grammarCache = {
   zh: { data: null, loadedAt: 0 },
   ru: { data: null, loadedAt: 0 },
-  tr: { data: null, loadedAt: 0 }
+  tr: { data: null, loadedAt: 0 },
+  de: { data: null, loadedAt: 0 },
+  es: { data: null, loadedAt: 0 },
+  fr: { data: null, loadedAt: 0 }
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -404,6 +407,14 @@ app.post("/api/tts", async (req, res) => {
       de: {
         languageCode: "de-DE",
         name: "de-DE-Wavenet-A"
+      },
+      es: {
+        languageCode: "es-ES",
+        name: "es-ES-Wavenet-C"
+      },
+      fr: {
+        languageCode: "fr-FR",
+        name: "fr-FR-Wavenet-D"
       }
     };
 
@@ -454,7 +465,7 @@ app.post("/api/translate", async (req, res) => {
 async function analyzeGrammar(sentence, sourceLang) {
   const items = [];
 
-  if (!["zh", "ru", "tr"].includes(sourceLang)) {
+  if (!["zh", "ru", "tr", "de", "es", "fr"].includes(sourceLang)) {
     return items;
   }
 
@@ -565,6 +576,21 @@ app.post("/api/admin/reload-grammar", async (req, res) => {
 
     grammarCache.tr = {
       data: await loadGrammarFromSheet("GrammarTR"),
+      loadedAt: Date.now()
+    };
+
+    grammarCache.de = {
+      data: await loadGrammarFromSheet("GrammarDE"),
+      loadedAt: Date.now()
+    };
+
+    grammarCache.es = {
+      data: await loadGrammarFromSheet("GrammarES"),
+      loadedAt: Date.now()
+    };
+
+    grammarCache.fr = {
+      data: await loadGrammarFromSheet("GrammarFR"),
       loadedAt: Date.now()
     };
 
@@ -709,6 +735,12 @@ async function getGrammarLibrary(lang) {
     sheetName = "GrammarRu";
   } else if (lang === "tr") {
     sheetName = "GrammarTR";
+  } else if (lang === "de") {
+    sheetName = "GrammarDE";
+  } else if (lang === "es") {
+    sheetName = "GrammarES";
+  } else if (lang === "fr") {
+    sheetName = "GrammarFR";
   } else {
     return {};
   }
