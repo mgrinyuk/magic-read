@@ -509,7 +509,7 @@ async function analyzeGrammar(sentence, sourceLang) {
         continue;
       }
 
-      if (sourceLang === "ru" || sourceLang === "tr") {
+      if (sourceLang !== "zh") {
         const words = normalizedSentence
           .replace(/[.,!?;:«»"'()]/g, " ")
           .split(/\s+/)
