@@ -319,77 +319,71 @@
             Calligraphy
           </button>
         </div>
+        <div id="startComposerArea">
+          <div class="start-copy">
+            <p class="eyebrow">Magic Read</p>
+            <h1 data-i18n="pasteToStart">Paste a text to start</h1>
+            <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+          </div>
 
-        <div class="start-copy">
-          <p class="eyebrow">Magic Read</p>
-          <h1 data-i18n="pasteToStart">Paste a text to start</h1>
-          <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
-        </div>
-
-        <div id="textLibraryPanel" class="text-library-panel" hidden>
-          <div class="workspace-head">
-            <div>
-              <h3 data-i18n="library">Library</h3>
-              <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+          <div id="textLibraryPanel" class="text-library-panel" hidden>
+            <div class="workspace-head">
+              <div>
+                <h3 data-i18n="library">Library</h3>
+                <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+              </div>
             </div>
+
+            <div id="textLibraryList" class="text-library-list"></div>
           </div>
 
-          <div id="textLibraryList" class="text-library-list"></div>
-        </div>
-
-        <div id="savedTextsPanel" class="saved-texts-panel" hidden>
-          <h3 data-i18n="savedTextsTitle">My texts</h3>
-          <div id="savedTextsList"></div>
-        </div>
-
-        <textarea
-          id="inputText"
-          data-i18n-placeholder="inputPlaceholder"
-          placeholder="Paste a text to start"
-        ></textarea>
-
-        <div class="composer-footer">
-          <div class="header-language-controls language-switcher">
-            <select id="sourceLang" class="language-select">
-              <option value="zh">Chinese</option>
-              <option value="ru">Russian</option>
-              <option value="tr">Turkish</option>
-              <option value="en">English</option>
-              <option value="de">German</option>
-              <option value="es">Español</option>
-              <option value="fr">Français</option>
-              <option value="ja">日本語</option>
-            </select>
-
-            <span class="language-arrow">→</span>
-
-            <select id="targetLang" class="language-select secondary-select">
-              <option value="en">English</option>
-              <option value="ru">Russian</option>
-              <option value="de">German</option>
-              <option value="tr">Turkish</option>
-              <option value="zh">Chinese</option>
-              <option value="es">Español</option>
-              <option value="fr">Français</option>
-              <option value="ja">日本語</option>
-            </select>
+          <div id="savedTextsPanel" class="saved-texts-panel" hidden>
+            <h3 data-i18n="savedTextsTitle">My texts</h3>
+            <div id="savedTextsList"></div>
           </div>
 
-          <button id="createCardsBtn" data-i18n="start" class="primary-btn">
-            Start
+          <textarea
+            id="inputText"
+            data-i18n-placeholder="inputPlaceholder"
+            placeholder="Paste a text to start"
+          ></textarea>
+
+          <div class="composer-footer">
+            <div class="header-language-controls language-switcher">
+              <select id="sourceLang" class="language-select">
+                <option value="zh">Chinese</option>
+                <option value="ru">Russian</option>
+                <option value="tr">Turkish</option>
+                <option value="en">English</option>
+                <option value="de">German</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="ja">日本語</option>
+              </select>
+
+              <span class="language-arrow">→</span>
+
+              <select id="targetLang" class="language-select secondary-select">
+                <option value="en">English</option>
+                <option value="ru">Russian</option>
+                <option value="de">German</option>
+                <option value="tr">Turkish</option>
+                <option value="zh">Chinese</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="ja">日本語</option>
+              </select>
+            </div>
+
+            <button id="createCardsBtn" data-i18n="start" class="primary-btn">
+              Start
+            </button>
+          </div>
+
+          <button id="saveTextBtn" data-i18n="saveText" class="text-link-btn" type="button">
+            Save text
           </button>
         </div>
-
-        <button id="saveTextBtn" data-i18n="saveText" class="text-link-btn" type="button">
-          Save text
-        </button>
-      </section>
-
-      <section id="readingControlStrip" class="reading-control-strip" hidden>
-        <span class="ready-label" data-i18n="ready">Ready ✓</span>
-        <button id="editTextBtn" type="button" class="strip-btn" data-i18n="edit">Edit</button>
-        <button id="replaceTextBtn" type="button" class="strip-btn" data-i18n="replace">Replace</button>
-        <button id="globalSlowBtn" type="button" class="strip-btn" data-i18n="slowOff">Slow: OFF</button>
       </section>
 
       <section id="fullTextPanel" class="workspace-card" hidden>
@@ -400,12 +394,13 @@
           </div>
 
           <div class="card-buttons">
-            <button id="readFullTextBtn" data-i18n="play" class="tts-btn">Play</button>
-            <button id="translateFullTextBtn" data-i18n="translate" class="translate-btn">Translate</button>
+            <button id="readFullTextBtn" data-i18n="listen" class="tts-btn">Listen</button>
+            <button id="globalSlowBtn" type="button" class="translate-btn" data-i18n="slowOff">Slow: OFF</button>
+            <button id="saveTextBtnReading" type="button" class="translate-btn" data-i18n="saveText">Save text</button>
+            <button id="editTextBtn" type="button" class="translate-btn" data-i18n="edit">Edit</button>
             <button id="toggleFullTextPinyinBtn" data-i18n="showPinyin" class="translate-btn">Pinyin</button>
-            <button id="toggleFullTextBtn" class="translate-btn" type="button">
-              Hide full text
-            </button>
+            <button id="translateFullTextBtn" data-i18n="translate" class="translate-btn">Translate</button>
+            <button id="toggleFullTextBtn" class="translate-btn" type="button">Hide</button>
           </div>
         </div>
 

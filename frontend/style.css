@@ -882,23 +882,6 @@ textarea::placeholder {
   display: inline;
 }
 
-.word[data-pinyin]:hover::after {
-  content: attr(data-pinyin);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  z-index: 20;
-  transform: translateX(-50%);
-  margin-bottom: 7px;
-  padding: 5px 9px;
-  border-radius: 10px;
-  background: var(--yellow);
-  color: var(--brand-dark);
-  white-space: nowrap;
-  font-size: 0.85rem;
-  font-weight: 900;
-}
-
 /* RESULT PANELS */
 
 .panel-box,
@@ -984,14 +967,24 @@ textarea::placeholder {
 .word-popup {
   position: absolute;
   z-index: 999;
-  max-width: 280px;
-  padding: 12px;
-  border-radius: 16px;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-soft);
-  font-size: 0.92rem;
+  max-width: 180px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--yellow);
+  color: var(--brand-dark);
+  border: none;
+  box-shadow: 0 12px 28px rgba(28, 7, 112, 0.18);
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.popup-pinyin,
+.example-pinyin {
+  margin-top: 3px;
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 850;
 }
 
 .popup-pinyin,
@@ -1876,5 +1869,73 @@ body.is-logged-in .auth-note {
     margin-top: 42px;
     position: relative;
     z-index: 5;
+  }
+}
+/* READER CONTROLS — mobile friendly */
+
+#fullTextPanel .workspace-head {
+  gap: 18px;
+}
+
+#fullTextPanel .card-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+#fullTextPanel .card-buttons button {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .workspace-tabs {
+    width: 100%;
+    overflow-x: auto;
+    display: flex;
+    flex-wrap: nowrap;
+    padding: 6px;
+    margin-bottom: 18px;
+  }
+
+  .workspace-tab {
+    flex: 0 0 auto;
+    font-size: 0.9rem;
+    padding: 9px 13px;
+  }
+
+  #fullTextPanel .workspace-head {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #fullTextPanel .card-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #fullTextPanel .card-buttons button {
+    width: 100%;
+    padding: 11px 10px;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+
+  .full-text-box {
+    padding: 18px;
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  .start-panel {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  #fullTextPanel .card-buttons {
+    grid-template-columns: 1fr;
   }
 }

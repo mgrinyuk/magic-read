@@ -42,6 +42,7 @@ const fullTextPanel = document.getElementById("fullTextPanel");
 const fullTextContent = document.getElementById("fullTextContent");
 const fullTextPinyin = document.getElementById("fullTextPinyin");
 const fullTextTranslation = document.getElementById("fullTextTranslation");
+const startComposerArea = document.getElementById("startComposerArea");
 
 const textLibraryPanel = document.getElementById("textLibraryPanel");
 const textLibraryList = document.getElementById("textLibraryList");
@@ -460,7 +461,7 @@ async function startReadingFromText(text) {
     currentSentences = sentences;
 
     inputText.value = cleanText;
-    inputText.hidden = true;
+    if (startComposerArea) startComposerArea.hidden = true;
 
    showImportedText(cleanText);
    await renderCards(sentences);
@@ -482,6 +483,9 @@ createBtn?.addEventListener("click", async () => {
 });
 
 editTextBtn?.addEventListener("click", () => {
+  if (startComposerArea) startComposerArea.hidden = false;
+  if (inputText) inputText.hidden = false;
+
   inputText?.scrollIntoView({ behavior: "smooth", block: "center" });
   inputText?.focus();
 });
@@ -711,7 +715,8 @@ async function loadSavedTexts(forceOpen = false) {
 });
 }
 
-document.getElementById("saveTextBtn")?.addEventListener("click", async () => {
+document.querySelectorAll("#saveTextBtn, #saveTextBtnReading").forEach(btn => {
+  btn?.addEventListener("click", async () => {
   const text = inputText.value.trim();
 
   if (!text) {
@@ -745,6 +750,7 @@ document.getElementById("saveTextBtn")?.addEventListener("click", async () => {
   }
   savedTextsCache = null;
   alert("Text saved.");
+});
 });
 
 /* -----------------------------
@@ -1383,12 +1389,11 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
 
   function renderPopupContent({ translation = "", pinyin = "" }) {
     popup.innerHTML = `
-      <strong>${escapeHtml(word)}</strong><br/>
-      ${pinyin ? `<div class="popup-pinyin">${escapeHtml(pinyin)}</div>` : ""}
-      <div>${escapeHtml(translation)}</div>
-      ${allowSave ? renderPopupDeckSelect() : ""}
-      ${allowSave ? `<button class="popup-save-btn">${escapeHtml(getT().save || "Save")}</button>` : ""}
-    `;
+    ${pinyin ? `<div class="popup-pinyin">${escapeHtml(pinyin)}</div>` : ""}
+    <div>${escapeHtml(translation)}</div>
+    ${allowSave ? renderPopupDeckSelect() : ""}
+    ${allowSave ? `<button class="popup-save-btn">${escapeHtml(getT().save || "Save")}</button>` : ""}
+  `;
 
     if (allowSave) {
       attachSaveButton(
