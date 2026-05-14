@@ -2131,3 +2131,31 @@ body.is-logged-in .marketing-section {
     align-self: stretch;
   }
 }
+/* FINAL MOBILE HERO VIDEO FIX */
+@media (max-width: 900px) {
+  .landing-hero-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 28px !important;
+  }
+
+  .landing-hero-copy {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .product-demo-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    align-self: stretch !important;
+    padding: 12px !important;
+  }
+
+  .demo-video {
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    object-fit: contain !important;
+  }
+}
