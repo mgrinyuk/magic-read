@@ -20,6 +20,7 @@ const landingHow = document.querySelector(".landing-page");
 const logoutBtn = document.getElementById("logoutBtn");
 const guestLoginBtn = document.getElementById("guestLoginBtn");
 const signUpBtn = document.getElementById("signUpBtn");
+const loginBtn = document.getElementById("loginBtn");
 
 const uiLangSelect = document.getElementById("uiLang");
 const sourceLangSelect = document.getElementById("sourceLang");
@@ -156,7 +157,6 @@ async function checkAuth() {
 }
 
 function openAuthFromOverlay(mode = "signup") {
-  
   const overlay = document.getElementById("authOverlay");
   if (overlay) overlay.hidden = true;
 
@@ -165,24 +165,33 @@ function openAuthFromOverlay(mode = "signup") {
   authMode = mode;
 
   if (mode === "signup") {
-    signUpBtn.textContent = "Create account";
     if (authNameGroup) authNameGroup.hidden = false;
+
+    if (loginBtn) loginBtn.hidden = true;
+    if (signUpBtn) {
+      signUpBtn.hidden = false;
+      signUpBtn.textContent = "Create account";
+    }
+
     if (authMessage) {
-      authMessage.textContent = "Create an account to save your texts, vocabulary, and practice.";
+      authMessage.textContent =
+        "Create an account to save your texts, vocabulary, and practice.";
     }
   }
 
   if (mode === "login") {
-  if (authNameGroup) authNameGroup.hidden = true;
+    if (authNameGroup) authNameGroup.hidden = true;
 
-  if (signUpBtn) {
-    signUpBtn.textContent = "Create account";
-  }
+    if (loginBtn) loginBtn.hidden = false;
+    if (signUpBtn) {
+      signUpBtn.hidden = false;
+      signUpBtn.textContent = "Create account";
+    }
 
-  if (authMessage) {
-    authMessage.textContent = "Log in to continue your practice.";
+    if (authMessage) {
+      authMessage.textContent = "Log in to continue your practice.";
+    }
   }
-}
 
   authScreen?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -200,6 +209,11 @@ guestLoginBtn?.addEventListener("click", () => {
 });
 
 signUpBtn?.addEventListener("click", async () => {
+  if (authNameGroup?.hidden) {
+    openAuthFromOverlay("signup");
+    return;
+  }
+
   const t = getT();
 
   const name = document.getElementById("authName")?.value.trim();
@@ -230,13 +244,34 @@ signUpBtn?.addEventListener("click", async () => {
       return;
     }
 
-    if (authMessage) authMessage.textContent = t.accountCreated;
+    const authCard = document.querySelector("#authScreen .auth-card");
+
+  if (authCard) {
+    authCard.innerHTML = `
+      <div class="auth-success">
+        <div class="auth-success-icon">✓</div>
+        <h2>Account created</h2>
+        <p>
+          Please check your mailbox and confirm your email address.
+          After confirmation, you can log in and start saving your texts,
+          flashcards, and practice progress.
+        </p>
+        <button class="primary-btn" type="button" onclick="location.reload()">
+          Back to login
+        </button>
+      </div>
+    `;
+  }
   } catch (err) {
     console.error("Signup failed:", err);
     if (authMessage) authMessage.textContent = t.signupFailed;
   } finally {
     signUpBtn.disabled = false;
   }
+});
+
+document.getElementById("switchToLoginBtn")?.addEventListener("click", () => {
+  openAuthFromOverlay("login");
 });
 
 document.getElementById("loginBtn")?.addEventListener("click", async () => {

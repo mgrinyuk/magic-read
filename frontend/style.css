@@ -1773,3 +1773,35 @@ body.is-logged-in .top-ui-language {
     grid-template-columns: 1fr;
   }
 }
+
+.auth-success {
+  text-align: center;
+  padding: 24px 10px;
+}
+
+.auth-success-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: var(--brand-dark);
+  font-size: 2rem;
+  font-weight: 950;
+}
+
+.auth-success h2 {
+  margin-bottom: 14px;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.03em;
+}
+
+.auth-success p {
+  max-width: 440px;
+  margin: 0 auto 26px;
+  color: var(--text-soft);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
