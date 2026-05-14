@@ -2021,3 +2021,27 @@ body.is-logged-in .auth-note {
 
   color: var(--text-muted);
 }
+
+@media (max-width: 640px) {
+
+  .auth-modal {
+    width: calc(100% - 24px);
+
+    padding: 24px 18px;
+
+    border-radius: 22px;
+  }
+
+  .auth-modal h2 {
+    font-size: 1.5rem;
+  }
+
+  .auth-modal-actions {
+    flex-direction: column;
+  }
+
+  .auth-modal-actions button {
+    width: 100%;
+  }
+
+}

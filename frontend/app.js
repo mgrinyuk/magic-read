@@ -152,20 +152,48 @@ async function checkAuth() {
   }
 }
 
+function openAuthFromOverlay(mode = "signup") {
+  
+  const overlay = document.getElementById("authOverlay");
+  if (overlay) overlay.hidden = true;
+
+  if (authScreen) authScreen.hidden = false;
+
+  authMode = mode;
+
+  if (mode === "signup") {
+    signUpBtn.textContent = "Create account";
+    if (authNameGroup) authNameGroup.hidden = false;
+    if (authMessage) {
+      authMessage.textContent = "Create an account to save your texts, vocabulary, and practice.";
+    }
+  }
+
+  if (mode === "login") {
+    if (authNameGroup) authNameGrou
+    signUpBtn.textContent = "Create account";p.hidden = true;
+    if (authMessage) {
+      authMessage.textContent = "Log in to continue your practice.";
+    }
+  }
+
+  authScreen?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+document.getElementById("openSignupBtn")?.addEventListener("click", () => {
+  openAuthFromOverlay("signup");
+});
+
+document.getElementById("openLoginBtn")?.addEventListener("click", () => {
+  openAuthFromOverlay("login");
+});
+
 guestLoginBtn?.addEventListener("click", () => {
   authScreen?.scrollIntoView({ behavior: "smooth" });
 });
 
 signUpBtn?.addEventListener("click", async () => {
   const t = getT();
-
-  if (authMode === "login") {
-    authMode = "signup";
-    if (authNameGroup) authNameGroup.hidden = false;
-    signUpBtn.textContent = t.createAccount;
-    if (authMessage) authMessage.textContent = t.enterAllFields;
-    return;
-  }
 
   const name = document.getElementById("authName")?.value.trim();
   const email = document.getElementById("authEmail")?.value.trim();
