@@ -173,12 +173,16 @@ function openAuthFromOverlay(mode = "signup") {
   }
 
   if (mode === "login") {
-    if (authNameGroup) authNameGrou
-    signUpBtn.textContent = "Create account";p.hidden = true;
-    if (authMessage) {
-      authMessage.textContent = "Log in to continue your practice.";
-    }
+  if (authNameGroup) authNameGroup.hidden = true;
+
+  if (signUpBtn) {
+    signUpBtn.textContent = "Create account";
   }
+
+  if (authMessage) {
+    authMessage.textContent = "Log in to continue your practice.";
+  }
+}
 
   authScreen?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -192,7 +196,7 @@ document.getElementById("openLoginBtn")?.addEventListener("click", () => {
 });
 
 guestLoginBtn?.addEventListener("click", () => {
-  authScreen?.scrollIntoView({ behavior: "smooth" });
+  openAuthFromOverlay("login");
 });
 
 signUpBtn?.addEventListener("click", async () => {
