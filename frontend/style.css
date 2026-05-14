@@ -1331,11 +1331,7 @@ body.is-logged-in .top-ui-language {
 /* HERO */
 
 .landing-hero {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
   margin: 60px 0 80px;
-  align-items: center;
 }
 
 .landing-hero-copy h1 {
@@ -2044,4 +2040,26 @@ body.is-logged-in .auth-note {
     width: 100%;
   }
 
+}
+body.is-logged-in .marketing-section {
+  display: none !important;
+}
+.site-container {
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
+}
+.landing-hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  align-items: center;
+  gap: 72px;
+}
+.landing-hero-copy {
+  max-width: 560px;
+}
+.hero-preview-frame {
+  padding: 24px;
+  border-radius: 32px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(0,0,0,0.04);
 }

@@ -47,340 +47,360 @@
 
   <section class="landing-page">
 
-  <section class="landing-hero">
-    <div class="landing-hero-copy">
-      <p class="eyebrow">Magic Read</p>
+  <section class="landing-hero marketing-section">
 
-      <h1>Master your pronunciation from real texts</h1>
+    <div class="site-container">
 
-      <p>
-      Paste homework, articles, dialogues, or exam texts.
-      Listen sentence by sentence, repeat aloud, and improve pronunciation naturally.
-      </p>
+      <div class="landing-hero-grid">
 
-      <p class="hero-support">
-        Works with course books, articles, and classroom materials
-      </p>
+        <div class="landing-hero-copy">
 
-      <div class="landing-actions">
-        <button class="primary-btn" type="button"
-          onclick="document.getElementById('screen-main').scrollIntoView({ behavior: 'smooth' })">
-          Try with your text
-        </button>
+          <p class="eyebrow">Magic Read</p>
 
-        <a href="#how-it-works">See how it works</a>
-      </div>
-    </div>
+          <h1>Master your pronunciation from real texts</h1>
 
-    <div class="product-demo-card">
-      <video
-        class="demo-video"
-        autoplay
-        muted
-        loop
-        playsinline
-      >
-        <source src="demo.mp4" type="video/mp4" />
-      </video>
-    </div>
-  </section>
-  <main class="main">
-    <section id="screen-main" class="app-screen">
-      <section class="start-panel workspace-card">
-        <div class="workspace-tabs">
-          <button id="openLibraryBtn" type="button" class="workspace-tab active" data-i18n="library">
-            Library
-          </button>
+          <p>
+            Paste homework, articles, dialogues, or exam texts.
+            Listen sentence by sentence, repeat aloud, and improve pronunciation naturally.
+          </p>
 
-          <button id="showSavedTextsBtn" type="button" class="workspace-tab" data-i18n="myTexts">
-            My texts
-          </button>
+          <p class="hero-support">
+            Works with course books, articles, and classroom materials
+          </p>
 
-          <button
-            type="button"
-            class="workspace-tab"
-            data-tool-screen="flashcards"
-            data-i18n="flashcards"
-          >
-            Flashcards
-          </button>
+          <div class="landing-actions">
+            <button class="primary-btn" type="button"
+              onclick="document.getElementById('screen-main').scrollIntoView({ behavior: 'smooth' })">
+              Try with your text
+            </button>
 
-          <button
-            type="button"
-            class="workspace-tab"
-            data-tool-screen="calligraphy"
-            data-i18n="calligraphy"
-          >
-            Calligraphy
-          </button>
-        </div>
-        <div id="startComposerArea">
-          <div class="start-copy">
-            <p class="eyebrow">Magic Read</p>
-            <h1 data-i18n="pasteToStart">Paste a text to start</h1>
-            <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+            <a href="#how-it-works">See how it works</a>
           </div>
 
-          <div id="textLibraryPanel" class="text-library-panel" hidden>
-            <div class="workspace-head">
-              <div>
-                <h3 data-i18n="library">Library</h3>
-                <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+        </div>
+
+        <div class="product-demo-card">
+          <video
+            class="demo-video"
+            autoplay
+            muted
+            loop
+            playsinline
+          >
+            <source src="demo.mp4" type="video/mp4" />
+          </video>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+  <main class="main">
+    <div class="site-container">
+      <section id="screen-main" class="app-screen">
+        <section class="start-panel workspace-card">
+          <div class="workspace-tabs">
+            <button id="openLibraryBtn" type="button" class="workspace-tab active" data-i18n="library">
+              Library
+            </button>
+
+            <button id="showSavedTextsBtn" type="button" class="workspace-tab" data-i18n="myTexts">
+              My texts
+            </button>
+
+            <button
+              type="button"
+              class="workspace-tab"
+              data-tool-screen="flashcards"
+              data-i18n="flashcards"
+            >
+              Flashcards
+            </button>
+
+            <button
+              type="button"
+              class="workspace-tab"
+              data-tool-screen="calligraphy"
+              data-i18n="calligraphy"
+            >
+              Calligraphy
+            </button>
+          </div>
+          <div id="startComposerArea">
+            <div class="start-copy">
+              <p class="eyebrow">Magic Read</p>
+              <h1 data-i18n="pasteToStart">Paste a text to start</h1>
+              <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+            </div>
+
+            <div id="textLibraryPanel" class="text-library-panel" hidden>
+              <div class="workspace-head">
+                <div>
+                  <h3 data-i18n="library">Library</h3>
+                  <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+                </div>
+              </div>
+
+              <div id="textLibraryList" class="text-library-list"></div>
+            </div>
+
+            <div id="savedTextsPanel" class="saved-texts-panel" hidden>
+              <h3 data-i18n="savedTextsTitle">My texts</h3>
+              <div id="savedTextsList"></div>
+            </div>
+
+            <textarea
+              id="inputText"
+              data-i18n-placeholder="inputPlaceholder"
+              placeholder="Paste a text to start"
+            ></textarea>
+
+            <div class="composer-footer">
+              <div class="header-language-controls language-switcher">
+                <select id="sourceLang" class="language-select">
+                  <option value="zh">Chinese</option>
+                  <option value="ru">Russian</option>
+                  <option value="tr">Turkish</option>
+                  <option value="en">English</option>
+                  <option value="de">German</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="ja">日本語</option>
+                </select>
+
+                <span class="language-arrow">→</span>
+
+                <select id="targetLang" class="language-select secondary-select">
+                  <option value="en">English</option>
+                  <option value="ru">Russian</option>
+                  <option value="de">German</option>
+                  <option value="tr">Turkish</option>
+                  <option value="zh">Chinese</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="ja">日本語</option>
+                </select>
+              </div>
+
+              <button id="createCardsBtn" data-i18n="start" class="primary-btn">
+                Start
+              </button>
+            </div>
+
+            <button id="saveTextBtn" data-i18n="saveText" class="text-link-btn" type="button">
+              Save text
+            </button>
+          </div>
+        </section>
+
+        <section id="fullTextPanel" class="workspace-card" hidden>
+          <div class="workspace-head">
+            <div>
+              <h3 data-i18n="fullText">Full text</h3>
+              <p class="subtle" data-i18n="readComplete">Read the complete text.</p>
+            </div>
+
+            <div class="card-buttons">
+              <button id="readFullTextBtn" data-i18n="listen" class="tts-btn">Listen</button>
+              <button id="globalSlowBtn" type="button" class="translate-btn" data-i18n="slowOff">Slow: OFF</button>
+              <button id="saveTextBtnReading" type="button" class="translate-btn" data-i18n="saveText">Save text</button>
+              <button id="editTextBtn" type="button" class="translate-btn" data-i18n="edit">Edit</button>
+              <button id="toggleFullTextPinyinBtn" data-i18n="showPinyin" class="translate-btn">Pinyin</button>
+              <button id="translateFullTextBtn" data-i18n="translate" class="translate-btn">Translate</button>
+              <button id="toggleFullTextBtn" class="translate-btn" type="button">Hide</button>
+            </div>
+          </div>
+
+          <div id="fullTextContent" class="full-text-box"></div>
+          <p class="word-save-hint">
+            Tip: click any word to hear it, translate it, and save it to flashcards.
+          </p>
+          <div id="fullTextPinyin" class="full-text-pinyin" hidden></div>
+          <div id="fullTextTranslation" class="translation-box panel-box"></div>
+
+        </section>
+
+        <section class="cards-section">
+          <div class="section-head">
+            <div>
+              <h3 data-i18n="practiceCards">Practice</h3>
+              <p class="subtle" data-i18n="practiceHint">Listen, speak, and save useful words.</p>
+            </div>
+          </div>
+
+          <section id="cardsContainer" class="cards"></section>
+        </section>
+      </section>
+
+      <section id="screen-flashcards" class="app-screen">
+        <section class="workspace-card">
+          <button id="backToReaderBtn" class="ghost-btn">
+            ← Back to reading
+          </button>
+          <div class="workspace-head">
+            <div>
+              <p class="eyebrow" data-i18n="flashcards">Flashcards</p>
+              <h3 data-i18n="savedTexts">My texts</h3>
+              <p class="subtle" data-i18n="clickToSave">Click any word in a text to save it.</p>
+            </div>
+
+            <div class="flashcard-top-actions">
+              <select id="flashcardDeckSelect" class="deck-select"></select>
+              <button id="flashcardNewDeckBtn" class="game-nav-btn">New deck</button>
+              <button id="flashcardDeleteDeckBtn" class="game-nav-btn">Delete deck</button>
+              <button id="flashcardClearBtn" class="game-nav-btn">Clear</button>
+              <button id="flashcardExportBtn" class="game-nav-btn game-nav-btn-primary">Export PDF</button>
+            </div>
+          </div>
+
+          <div id="flashcardEmptyState" class="flashcard-empty">
+            <strong data-i18n="noWords">No words yet</strong>
+            <p data-i18n="clickToSave">Click any word in a text to save it.</p>
+          </div>
+
+          <div id="flashcardDeck" class="flashcard-deck" hidden>
+            <div class="flashcard-progress">
+              <span id="flashcardCounter">Card 1 of 1</span>
+            </div>
+
+            <div id="flashcardCard" class="flashcard-card">
+              <div class="flashcard-card-inner">
+                <div class="flashcard-face flashcard-front">
+                  <p class="flashcard-label">Word</p>
+                  <h3 id="flashcardWord">图书馆</h3>
+                  <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
+
+                  <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">🔊</button>
+                  <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" data-i18n="slowOff">
+                    Slow: OFF
+                  </button>
+                </div>
+
+                <div class="flashcard-face flashcard-back">
+                  <p class="flashcard-label">Context</p>
+                  <p id="flashcardSentence" class="flashcard-sentence">我在图书馆学习中文。</p>
+                  <p id="flashcardSentencePinyin" class="flashcard-pinyin">
+                    Wǒ zài túshūguǎn xuéxí Zhōngwén.
+                  </p>
+                  <p id="flashcardTranslation" class="flashcard-translation">
+                    I study Chinese in the library.
+                  </p>
+
+                  <button id="flashcardPlaySentenceBtn" class="flashcard-play-btn" type="button">🔊</button>
+                </div>
               </div>
             </div>
 
-            <div id="textLibraryList" class="text-library-list"></div>
-          </div>
-
-          <div id="savedTextsPanel" class="saved-texts-panel" hidden>
-            <h3 data-i18n="savedTextsTitle">My texts</h3>
-            <div id="savedTextsList"></div>
-          </div>
-
-          <textarea
-            id="inputText"
-            data-i18n-placeholder="inputPlaceholder"
-            placeholder="Paste a text to start"
-          ></textarea>
-
-          <div class="composer-footer">
-            <div class="header-language-controls language-switcher">
-              <select id="sourceLang" class="language-select">
-                <option value="zh">Chinese</option>
-                <option value="ru">Russian</option>
-                <option value="tr">Turkish</option>
-                <option value="en">English</option>
-                <option value="de">German</option>
-                <option value="es">Español</option>
-                <option value="fr">Français</option>
-                <option value="ja">日本語</option>
-              </select>
-
-              <span class="language-arrow">→</span>
-
-              <select id="targetLang" class="language-select secondary-select">
-                <option value="en">English</option>
-                <option value="ru">Russian</option>
-                <option value="de">German</option>
-                <option value="tr">Turkish</option>
-                <option value="zh">Chinese</option>
-                <option value="es">Español</option>
-                <option value="fr">Français</option>
-                <option value="ja">日本語</option>
-              </select>
+            <div class="game-navigation">
+              <button id="flashcardPrevBtn" class="game-nav-btn" data-i18n="previous">Previous</button>
+              <button id="flashcardDeleteBtn" class="game-nav-btn">Delete</button>
+              <button id="flashcardNextBtn" class="game-nav-btn game-nav-btn-primary" data-i18n="next">Next</button>
             </div>
+          </div>
+        </section>
+      </section>
 
-            <button id="createCardsBtn" data-i18n="start" class="primary-btn">
-              Start
+      <section id="screen-writing" class="app-screen">
+        <section class="workspace-card">
+          <button id="backToReaderBtnWriting" class="ghost-btn">
+            ← Back to reading
+          </button>
+          <div class="workspace-head">
+            <div>
+              <p class="eyebrow" data-i18n="calligraphy">Calligraphy</p>
+              <h3 data-i18n="calligraphy">Calligraphy</h3>
+              <p class="subtle">Chinese and Russian only</p>
+            </div>
+          </div>
+
+          <textarea id="writingInput" placeholder="Paste characters or words"></textarea>
+
+          <div class="action-group">
+            <button id="createWritingSheetBtn" type="button" class="primary-btn">
+              Create sheet
             </button>
           </div>
 
-          <button id="saveTextBtn" data-i18n="saveText" class="text-link-btn" type="button">
-            Save text
-          </button>
-        </div>
+          <div id="writingResult" class="translation-box panel-box"></div>
+        </section>
       </section>
-
-      <section id="fullTextPanel" class="workspace-card" hidden>
-        <div class="workspace-head">
-          <div>
-            <h3 data-i18n="fullText">Full text</h3>
-            <p class="subtle" data-i18n="readComplete">Read the complete text.</p>
-          </div>
-
-          <div class="card-buttons">
-            <button id="readFullTextBtn" data-i18n="listen" class="tts-btn">Listen</button>
-            <button id="globalSlowBtn" type="button" class="translate-btn" data-i18n="slowOff">Slow: OFF</button>
-            <button id="saveTextBtnReading" type="button" class="translate-btn" data-i18n="saveText">Save text</button>
-            <button id="editTextBtn" type="button" class="translate-btn" data-i18n="edit">Edit</button>
-            <button id="toggleFullTextPinyinBtn" data-i18n="showPinyin" class="translate-btn">Pinyin</button>
-            <button id="translateFullTextBtn" data-i18n="translate" class="translate-btn">Translate</button>
-            <button id="toggleFullTextBtn" class="translate-btn" type="button">Hide</button>
-          </div>
-        </div>
-
-        <div id="fullTextContent" class="full-text-box"></div>
-        <p class="word-save-hint">
-          Tip: click any word to hear it, translate it, and save it to flashcards.
-        </p>
-        <div id="fullTextPinyin" class="full-text-pinyin" hidden></div>
-        <div id="fullTextTranslation" class="translation-box panel-box"></div>
-
-      </section>
-
-      <section class="cards-section">
-        <div class="section-head">
-          <div>
-            <h3 data-i18n="practiceCards">Practice</h3>
-            <p class="subtle" data-i18n="practiceHint">Listen, speak, and save useful words.</p>
-          </div>
-        </div>
-
-        <section id="cardsContainer" class="cards"></section>
-      </section>
-    </section>
-
-    <section id="screen-flashcards" class="app-screen">
-      <section class="workspace-card">
-        <button id="backToReaderBtn" class="ghost-btn">
-          ← Back to reading
-        </button>
-        <div class="workspace-head">
-          <div>
-            <p class="eyebrow" data-i18n="flashcards">Flashcards</p>
-            <h3 data-i18n="savedTexts">My texts</h3>
-            <p class="subtle" data-i18n="clickToSave">Click any word in a text to save it.</p>
-          </div>
-
-          <div class="flashcard-top-actions">
-            <select id="flashcardDeckSelect" class="deck-select"></select>
-            <button id="flashcardNewDeckBtn" class="game-nav-btn">New deck</button>
-            <button id="flashcardDeleteDeckBtn" class="game-nav-btn">Delete deck</button>
-            <button id="flashcardClearBtn" class="game-nav-btn">Clear</button>
-            <button id="flashcardExportBtn" class="game-nav-btn game-nav-btn-primary">Export PDF</button>
-          </div>
-        </div>
-
-        <div id="flashcardEmptyState" class="flashcard-empty">
-          <strong data-i18n="noWords">No words yet</strong>
-          <p data-i18n="clickToSave">Click any word in a text to save it.</p>
-        </div>
-
-        <div id="flashcardDeck" class="flashcard-deck" hidden>
-          <div class="flashcard-progress">
-            <span id="flashcardCounter">Card 1 of 1</span>
-          </div>
-
-          <div id="flashcardCard" class="flashcard-card">
-            <div class="flashcard-card-inner">
-              <div class="flashcard-face flashcard-front">
-                <p class="flashcard-label">Word</p>
-                <h3 id="flashcardWord">图书馆</h3>
-                <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
-
-                <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">🔊</button>
-                <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" data-i18n="slowOff">
-                  Slow: OFF
-                </button>
-              </div>
-
-              <div class="flashcard-face flashcard-back">
-                <p class="flashcard-label">Context</p>
-                <p id="flashcardSentence" class="flashcard-sentence">我在图书馆学习中文。</p>
-                <p id="flashcardSentencePinyin" class="flashcard-pinyin">
-                  Wǒ zài túshūguǎn xuéxí Zhōngwén.
-                </p>
-                <p id="flashcardTranslation" class="flashcard-translation">
-                  I study Chinese in the library.
-                </p>
-
-                <button id="flashcardPlaySentenceBtn" class="flashcard-play-btn" type="button">🔊</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="game-navigation">
-            <button id="flashcardPrevBtn" class="game-nav-btn" data-i18n="previous">Previous</button>
-            <button id="flashcardDeleteBtn" class="game-nav-btn">Delete</button>
-            <button id="flashcardNextBtn" class="game-nav-btn game-nav-btn-primary" data-i18n="next">Next</button>
-          </div>
-        </div>
-      </section>
-    </section>
-
-    <section id="screen-writing" class="app-screen">
-      <section class="workspace-card">
-        <button id="backToReaderBtnWriting" class="ghost-btn">
-          ← Back to reading
-        </button>
-        <div class="workspace-head">
-          <div>
-            <p class="eyebrow" data-i18n="calligraphy">Calligraphy</p>
-            <h3 data-i18n="calligraphy">Calligraphy</h3>
-            <p class="subtle">Chinese and Russian only</p>
-          </div>
-        </div>
-
-        <textarea id="writingInput" placeholder="Paste characters or words"></textarea>
-
-        <div class="action-group">
-          <button id="createWritingSheetBtn" type="button" class="primary-btn">
-            Create sheet
-          </button>
-        </div>
-
-        <div id="writingResult" class="translation-box panel-box"></div>
-      </section>
-    </section>
+    </div>
   </main>
 
-  <section id="how-it-works" class="landing-how">
-    <div class="landing-section-head">
-      <p class="eyebrow">How it works</p>
-      <h2>From text to practice in seconds</h2>
-      <p>No course setup. No lesson planning. Just paste a text and begin.</p>
-    </div>
-
-    <div class="how-grid">
-      <div class="how-card">
-        <div class="how-number">1</div>
-        <h3>Paste or choose a text</h3>
-        <p>Use articles, dialogues, lessons, or classroom materials.</p>
+  <section id="how-it-works" class="landing-how marketing-section">
+    <div class="site-container">
+      <div class="landing-section-head">
+        <p class="eyebrow">How it works</p>
+        <h2>From text to practice in seconds</h2>
+        <p>No course setup. No lesson planning. Just paste a text and begin.</p>
       </div>
 
-      <div class="how-card">
-        <div class="how-number">2</div>
-        <h3>Read sentence by sentence</h3>
-        <p>Stay focused without getting lost in the full text.</p>
-      </div>
+      <div class="how-grid">
+        <div class="how-card">
+          <div class="how-number">1</div>
+          <h3>Paste or choose a text</h3>
+          <p>Use articles, dialogues, lessons, or classroom materials.</p>
+        </div>
 
-      <div class="how-card">
-        <div class="how-number">3</div>
-        <h3>Listen and repeat</h3>
-        <p>Move from passive reading to speaking practice.</p>
-      </div>
+        <div class="how-card">
+          <div class="how-number">2</div>
+          <h3>Read sentence by sentence</h3>
+          <p>Stay focused without getting lost in the full text.</p>
+        </div>
 
-      <div class="how-card">
-        <div class="how-number">4</div>
-        <h3>Save useful words</h3>
-        <p>Build flashcards from vocabulary you met in context.</p>
-      </div>
-    </div>
-  </section>
+        <div class="how-card">
+          <div class="how-number">3</div>
+          <h3>Listen and repeat</h3>
+          <p>Move from passive reading to speaking practice.</p>
+        </div>
 
-  <section class="landing-benefits">
-    <div class="benefit-card dark">
-      <h2>Not another course.</h2>
-      <p>
-        Magic Read works with the texts you already have — real content,
-        teacher materials, dialogues, articles, and everyday language.
-      </p>
-    </div>
-
-    <div class="benefit-grid">
-      <div class="benefit-card">
-        <h3>For learners</h3>
-        <p>Practice with content you actually want to understand.</p>
-      </div>
-
-      <div class="benefit-card">
-        <h3>For teachers</h3>
-        <p>Turn texts into listening, speaking, vocabulary, and writing tasks.</p>
-      </div>
-
-      <div class="benefit-card">
-        <h3>For real use</h3>
-        <p>Learn language as it appears in context, not as isolated exercises.</p>
+        <div class="how-card">
+          <div class="how-number">4</div>
+          <h3>Save useful words</h3>
+          <p>Build flashcards from vocabulary you met in context.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="landing-final-cta">
-    <h2>Start learning from real texts</h2>
-    <p>No course. No setup. Just paste a text and begin.</p>
-    <button class="primary-btn" type="button" onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
-      Start reading
-    </button>
+  <section class="landing-benefits marketing-section">
+    <div class="site-container">
+      <div class="benefit-card dark">
+        <h2>Not another course.</h2>
+        <p>
+          Magic Read works with the texts you already have — real content,
+          teacher materials, dialogues, articles, and everyday language.
+        </p>
+      </div>
+
+      <div class="benefit-grid">
+        <div class="benefit-card">
+          <h3>For learners</h3>
+          <p>Practice with content you actually want to understand.</p>
+        </div>
+
+        <div class="benefit-card">
+          <h3>For teachers</h3>
+          <p>Turn texts into listening, speaking, vocabulary, and writing tasks.</p>
+        </div>
+
+        <div class="benefit-card">
+          <h3>For real use</h3>
+          <p>Learn language as it appears in context, not as isolated exercises.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-final-cta marketing-section">
+    <div class="site-container">
+      <h2>Start learning from real texts</h2>
+      <p>No course. No setup. Just paste a text and begin.</p>
+      <button class="primary-btn" type="button" onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
+        Start reading
+      </button>
+    </div>
   </section>
 
 </section>

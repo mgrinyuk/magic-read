@@ -64,6 +64,7 @@ const writingResult = document.getElementById("writingResult");
 ----------------------------- */
 
 let authPromptShown = false;
+let freeTrialUsed = false;
 let authMode = "login";
 
 let currentRecognition = null;
@@ -128,6 +129,8 @@ applyLocalization(savedUiLang);
 ----------------------------- */
 document.getElementById("closeAuthOverlayBtn")?.addEventListener("click", () => {
   document.getElementById("authOverlay")?.setAttribute("hidden", "");
+  document.body.style.overflow = "";
+  freeTrialUsed = true;
 });
 
 async function checkAuth() {
@@ -1059,6 +1062,13 @@ async function renderCards(sentences) {
     });
 
     ttsBtn?.addEventListener("click", async () => {
+      const { data } = await supabase.auth.getSession();
+
+      if (!data.session && freeTrialUsed) {
+        document.getElementById("authOverlay")?.removeAttribute("hidden");
+        document.body.style.overflow = "hidden";
+        return;
+      }
       await maybeShowAuthOverlay();
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
 
