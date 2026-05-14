@@ -40,8 +40,8 @@ export const UI_TEXT = {
 
     library: "Library",
     myTexts: "My texts",
-    pasteToStart: "Paste a text to start",
-    orLibrary: "or choose one from the library",
+    pasteToStart: "Practice pronunciation with your own texts",
+    orLibrary: "Paste homework, articles, or exam texts and start speaking immediately.",
     inputPlaceholder: "Paste a text to start",
     start: "Start",
     saveText: "Save text",

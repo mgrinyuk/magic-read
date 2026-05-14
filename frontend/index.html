@@ -15,9 +15,9 @@
     </a>
 
     <div class="header-right">
-      <button id="guestLoginBtn" class="primary-btn" data-i18n="getStarted">
-        Get Started
-      </button>
+      <button id="guestLoginBtn" class="primary-btn">
+  Log in
+</button>
 
       <div class="top-ui-language">
         <select id="uiLang" class="menu-select">
@@ -99,7 +99,7 @@
   <main class="main">
     <div class="site-container">
       <section id="screen-main" class="app-screen">
-        <section class="start-panel workspace-card">
+        <section id="readerStart" class="start-panel workspace-card">
           <div class="workspace-tabs">
             <button id="openLibraryBtn" type="button" class="workspace-tab active" data-i18n="library">
               Library
@@ -397,7 +397,10 @@
     <div class="site-container">
       <h2>Start learning from real texts</h2>
       <p>No course. No setup. Just paste a text and begin.</p>
-      <button class="primary-btn" type="button" onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
+      <button
+        class="primary-btn"
+        onclick="document.getElementById('readerStart').scrollIntoView({ behavior: 'smooth' })"
+      >
         Start reading
       </button>
     </div>

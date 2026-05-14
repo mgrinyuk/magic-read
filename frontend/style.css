@@ -1206,7 +1206,7 @@ body.is-logged-out .start-copy {
   }
 
   .main {
-    width: min(100% - 28px, var(--page-width));
+    width: 100%;
     padding-top: 28px;
   }
 
@@ -1499,16 +1499,48 @@ body.is-logged-out .start-copy {
 ========================= */
 
 @media (max-width: 900px) {
+
   .landing-hero-grid {
-    grid-template-columns: 1fr;
-    gap: 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .landing-hero-copy {
+    max-width: 100%;
+  }
+
+  .product-demo-card {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .demo-video {
+    width: 100%;
+    max-height: none;
+  }
+
+}
+@media (max-width: 640px) {
+
+  .landing-hero {
+    margin: 28px 0 42px;
+  }
+
+  .landing-hero-copy h1 {
+    font-size: 2.3rem;
+  }
+
+}
+@media (max-width: 640px) {
+  .landing-actions a {
+    display: none;
   }
 }
 
   .benefit-grid {
     grid-template-columns: 1fr;
   }
-}
 /* FINAL TYPOGRAPHY FIX */
 
 .auth-left h1,
