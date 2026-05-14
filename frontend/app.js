@@ -63,6 +63,7 @@ const writingResult = document.getElementById("writingResult");
    STATE
 ----------------------------- */
 
+let authPromptShown = false;
 let authMode = "login";
 
 let currentRecognition = null;
@@ -125,6 +126,9 @@ applyLocalization(savedUiLang);
 /* -----------------------------
    AUTH
 ----------------------------- */
+document.getElementById("closeAuthOverlayBtn")?.addEventListener("click", () => {
+  document.getElementById("authOverlay")?.setAttribute("hidden", "");
+});
 
 async function checkAuth() {
   const { data } = await supabase.auth.getSession();
@@ -134,16 +138,16 @@ async function checkAuth() {
     document.body.classList.remove("is-logged-out");
 
     if (authScreen) authScreen.hidden = true;
-    if (landingHow) landingHow.hidden = true;
+    if (landingHow) landingHow.hidden = false;
     if (mainApp) mainApp.hidden = false;
     if (logoutBtn) logoutBtn.hidden = false;
   } else {
     document.body.classList.add("is-logged-out");
     document.body.classList.remove("is-logged-in");
 
-    if (authScreen) authScreen.hidden = false;
+    if (authScreen) authScreen.hidden = true;
     if (landingHow) landingHow.hidden = false;
-    if (mainApp) mainApp.hidden = true;
+    if (mainApp) mainApp.hidden = false;
     if (logoutBtn) logoutBtn.hidden = true;
   }
 }
@@ -283,7 +287,7 @@ function showResetPasswordScreen() {
 
   if (authScreen) authScreen.hidden = true;
   if (landingHow) landingHow.hidden = true;
-  if (mainApp) mainApp.hidden = true;
+  if (mainApp) mainApp.hidden = false;
   if (logoutBtn) logoutBtn.hidden = true;
   if (resetPasswordScreen) resetPasswordScreen.hidden = false;
   if (resetPasswordMessage) resetPasswordMessage.textContent = t.createNewPassword;
@@ -924,6 +928,22 @@ async function renderChineseSentence(sentence) {
   }).join("");
 }
 
+
+async function maybeShowAuthOverlay() {
+  const { data } = await supabase.auth.getSession();
+
+  if (data.session) return;
+  if (authPromptShown) return;
+
+  const overlay = document.getElementById("authOverlay");
+
+  if (overlay) {
+    overlay.hidden = false;
+  }
+
+  authPromptShown = true;
+}
+
 async function renderCards(sentences) {
   if (!container) return;
 
@@ -1011,6 +1031,7 @@ async function renderCards(sentences) {
     });
 
     ttsBtn?.addEventListener("click", async () => {
+      await maybeShowAuthOverlay();
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
 
       const isSameAudio =
@@ -1753,6 +1774,7 @@ function record(sentence, card, recordBtn = null) {
   resultBox.innerHTML = t.listening || "Listening…";
 
   recognition.onresult = (event) => {
+    maybeShowAuthOverlay();
     const transcript = event.results[0][0].transcript || "";
     const result = compareText(sentence, transcript, lang);
 

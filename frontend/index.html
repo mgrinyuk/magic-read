@@ -51,11 +51,11 @@
     <div class="landing-hero-copy">
       <p class="eyebrow">Magic Read</p>
 
-      <h1>Turn any course book into speaking practice</h1>
+      <h1>Master your pronunciation from real texts</h1>
 
       <p>
-        Practice speaking directly from the material you already use —
-        homework, articles, or real conversations
+      Paste homework, articles, dialogues, or exam texts.
+      Listen sentence by sentence, repeat aloud, and improve pronunciation naturally.
       </p>
 
       <p class="hero-support">
@@ -64,7 +64,7 @@
 
       <div class="landing-actions">
         <button class="primary-btn" type="button"
-          onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
+          onclick="document.getElementById('screen-main').scrollIntoView({ behavior: 'smooth' })">
           Try with your text
         </button>
 
@@ -84,211 +84,6 @@
       </video>
     </div>
   </section>
-
-  <section id="how-it-works" class="landing-how">
-    <div class="landing-section-head">
-      <p class="eyebrow">How it works</p>
-      <h2>From text to practice in seconds</h2>
-      <p>No course setup. No lesson planning. Just paste a text and begin.</p>
-    </div>
-
-    <div class="how-grid">
-      <div class="how-card">
-        <div class="how-number">1</div>
-        <h3>Paste or choose a text</h3>
-        <p>Use articles, dialogues, lessons, or classroom materials.</p>
-      </div>
-
-      <div class="how-card">
-        <div class="how-number">2</div>
-        <h3>Read sentence by sentence</h3>
-        <p>Stay focused without getting lost in the full text.</p>
-      </div>
-
-      <div class="how-card">
-        <div class="how-number">3</div>
-        <h3>Listen and repeat</h3>
-        <p>Move from passive reading to speaking practice.</p>
-      </div>
-
-      <div class="how-card">
-        <div class="how-number">4</div>
-        <h3>Save useful words</h3>
-        <p>Build flashcards from vocabulary you met in context.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="landing-benefits">
-    <div class="benefit-card dark">
-      <h2>Not another course.</h2>
-      <p>
-        Magic Read works with the texts you already have — real content,
-        teacher materials, dialogues, articles, and everyday language.
-      </p>
-    </div>
-
-    <div class="benefit-grid">
-      <div class="benefit-card">
-        <h3>For learners</h3>
-        <p>Practice with content you actually want to understand.</p>
-      </div>
-
-      <div class="benefit-card">
-        <h3>For teachers</h3>
-        <p>Turn texts into listening, speaking, vocabulary, and writing tasks.</p>
-      </div>
-
-      <div class="benefit-card">
-        <h3>For real use</h3>
-        <p>Learn language as it appears in context, not as isolated exercises.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="landing-final-cta">
-    <h2>Start learning from real texts</h2>
-    <p>No course. No setup. Just paste a text and begin.</p>
-    <button class="primary-btn" type="button" onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
-      Start reading
-    </button>
-  </section>
-
-</section>
-
-<p class="auth-note">Create an account to start reading with your own texts.</p>
-
-<section id="authScreen" class="auth-shell">
-    <div class="auth-card">
-      <div class="auth-left">
-        <p class="auth-eyebrow" data-i18n="welcomeMagic">Welcome to Magic Read</p>
-        <h1 data-i18n="authTitle">Turn any text into active practice</h1>
-        <p data-i18n="authSubtitle">
-          Paste a text, listen sentence by sentence, speak, translate, and save useful words.
-        </p>
-
-        <div class="auth-feature">
-          <span>🎧</span>
-          <div>
-            <strong data-i18n="listenRepeat">Listen & repeat</strong>
-            <small data-i18n="perfectPronunciation">Practice pronunciation with real texts</small>
-          </div>
-        </div>
-
-        <div class="auth-feature">
-          <span>📚</span>
-          <div>
-            <strong data-i18n="smartCards">Save words</strong>
-            <small data-i18n="studyInteractive">Build flashcards from what you read</small>
-          </div>
-        </div>
-
-        <div class="auth-feature">
-          <span>🌍</span>
-          <div>
-            <strong data-i18n="translateLearn">Understand faster</strong>
-            <small data-i18n="understandEverySentence">Translate and explore words in context</small>
-          </div>
-        </div>
-      </div>
-
-      <div class="auth-right">
-        <h2 data-i18n="welcomeBack">Welcome back 👋</h2>
-        <p class="subtle" data-i18n="loginHint">
-          Log in or create an account to continue.
-        </p>
-
-        <div id="authNameGroup" hidden>
-          <label data-i18n="name">Name</label>
-          <input
-            id="authName"
-            class="auth-input"
-            type="text"
-            data-i18n-placeholder="name"
-            placeholder="Name"
-          />
-        </div>
-
-        <label data-i18n="email">Email</label>
-        <input
-          id="authEmail"
-          class="auth-input"
-          type="email"
-          placeholder="you@example.com"
-        />
-
-        <label data-i18n="password">Password</label>
-        <input
-          id="authPassword"
-          class="auth-input"
-          type="password"
-          placeholder="••••••••"
-        />
-
-        <button id="forgotPasswordBtn" data-i18n="forgotPassword" type="button" class="auth-link-btn">
-          Forgot password?
-        </button>
-
-        <div id="forgotPasswordBox" hidden>
-          <label data-i18n="enterEmail">Enter your email</label>
-          <input
-            id="recoveryEmailInput"
-            class="auth-input"
-            type="email"
-            placeholder="you@example.com"
-          />
-
-          <button id="sendRecoveryEmailBtn" data-i18n="restorePassword" type="button" class="auth-main-btn">
-            Restore password
-          </button>
-        </div>
-
-        <button id="loginBtn" data-i18n="login" class="auth-main-btn">
-          Log in
-        </button>
-
-        <div class="auth-divider">
-          <span></span>
-          <p data-i18n="or">or</p>
-          <span></span>
-        </div>
-
-        <button id="signUpBtn" data-i18n="createAccount" class="auth-secondary-btn">
-          Create account
-        </button>
-
-        <p id="authMessage" class="auth-message"></p>
-      </div>
-    </div>
-  </section>
-
-  <section id="resetPasswordScreen" class="auth-shell" hidden>
-    <div class="auth-card reset-password-card">
-      <div class="auth-right reset-password-panel">
-        <p class="auth-eyebrow">Password recovery</p>
-        <h2 data-i18n="createNewPassword">Please create a new password.</h2>
-        <p class="subtle" data-i18n="createNewPassword">
-          Please create a new password.
-        </p>
-
-        <label data-i18n="password">Password</label>
-        <input
-          id="newPasswordInput"
-          class="auth-input"
-          type="password"
-          data-i18n-placeholder="password"
-          placeholder="Password"
-        />
-
-        <button id="updatePasswordBtn" type="button" class="auth-main-btn" data-i18n="createNewPassword">
-          Please create a new password.
-        </button>
-
-        <p id="resetPasswordMessage" class="auth-message"></p>
-      </div>
-    </div>
-  </section>
-
   <main class="main">
     <section id="screen-main" class="app-screen">
       <section class="start-panel workspace-card">
@@ -519,6 +314,230 @@
     </section>
   </main>
 
+  <section id="how-it-works" class="landing-how">
+    <div class="landing-section-head">
+      <p class="eyebrow">How it works</p>
+      <h2>From text to practice in seconds</h2>
+      <p>No course setup. No lesson planning. Just paste a text and begin.</p>
+    </div>
+
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-number">1</div>
+        <h3>Paste or choose a text</h3>
+        <p>Use articles, dialogues, lessons, or classroom materials.</p>
+      </div>
+
+      <div class="how-card">
+        <div class="how-number">2</div>
+        <h3>Read sentence by sentence</h3>
+        <p>Stay focused without getting lost in the full text.</p>
+      </div>
+
+      <div class="how-card">
+        <div class="how-number">3</div>
+        <h3>Listen and repeat</h3>
+        <p>Move from passive reading to speaking practice.</p>
+      </div>
+
+      <div class="how-card">
+        <div class="how-number">4</div>
+        <h3>Save useful words</h3>
+        <p>Build flashcards from vocabulary you met in context.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-benefits">
+    <div class="benefit-card dark">
+      <h2>Not another course.</h2>
+      <p>
+        Magic Read works with the texts you already have — real content,
+        teacher materials, dialogues, articles, and everyday language.
+      </p>
+    </div>
+
+    <div class="benefit-grid">
+      <div class="benefit-card">
+        <h3>For learners</h3>
+        <p>Practice with content you actually want to understand.</p>
+      </div>
+
+      <div class="benefit-card">
+        <h3>For teachers</h3>
+        <p>Turn texts into listening, speaking, vocabulary, and writing tasks.</p>
+      </div>
+
+      <div class="benefit-card">
+        <h3>For real use</h3>
+        <p>Learn language as it appears in context, not as isolated exercises.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-final-cta">
+    <h2>Start learning from real texts</h2>
+    <p>No course. No setup. Just paste a text and begin.</p>
+    <button class="primary-btn" type="button" onclick="document.getElementById('authScreen').scrollIntoView({ behavior: 'smooth' })">
+      Start reading
+    </button>
+  </section>
+
+</section>
+
+<section id="authScreen" class="auth-shell" hidden>
+    <div class="auth-card">
+      <div class="auth-left">
+        <p class="auth-eyebrow" data-i18n="welcomeMagic">Welcome to Magic Read</p>
+        <h1 data-i18n="authTitle">Turn any text into active practice</h1>
+        <p data-i18n="authSubtitle">
+          Paste a text, listen sentence by sentence, speak, translate, and save useful words.
+        </p>
+
+        <div class="auth-feature">
+          <span>🎧</span>
+          <div>
+            <strong data-i18n="listenRepeat">Listen & repeat</strong>
+            <small data-i18n="perfectPronunciation">Practice pronunciation with real texts</small>
+          </div>
+        </div>
+
+        <div class="auth-feature">
+          <span>📚</span>
+          <div>
+            <strong data-i18n="smartCards">Save words</strong>
+            <small data-i18n="studyInteractive">Build flashcards from what you read</small>
+          </div>
+        </div>
+
+        <div class="auth-feature">
+          <span>🌍</span>
+          <div>
+            <strong data-i18n="translateLearn">Understand faster</strong>
+            <small data-i18n="understandEverySentence">Translate and explore words in context</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-right">
+        <h2 data-i18n="welcomeBack">Welcome back 👋</h2>
+        <p class="subtle" data-i18n="loginHint">
+          Log in or create an account to continue.
+        </p>
+
+        <div id="authNameGroup" hidden>
+          <label data-i18n="name">Name</label>
+          <input
+            id="authName"
+            class="auth-input"
+            type="text"
+            data-i18n-placeholder="name"
+            placeholder="Name"
+          />
+        </div>
+
+        <label data-i18n="email">Email</label>
+        <input
+          id="authEmail"
+          class="auth-input"
+          type="email"
+          placeholder="you@example.com"
+        />
+
+        <label data-i18n="password">Password</label>
+        <input
+          id="authPassword"
+          class="auth-input"
+          type="password"
+          placeholder="••••••••"
+        />
+
+        <button id="forgotPasswordBtn" data-i18n="forgotPassword" type="button" class="auth-link-btn">
+          Forgot password?
+        </button>
+
+        <div id="forgotPasswordBox" hidden>
+          <label data-i18n="enterEmail">Enter your email</label>
+          <input
+            id="recoveryEmailInput"
+            class="auth-input"
+            type="email"
+            placeholder="you@example.com"
+          />
+
+          <button id="sendRecoveryEmailBtn" data-i18n="restorePassword" type="button" class="auth-main-btn">
+            Restore password
+          </button>
+        </div>
+
+        <button id="loginBtn" data-i18n="login" class="auth-main-btn">
+          Log in
+        </button>
+
+        <div class="auth-divider">
+          <span></span>
+          <p data-i18n="or">or</p>
+          <span></span>
+        </div>
+
+        <button id="signUpBtn" data-i18n="createAccount" class="auth-secondary-btn">
+          Create account
+        </button>
+
+        <p id="authMessage" class="auth-message"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="resetPasswordScreen" class="auth-shell" hidden>
+    <div class="auth-card reset-password-card">
+      <div class="auth-right reset-password-panel">
+        <p class="auth-eyebrow">Password recovery</p>
+        <h2 data-i18n="createNewPassword">Please create a new password.</h2>
+        <p class="subtle" data-i18n="createNewPassword">
+          Please create a new password.
+        </p>
+
+        <label data-i18n="password">Password</label>
+        <input
+          id="newPasswordInput"
+          class="auth-input"
+          type="password"
+          data-i18n-placeholder="password"
+          placeholder="Password"
+        />
+
+        <button id="updatePasswordBtn" type="button" class="auth-main-btn" data-i18n="createNewPassword">
+          Please create a new password.
+        </button>
+
+        <p id="resetPasswordMessage" class="auth-message"></p>
+      </div>
+    </div>
+  </section>
+
+  
+  <div id="authOverlay" class="auth-overlay" hidden>
+  <div class="auth-modal">
+    <button id="closeAuthOverlayBtn" class="modal-close-btn">×</button>
+    <h2>Continue your speaking practice</h2>
+
+    <p>
+      Create a free account to save texts, build vocabulary,
+      and continue pronunciation practice.
+    </p>
+
+    <div class="auth-modal-actions">
+      <button id="openSignupBtn" class="primary-btn">
+        Create free account
+      </button>
+
+      <button id="openLoginBtn" class="ghost-btn">
+        Log in
+      </button>
+    </div>
+  </div>
+</div>
   <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -1150,10 +1150,13 @@ textarea::placeholder {
 
 /* AUTH GATE */
 
-.main,
-.header-language-controls,
-#logoutBtn {
-  display: none !important;
+body.is-logged-out [data-tool-screen="flashcards"],
+body.is-logged-out [data-tool-screen="calligraphy"],
+body.is-logged-out #saveTextBtn,
+body.is-logged-out #saveTextBtnReading,
+body.is-logged-out #showSavedTextsBtn {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 body.is-logged-out .landing-page {
@@ -1164,16 +1167,15 @@ body.is-logged-out #guestLoginBtn {
   display: inline-flex !important;
 }
 
-body.is-logged-out .main,
-body.is-logged-out .header-language-controls,
-body.is-logged-out #logoutBtn,
-body.is-logged-out .profile-menu,
-body.is-logged-out .header-right .ghost-btn {
+body.is-logged-out #logoutBtn {
+  display: none !important;
+}
+
+body.is-logged-out .profile-menu {
   display: none !important;
 }
 
 body.is-logged-in #authScreen,
-body.is-logged-in .landing-page,
 body.is-logged-in #guestLoginBtn {
   display: none !important;
 }
@@ -1938,4 +1940,84 @@ body.is-logged-in .auth-note {
   #fullTextPanel .card-buttons {
     grid-template-columns: 1fr;
   }
+}
+
+/* AUTH OVERLAY */
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(10, 14, 30, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+.auth-modal {
+  width: min(440px, calc(100% - 32px));
+
+  padding: 36px;
+
+  border-radius: 28px;
+
+  background: white;
+
+  box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+
+  text-align: center;
+}
+
+.auth-modal h2 {
+  margin-bottom: 14px;
+
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.auth-modal p {
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+.auth-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+
+  margin-top: 28px;
+}
+
+.ghost-btn {
+  border: 1px solid var(--border);
+
+  border-radius: 999px;
+
+  background: white;
+
+  padding: 13px 22px;
+
+  font-weight: 800;
+}
+
+.auth-modal {
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+
+  border: none;
+  background: transparent;
+
+  font-size: 1.5rem;
+  font-weight: 800;
+
+  color: var(--text-muted);
 }
