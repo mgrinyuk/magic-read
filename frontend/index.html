@@ -407,40 +407,9 @@
 
 <section id="authScreen" class="auth-shell" hidden>
     <div class="auth-card">
-      <div class="auth-left">
-        <p class="auth-eyebrow" data-i18n="welcomeMagic">Welcome to Magic Read</p>
-        <h1 data-i18n="authTitle">Turn any text into active practice</h1>
-        <p data-i18n="authSubtitle">
-          Paste a text, listen sentence by sentence, speak, translate, and save useful words.
-        </p>
-
-        <div class="auth-feature">
-          <span>🎧</span>
-          <div>
-            <strong data-i18n="listenRepeat">Listen & repeat</strong>
-            <small data-i18n="perfectPronunciation">Practice pronunciation with real texts</small>
-          </div>
-        </div>
-
-        <div class="auth-feature">
-          <span>📚</span>
-          <div>
-            <strong data-i18n="smartCards">Save words</strong>
-            <small data-i18n="studyInteractive">Build flashcards from what you read</small>
-          </div>
-        </div>
-
-        <div class="auth-feature">
-          <span>🌍</span>
-          <div>
-            <strong data-i18n="translateLearn">Understand faster</strong>
-            <small data-i18n="understandEverySentence">Translate and explore words in context</small>
-          </div>
-        </div>
-      </div>
 
       <div class="auth-right">
-        <h2 data-i18n="welcomeBack">Welcome back 👋</h2>
+        <h2 id="authTitleText">Create your free account</h2>
         <p class="subtle" data-i18n="loginHint">
           Log in or create an account to continue.
         </p>
@@ -503,6 +472,12 @@
         <button id="signUpBtn" data-i18n="createAccount" class="auth-secondary-btn">
           Create account
         </button>
+        <p class="auth-switch-text">
+          Already have an account?
+          <button id="switchToLoginBtn" type="button">
+            Log in
+          </button>
+        </p>
 
         <p id="authMessage" class="auth-message"></p>
       </div>

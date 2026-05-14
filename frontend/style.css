@@ -184,41 +184,26 @@ h1 {
 /* AUTH */
 
 .auth-shell {
-  width: min(1120px, calc(100% - 40px));
-  margin: 46px auto 72px;
+  width: 100%;
+  margin: 48px 0 80px;
 }
 
 .auth-card {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  min-height: 600px;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
+  width: min(460px, calc(100% - 24px));
+
+  margin: 0 auto;
+
+  padding: 42px 34px;
+
+  border-radius: 28px;
+
   background: var(--surface);
+
   border: 1px solid var(--border);
+
   box-shadow: var(--shadow-soft);
 }
 
-.auth-left {
-  padding: 64px 56px;
-  background: var(--brand-dark);
-  color: var(--text-on-dark);
-}
-
-.auth-left h1 {
-  max-width: 580px;
-  margin: 24px 0;
-  font-size: clamp(2.5rem, 5vw, 4.4rem);
-  line-height: 0.98;
-  letter-spacing: -0.075em;
-}
-
-.auth-left > p {
-  max-width: 520px;
-  color: var(--text-on-dark-soft);
-  font-size: 1.12rem;
-  line-height: 1.62;
-}
 
 .auth-eyebrow,
 .eyebrow {
@@ -234,38 +219,14 @@ h1 {
   color: var(--yellow);
 }
 
-.auth-feature {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.auth-feature span {
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.auth-feature strong {
-  display: block;
-  color: white;
-}
-
-.auth-feature small {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-on-dark-soft);
-}
 
 .auth-right {
-  padding: 64px 58px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+}
+
+.auth-right label {
+  margin: 16px 0 6px;
 }
 
 .auth-right h2 {
