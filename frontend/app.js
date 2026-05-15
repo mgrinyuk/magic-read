@@ -79,6 +79,7 @@ let popupTimeout = null;
 let currentText = "";
 let currentSentences = [];
 let savedTextsCache = null;
+const segmentCache = new Map();
 
 const FLASHCARD_STORAGE_KEY = "magicread_flashcard_decks";
 let flashcardDecks = [];
@@ -498,6 +499,34 @@ updateLanguageBasedUI();
    MAIN READING FLOW
 ----------------------------- */
 
+async function preloadChineseSegments(texts) {
+  if (sourceLangSelect.value !== "zh") return;
+
+  const uniqueTexts = [...new Set(texts.filter(Boolean))];
+
+  const missingTexts = uniqueTexts.filter(text => !segmentCache.has(text));
+
+  if (!missingTexts.length) return;
+
+  const response = await fetch(`${API_BASE}/api/segment-many`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ texts: missingTexts })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Batch segmentation failed");
+  }
+
+  (data.results || []).forEach(item => {
+    segmentCache.set(item.text, item.words || []);
+  });
+}
+
 async function startReadingFromText(text) {
   const cleanText = text.trim();
 
@@ -534,10 +563,14 @@ async function startReadingFromText(text) {
     currentText = cleanText;
     currentSentences = sentences;
 
+    if (sourceLangSelect.value === "zh") {
+      await preloadChineseSegments([cleanText, ...sentences]);
+    }
+
     inputText.value = cleanText;
     if (startComposerArea) startComposerArea.hidden = true;
 
-   showImportedText(cleanText);
+   await showImportedText(cleanText);
    await renderCards(sentences);
 
     if (fullTextTranslation) fullTextTranslation.textContent = "";
@@ -841,28 +874,16 @@ async function showImportedText(text) {
     fullTextContent.innerHTML = html;
     attachWordListeners(fullTextContent);
 
-    try {
-      const response = await fetch(`${API_BASE}/api/segment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text })
-      });
+    const cachedWords = segmentCache.get(text) || [];
 
-      const data = await response.json();
-      fullTextPinyin.textContent = (data.words || [])
-        .map(item => item.pinyin || item.word)
-        .join(" ");
-    } catch (error) {
-      console.error("Full text pinyin error:", error);
-      fullTextPinyin.textContent = "";
-    }
-  } else {
-    fullTextContent.innerHTML = renderClickableSentence(text, sourceLangSelect.value);
-    fullTextPinyin.textContent = "";
-    attachWordListeners(fullTextContent);
-  }
+    fullTextPinyin.textContent = cachedWords
+      .map(item => item.pinyin || item.word)
+      .join(" ");
+      } else {
+        fullTextContent.innerHTML = renderClickableSentence(text, sourceLangSelect.value);
+        fullTextPinyin.textContent = "";
+        attachWordListeners(fullTextContent);
+      }
 
   if (fullTextTranslation) fullTextTranslation.textContent = "";
   fullTextPinyin.hidden = true;
@@ -972,21 +993,28 @@ function renderClickableSentence(sentence, lang) {
 }
 
 async function renderChineseSentence(sentence) {
-  const response = await fetch(`${API_BASE}/api/segment`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ text: sentence })
-  });
+  let words = segmentCache.get(sentence);
 
-  const data = await response.json();
+  if (!words) {
+    const response = await fetch(`${API_BASE}/api/segment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text: sentence })
+    });
 
-  if (!response.ok) {
-    throw new Error(data.error || "Segmentation failed");
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Segmentation failed");
+    }
+
+    words = data.words || [];
+    segmentCache.set(sentence, words);
   }
 
-  return data.words.map(item => {
+  return words.map(item => {
     const word = item.word;
     const py = item.pinyin || "";
 

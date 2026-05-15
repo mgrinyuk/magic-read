@@ -236,8 +236,8 @@ app.post("/api/create-writing-sheet", (req, res) => {
             const currentChar = word?.[col];
 
             if (currentChar) {
-              if (fs.existsSync(fontPath)) {
-                doc.font(fontPath);
+              if (fs.existsSync(zhFontPath)) {
+                doc.font(zhFontPath);
               } else {
                 doc.font("Helvetica");
               }
@@ -300,6 +300,42 @@ app.post("/api/split-text", (req, res) => {
   res.json({ sentences });
 });
 
+function segmentChineseText(text) {
+  let words = [];
+
+  try {
+    words = nodejieba.cut(text, true);
+  } catch (jiebaError) {
+    console.error("nodejieba failed:", jiebaError);
+  }
+
+  const mostlySingleChars =
+    words.length > 0 &&
+    words.filter(w => /[\u4e00-\u9fff]/.test(w) && w.length === 1).length / words.length > 0.7;
+
+  if (!words.length || mostlySingleChars) {
+    try {
+      const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
+      words = Array.from(segmenter.segment(text))
+        .map(item => item.segment)
+        .filter(item => item.trim());
+    } catch (intlError) {
+      console.error("Intl.Segmenter failed:", intlError);
+    }
+  }
+
+  if (!words.length) {
+    words = [...text].filter(char => char.trim());
+  }
+
+  return words.map(word => ({
+    word,
+    pinyin: /[\u4e00-\u9fff]/.test(word)
+      ? pinyin(word, { toneType: "symbol", type: "array" }).join(" ")
+      : ""
+  }));
+}
+
 app.post("/api/segment", (req, res) => {
   const { text } = req.body;
 
@@ -308,50 +344,33 @@ app.post("/api/segment", (req, res) => {
   }
 
   try {
-    let words = [];
-
-    // 1. Best option: nodejieba
-    try {
-      words = nodejieba.cut(text, true); // true = HMM mode, better for unknown words
-    } catch (jiebaError) {
-      console.error("nodejieba failed:", jiebaError);
-    }
-
-    // 2. If nodejieba fails or gives mostly single characters, use Intl.Segmenter
-    const mostlySingleChars =
-      words.length > 0 &&
-      words.filter(w => /[\u4e00-\u9fff]/.test(w) && w.length === 1).length / words.length > 0.7;
-
-    if (!words.length || mostlySingleChars) {
-      try {
-        const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
-
-        words = Array.from(segmenter.segment(text))
-          .map(item => item.segment)
-          .filter(item => item.trim());
-      } catch (intlError) {
-        console.error("Intl.Segmenter failed:", intlError);
-      }
-    }
-
-    // 3. Last fallback only
-    if (!words.length) {
-      words = [...text].filter(char => char.trim());
-    }
-
-    const result = words.map(word => ({
-      word,
-      pinyin: /[\u4e00-\u9fff]/.test(word)
-        ? pinyin(word, { toneType: "symbol", type: "array" }).join(" ")
-        : ""
-    }));
-
-    res.json({ words: result });
+    res.json({ words: segmentChineseText(text) });
   } catch (error) {
     console.error("Segmentation route error:", error);
     res.status(500).json({ error: "Segmentation failed" });
   }
 });
+
+app.post("/api/segment-many", (req, res) => {
+  const { texts } = req.body;
+
+  if (!Array.isArray(texts)) {
+    return res.status(400).json({ error: "texts must be an array" });
+  }
+
+  try {
+    const results = texts.map(text => ({
+      text,
+      words: segmentChineseText(text)
+    }));
+
+    res.json({ results });
+  } catch (error) {
+    console.error("Batch segmentation error:", error);
+    res.status(500).json({ error: "Batch segmentation failed" });
+  }
+});
+
 
 app.post("/api/dictionary", (req, res) => {
   const { word } = req.body;
