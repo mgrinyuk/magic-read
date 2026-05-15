@@ -75,6 +75,8 @@ let currentAudioRate = 1.0;
 
 let ttsSlowMode = false;
 let popupTimeout = null;
+let guestPracticeCount = 0;
+const FREE_TRIAL_LISTENS = 3;
 
 let currentText = "";
 let currentSentences = [];
@@ -535,6 +537,21 @@ async function startReadingFromText(text) {
     return;
   }
 
+  if (container) {
+    container.innerHTML = `
+      <div class="magic-loading">
+        <div class="magic-loader"></div>
+        <strong>Magic is being created ✨</strong>
+        <p>Please wait while your text becomes practice cards.</p>
+      </div>
+    `;
+  }
+
+  if (createBtn) {
+    createBtn.disabled = true;
+    createBtn.textContent = "Creating magic...";
+  }
+
   try {
     const res = await fetch(`${API_BASE}/api/split-text`, {
       method: "POST",
@@ -570,8 +587,8 @@ async function startReadingFromText(text) {
     inputText.value = cleanText;
     if (startComposerArea) startComposerArea.hidden = true;
 
-   await showImportedText(cleanText);
-   await renderCards(sentences);
+    await showImportedText(cleanText);
+    await renderCards(sentences);
 
     if (fullTextTranslation) fullTextTranslation.textContent = "";
     if (readingControlStrip) readingControlStrip.hidden = false;
@@ -582,6 +599,11 @@ async function startReadingFromText(text) {
   } catch (error) {
     console.error("Start reading error:", error);
     alert("Could not start reading. Check the Console and Terminal.");
+  } finally {
+    if (createBtn) {
+      createBtn.disabled = false;
+      createBtn.textContent = getT().start || "Start";
+    }
   }
 }
 
@@ -1136,7 +1158,11 @@ async function renderCards(sentences) {
         document.body.style.overflow = "hidden";
         return;
       }
-      await maybeShowAuthOverlay();
+      guestPracticeCount += 1;
+
+      if (guestPracticeCount >= FREE_TRIAL_LISTENS) {
+        await maybeShowAuthOverlay();
+      }
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
 
       const isSameAudio =
@@ -1159,11 +1185,11 @@ async function renderCards(sentences) {
       ttsBtn.textContent = "Pause";
 
       await playGoogleTTS(cleanSentence, sourceLangSelect.value, () => {
-        ttsBtn.textContent = t.listen;
+        ttsBtn.textContent = getT().listen || "Listen";
 
         if (recordBtn) {
           recordBtn.hidden = false;
-          recordBtn.textContent = t.yourTurn;
+          recordBtn.textContent = getT().yourTurn || "Your turn";
         }
       });
     });
@@ -1227,6 +1253,7 @@ async function renderCards(sentences) {
       });
     });
   });
+  
 }
 
 /* -----------------------------
@@ -1863,7 +1890,12 @@ function record(sentence, card, recordBtn = null) {
 
   stopAllTTS();
 
-  const recognition = new SpeechRecognition();
+  setTimeout(() => {
+    startRecognitionNow();
+  }, 300);
+
+  function startRecognitionNow() {
+    const recognition = new SpeechRecognition();
   currentRecognition = recognition;
 
   const lang = mapToSpeechLang(sourceLangSelect.value);
@@ -1899,12 +1931,17 @@ function record(sentence, card, recordBtn = null) {
   };
 
   recognition.onerror = (event) => {
-    if (event.error === "aborted") {
-      return;
-    }
+  if (event.error === "aborted") return;
 
-    resultBox.innerHTML = `Recognition error: ${escapeHtml(event.error)}`;
+  const messages = {
+    "not-allowed": "Microphone is blocked. Please allow microphone access in your browser.",
+    "no-speech": "I didn't hear anything. Try again and speak after pressing the button.",
+    "audio-capture": "No microphone found. Please check your device.",
+    "network": "Speech recognition network error. Try again."
   };
+
+  resultBox.innerHTML = messages[event.error] || `Recognition error: ${escapeHtml(event.error)}`;
+};
 
   recognition.onend = () => {
     currentRecognition = null;
@@ -1925,6 +1962,7 @@ function record(sentence, card, recordBtn = null) {
       recordBtn.textContent = t.yourTurn;
     }
   }
+ }
 }
 
 /* -----------------------------

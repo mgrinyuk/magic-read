@@ -1805,3 +1805,39 @@ body.is-logged-in .top-ui-language {
   font-size: 1.05rem;
   line-height: 1.65;
 }
+.magic-loading {
+  margin-top: 22px;
+  padding: 28px;
+  border-radius: 24px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  text-align: center;
+  color: var(--text);
+}
+
+.magic-loading strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1.2rem;
+}
+
+.magic-loading p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.magic-loader {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  border: 4px solid rgba(58, 154, 255, 0.2);
+  border-top-color: var(--blue);
+  animation: magicSpin 0.8s linear infinite;
+}
+
+@keyframes magicSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
