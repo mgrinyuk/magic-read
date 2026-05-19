@@ -184,15 +184,12 @@ app.post("/api/create-writing-sheet", (req, res) => {
 
     const lang = (sourceLang || "zh").trim();
 
-    const outputDir = path.join(__dirname, "public", "worksheets");
-    fs.mkdirSync(outputDir, { recursive: true });
-
-    const filename = `writing-sheet-${lang}-${Date.now()}.pdf`;
-    const filepath = path.join(outputDir, filename);
-
+    const filename = `writing-sheet-${lang}.pdf`;
     const doc = new PDFDocument({ size: "A4", margin: 40 });
-    const stream = fs.createWriteStream(filepath);
-    doc.pipe(stream);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    doc.pipe(res);
 
     if (lang === "ru" || lang === "tr") {
       const words = text
@@ -306,15 +303,11 @@ app.post("/api/create-writing-sheet", (req, res) => {
     }
 
     doc.end();
-
-    stream.on("finish", () => {
-      res.json({
-        fileUrl: `${req.protocol}://${req.get("host")}/worksheets/${filename}`
-      });
-    });
   } catch (error) {
     console.error("Writing sheet error:", error);
-    res.status(500).json({ error: "Could not create writing sheet" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Could not create writing sheet" });
+    }
   }
 });
 
@@ -872,9 +865,6 @@ app.post("/api/export-flashcard-deck", (req, res) => {
       return res.status(400).json({ error: "No characters to export" });
     }
 
-    const outputDir = path.join(__dirname, "public", "exports");
-    fs.mkdirSync(outputDir, { recursive: true });
-
     const safeName =
       deckName
         .toLowerCase()
@@ -882,12 +872,12 @@ app.post("/api/export-flashcard-deck", (req, res) => {
         .replace(/^-+|-+$/g, "")
         .slice(0, 50) || "deck";
 
-    const filename = `${safeName}-${Date.now()}.pdf`;
-    const filepath = path.join(outputDir, filename);
-
+    const filename = `${safeName}.pdf`;
     const doc = new PDFDocument({ size: "A4", margin: 40 });
-    const stream = fs.createWriteStream(filepath);
-    doc.pipe(stream);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    doc.pipe(res);
 
     const boxSize = 40;
     const cols = 12;
@@ -949,15 +939,11 @@ app.post("/api/export-flashcard-deck", (req, res) => {
     }
 
     doc.end();
-
-    stream.on("finish", () => {
-      res.json({
-        fileUrl: `${req.protocol}://${req.get("host")}/exports/${filename}`
-      });
-    });
   } catch (error) {
     console.error("Flashcard deck export error:", error);
-    res.status(500).json({ error: "Could not export deck" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Could not export deck" });
+    }
   }
 });
 

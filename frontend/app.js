@@ -92,6 +92,7 @@ let currentText = "";
 let currentSentences = [];
 let savedTextsCache = null;
 const segmentCache = new Map();
+const ttsCache = new Map();
 
 const FLASHCARD_STORAGE_KEY = "magicread_flashcard_decks";
 let flashcardDecks = [];
@@ -435,7 +436,7 @@ profileMenuBtn?.addEventListener("click", () => {
 });
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest(".profile-menu")) {
+  if (!e.target.closest(".profile-menu") && profileDropdown) {
     profileDropdown.hidden = true;
   }
 });
@@ -1712,23 +1713,35 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   speechSynthesis.cancel();
 
   try {
-    const response = await fetchWithAuth(`${API_BASE}/api/tts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        sourceLang: effectiveLang,
-        speakingRate: effectiveRate
-      })
-    });
+    const cacheKey = `${text}|${effectiveLang}|${effectiveRate}`;
+    let audioData = ttsCache.get(cacheKey);
 
-    const data = await response.json();
+    if (!audioData) {
+      const response = await fetchWithAuth(`${API_BASE}/api/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          sourceLang: effectiveLang,
+          speakingRate: effectiveRate
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error(data.error || "TTS failed");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "TTS failed");
+      }
+
+      audioData = { audioBase64: data.audioBase64, mimeType: data.mimeType };
+
+      if (ttsCache.size >= 50) {
+        ttsCache.delete(ttsCache.keys().next().value);
+      }
+      ttsCache.set(cacheKey, audioData);
     }
 
-    const audio = new Audio(`data:${data.mimeType};base64,${data.audioBase64}`);
+    const audio = new Audio(`data:${audioData.mimeType};base64,${audioData.audioBase64}`);
     currentAudio = audio;
     currentAudioText = text;
     currentAudioRate = effectiveRate;
@@ -2214,11 +2227,17 @@ async function deleteCurrentFlashcard() {
   if (!deck || !deck.cards.length) return;
 
   const card = deck.cards[currentFlashcardIndex];
-  deck.cards.splice(currentFlashcardIndex, 1);
 
   if (card?.id) {
-    await supabase.from("flashcards").delete().eq("id", card.id);
+    const { error } = await supabase.from("flashcards").delete().eq("id", card.id);
+    if (error) {
+      console.error("Delete flashcard error:", error);
+      alert("Could not delete card.");
+      return;
+    }
   }
+
+  deck.cards.splice(currentFlashcardIndex, 1);
 
   if (currentFlashcardIndex >= deck.cards.length) {
     currentFlashcardIndex = Math.max(0, deck.cards.length - 1);
@@ -2235,7 +2254,12 @@ async function clearFlashcards() {
   const confirmed = confirm(`Clear all cards in "${deck.name}"?`);
   if (!confirmed) return;
 
-  await supabase.from("flashcards").delete().eq("deck_id", deck.id);
+  const { error } = await supabase.from("flashcards").delete().eq("deck_id", deck.id);
+  if (error) {
+    console.error("Clear flashcards error:", error);
+    alert("Could not clear cards.");
+    return;
+  }
 
   deck.cards = [];
   currentFlashcardIndex = 0;
@@ -2294,7 +2318,12 @@ async function deleteCurrentDeck() {
   const confirmed = confirm(`Delete deck "${deck.name}"?`);
   if (!confirmed) return;
 
-  await supabase.from("flashcard_decks").delete().eq("id", deck.id);
+  const { error } = await supabase.from("flashcard_decks").delete().eq("id", deck.id);
+  if (error) {
+    console.error("Delete deck error:", error);
+    alert("Could not delete deck.");
+    return;
+  }
 
   flashcardDecks = flashcardDecks.filter(d => d.id !== currentDeckId);
   currentDeckId = flashcardDecks[0]?.id || null;
@@ -2345,17 +2374,19 @@ async function exportCurrentDeck() {
       })
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
+      const data = await response.json();
       throw new Error(data.error || "Export failed");
     }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
 
     if (exportResult) {
       exportResult.innerHTML = "";
 
       const link = document.createElement("a");
-      link.href = data.fileUrl;
+      link.href = url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.className = "download-pdf-link";
@@ -2454,16 +2485,18 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
       })
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
+      const data = await response.json();
       throw new Error(data.error || "Failed to create writing sheet");
     }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
 
     writingResult.innerHTML = "";
 
     const link = document.createElement("a");
-    link.href = data.fileUrl;
+    link.href = url;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.className = "download-pdf-link";
