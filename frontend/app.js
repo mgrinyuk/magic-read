@@ -7,6 +7,16 @@ const API_BASE = "https://magic-read.onrender.com";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+async function fetchWithAuth(url, options = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return fetch(url, options);
+  return fetch(url, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${token}` }
+  });
+}
+
 /* -----------------------------
    DOM
 ----------------------------- */
@@ -510,7 +520,7 @@ async function preloadChineseSegments(texts) {
 
   if (!missingTexts.length) return;
 
-  const response = await fetch(`${API_BASE}/api/segment-many`, {
+  const response = await fetchWithAuth(`${API_BASE}/api/segment-many`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -553,7 +563,7 @@ async function startReadingFromText(text) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/split-text`, {
+    const res = await fetchWithAuth(`${API_BASE}/api/split-text`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -671,7 +681,7 @@ async function loadTextLibrary() {
 
   try {
     const lang = sourceLangSelect.value;
-    const res = await fetch(`${API_BASE}/api/game-texts?lang=${lang}`);
+    const res = await fetchWithAuth(`${API_BASE}/api/game-texts?lang=${lang}`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -710,7 +720,7 @@ async function loadTextLibrary() {
 async function loadLibraryText(id) {
   try {
     const lang = sourceLangSelect.value;
-    const res = await fetch(`${API_BASE}/api/game-texts/${id}?lang=${lang}`);
+    const res = await fetchWithAuth(`${API_BASE}/api/game-texts/${id}?lang=${lang}`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -945,7 +955,7 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
   try {
     fullTextTranslation.textContent = "Translating...";
 
-    const response = await fetch(`${API_BASE}/api/translate`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/translate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1018,7 +1028,7 @@ async function renderChineseSentence(sentence) {
   let words = segmentCache.get(sentence);
 
   if (!words) {
-    const response = await fetch(`${API_BASE}/api/segment`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/segment`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1207,7 +1217,7 @@ async function renderCards(sentences) {
         sentencePinyinBox.textContent = "Loading pinyin...";
 
         try {
-          const response = await fetch(`${API_BASE}/api/segment`, {
+          const response = await fetchWithAuth(`${API_BASE}/api/segment`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
@@ -1266,7 +1276,7 @@ async function translateSentence(sentence, card) {
   try {
     translationBox.textContent = "Translating...";
 
-    const response = await fetch(`${API_BASE}/api/translate`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/translate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1297,7 +1307,7 @@ async function grammar(sentence, card) {
   try {
     resultBox.innerHTML = "Checking grammar...";
 
-    const response = await fetch(`${API_BASE}/api/grammar`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/grammar`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1351,7 +1361,7 @@ async function openGrammarArticle(articleId, card) {
   resultBox.innerHTML = "Loading explanation...";
 
   try {
-    const response = await fetch(`${API_BASE}/api/grammar/${articleId}?lang=${sourceLangSelect.value}`);
+    const response = await fetchWithAuth(`${API_BASE}/api/grammar/${articleId}?lang=${sourceLangSelect.value}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -1558,7 +1568,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
   }
 
   try {
-    const dictResponse = await fetch(`${API_BASE}/api/dictionary`, {
+    const dictResponse = await fetchWithAuth(`${API_BASE}/api/dictionary`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1581,7 +1591,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
       return;
     }
 
-    const response = await fetch(`${API_BASE}/api/translate`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/translate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1644,7 +1654,7 @@ async function prepareTTSInput(text, lang) {
 
   if (lang === "zh") {
     try {
-      const response = await fetch(`${API_BASE}/api/segment`, {
+      const response = await fetchWithAuth(`${API_BASE}/api/segment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -1702,7 +1712,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   speechSynthesis.cancel();
 
   try {
-    const response = await fetch(`${API_BASE}/api/tts`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/tts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -2324,7 +2334,7 @@ async function exportCurrentDeck() {
   if (exportResult) exportResult.textContent = "Creating printable deck...";
 
   try {
-    const response = await fetch(`${API_BASE}/api/export-flashcard-deck`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/export-flashcard-deck`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -2433,7 +2443,7 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
   writingResult.textContent = "Creating PDF...";
 
   try {
-    const response = await fetch(`${API_BASE}/api/create-writing-sheet`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/create-writing-sheet`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

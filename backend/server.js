@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { translateText } from "./services/translateService.js";
 import fs from "fs";
 import path from "path";
@@ -13,8 +15,54 @@ import PDFDocument from "pdfkit";
 import Papa from "papaparse";
 
 
-// optional, but recommended for better word coverage
 dotenv.config();
+
+const supabase = createSupabaseClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+// Attaches req.user from a Bearer JWT; silently treats invalid tokens as guests.
+async function extractUser(req, _res, next) {
+  req.user = null;
+  const auth = req.headers.authorization;
+  if (auth?.startsWith("Bearer ")) {
+    try {
+      const { data } = await supabase.auth.getUser(auth.slice(7));
+      req.user = data?.user ?? null;
+    } catch {
+      // network hiccup — treat as guest
+    }
+  }
+  next();
+}
+
+// Rate limiter for expensive Google API calls (TTS, translate).
+// Authenticated users are skipped; guests are capped at 15/hour.
+const expensiveLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 15,
+  skip: (req) => req.user !== null,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Rate limit exceeded. Please sign in for more access." }
+});
+
+// Baseline protection for all endpoints (300 req / 15 min per IP).
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." }
+});
+
+function requireAdmin(req, res, next) {
+  if (req.headers["x-admin-secret"] !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  next();
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,6 +142,7 @@ const ttsClient = new textToSpeech.TextToSpeechClient({
 
 app.use(cors());
 app.use(express.json());
+app.use(globalLimiter);
 
 // parsing texts
 app.get("/api/game-texts", async (req, res) => {
@@ -399,7 +448,7 @@ app.post("/api/dictionary", (req, res) => {
   }
 });
 
-app.post("/api/tts", async (req, res) => {
+app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
   try {
     const { text, sourceLang, speakingRate } = req.body;
 
@@ -467,7 +516,7 @@ app.post("/api/tts", async (req, res) => {
 });
 
 
-app.post("/api/translate", async (req, res) => {
+app.post("/api/translate", extractUser, expensiveLimiter, async (req, res) => {
   try {
     const { sentence, sourceLang, targetLang } = req.body;
 
@@ -585,7 +634,7 @@ app.post("/api/grammar", async (req, res) => {
   }
 });
 
-app.post("/api/admin/reload-grammar", async (req, res) => {
+app.post("/api/admin/reload-grammar", requireAdmin, async (req, res) => {
   try {
     grammarCache.zh = {
       data: await loadGrammarFromSheet("GrammarZH"),
