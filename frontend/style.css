@@ -1903,15 +1903,36 @@ body.is-logged-in .top-ui-language {
   justify-content: flex-end;
 }
 
-/* Voice picker panel */
+/* Voice picker panel — fixed floating card */
 .voice-picker-panel {
-  margin-top: 10px;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1200;
+  width: 300px;
   padding: 16px;
   border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-pop);
-  max-height: 320px;
+  max-height: 360px;
   overflow-y: auto;
+}
+
+/* Composer voice button */
+.voice-composer-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0 14px;
+  height: 40px;
+  font-size: 15px;
+  color: var(--text-soft);
+  transition: border-color var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+.voice-composer-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
 }
 .voice-picker-panel .voice-picker-heading {
   margin: 0 0 12px;

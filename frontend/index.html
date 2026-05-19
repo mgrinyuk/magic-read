@@ -15,9 +15,7 @@
     </a>
 
     <div class="header-right">
-      <button id="guestLoginBtn" class="primary-btn">
-  Log in
-</button>
+      <button id="guestLoginBtn" class="primary-btn" data-i18n="login">Log in</button>
 
       <div class="top-ui-language">
         <select id="uiLang" class="menu-select">
@@ -186,6 +184,7 @@
               <button id="createCardsBtn" data-i18n="start" class="primary-btn">
                 Start
               </button>
+              <button id="voicePickerBtnComposer" type="button" class="voice-composer-btn" data-i18n="voice" title="Voice">🎙</button>
             </div>
 
             <button id="saveTextBtn" data-i18n="saveText" class="text-link-btn" type="button">
@@ -213,11 +212,6 @@
             </div>
           </div>
 
-          <div id="voicePickerPanel" class="voice-picker-panel panel-box" hidden>
-            <p class="voice-picker-heading" data-i18n="voicePickerHeading">Choose a voice for this language</p>
-            <div id="voicePickerList" class="voice-picker-list"></div>
-          </div>
-
           <div id="fullTextContent" class="full-text-box"></div>
           <p class="word-save-hint" data-i18n="wordSaveHint">Tip: click any word to hear it, translate it, and save it to flashcards.</p>
           <div id="fullTextPinyin" class="full-text-pinyin" hidden></div>
@@ -239,9 +233,7 @@
 
       <section id="screen-flashcards" class="app-screen">
         <section class="workspace-card">
-          <button id="backToReaderBtn" class="ghost-btn">
-            ← Back to reading
-          </button>
+          <button id="backToReaderBtn" class="ghost-btn" data-i18n="backToReading">← Back to reading</button>
           <div class="workspace-head">
             <div>
               <p class="eyebrow" data-i18n="flashcards">Flashcards</p>
@@ -251,10 +243,10 @@
 
             <div class="flashcard-top-actions">
               <select id="flashcardDeckSelect" class="deck-select"></select>
-              <button id="flashcardNewDeckBtn" class="game-nav-btn">New deck</button>
-              <button id="flashcardDeleteDeckBtn" class="game-nav-btn">Delete deck</button>
-              <button id="flashcardClearBtn" class="game-nav-btn">Clear</button>
-              <button id="flashcardExportBtn" class="game-nav-btn game-nav-btn-primary">Export PDF</button>
+              <button id="flashcardNewDeckBtn" class="game-nav-btn" data-i18n="newDeck">New deck</button>
+              <button id="flashcardDeleteDeckBtn" class="game-nav-btn" data-i18n="deleteDeck">Delete deck</button>
+              <button id="flashcardClearBtn" class="game-nav-btn" data-i18n="clear">Clear</button>
+              <button id="flashcardExportBtn" class="game-nav-btn game-nav-btn-primary" data-i18n="exportPDF">Export PDF</button>
             </div>
           </div>
 
@@ -271,7 +263,7 @@
             <div id="flashcardCard" class="flashcard-card">
               <div class="flashcard-card-inner">
                 <div class="flashcard-face flashcard-front">
-                  <p class="flashcard-label">Word</p>
+                  <p class="flashcard-label" data-i18n="wordLabel">Word</p>
                   <h3 id="flashcardWord">图书馆</h3>
                   <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
 
@@ -282,7 +274,7 @@
                 </div>
 
                 <div class="flashcard-face flashcard-back">
-                  <p class="flashcard-label">Context</p>
+                  <p class="flashcard-label" data-i18n="context">Context</p>
                   <p id="flashcardSentence" class="flashcard-sentence">我在图书馆学习中文。</p>
                   <p id="flashcardSentencePinyin" class="flashcard-pinyin">
                     Wǒ zài túshūguǎn xuéxí Zhōngwén.
@@ -298,7 +290,7 @@
 
             <div class="game-navigation">
               <button id="flashcardPrevBtn" class="game-nav-btn" data-i18n="previous">Previous</button>
-              <button id="flashcardDeleteBtn" class="game-nav-btn">Delete</button>
+              <button id="flashcardDeleteBtn" class="game-nav-btn" data-i18n="delete">Delete</button>
               <button id="flashcardNextBtn" class="game-nav-btn game-nav-btn-primary" data-i18n="next">Next</button>
             </div>
           </div>
@@ -307,23 +299,19 @@
 
       <section id="screen-writing" class="app-screen">
         <section class="workspace-card">
-          <button id="backToReaderBtnWriting" class="ghost-btn">
-            ← Back to reading
-          </button>
+          <button id="backToReaderBtnWriting" class="ghost-btn" data-i18n="backToReading">← Back to reading</button>
           <div class="workspace-head">
             <div>
               <p class="eyebrow" data-i18n="calligraphy">Calligraphy</p>
               <h3 data-i18n="calligraphy">Calligraphy</h3>
-              <p class="subtle">Chinese and Russian only</p>
+              <p class="subtle" data-i18n="calligraphyHint">Chinese and Russian only</p>
             </div>
           </div>
 
-          <textarea id="writingInput" placeholder="Paste characters or words"></textarea>
+          <textarea id="writingInput" data-i18n-placeholder="writingPlaceholder" placeholder="Paste characters or words"></textarea>
 
           <div class="action-group">
-            <button id="createWritingSheetBtn" type="button" class="primary-btn">
-              Create sheet
-            </button>
+            <button id="createWritingSheetBtn" type="button" class="primary-btn" data-i18n="createSheet">Create sheet</button>
           </div>
 
           <div id="writingResult" class="translation-box panel-box"></div>
@@ -540,6 +528,11 @@
     </div>
   </div>
 </div>
+  <div id="voicePickerPanel" class="voice-picker-panel" hidden>
+    <p class="voice-picker-heading" data-i18n="voicePickerHeading">Choose a voice for this language</p>
+    <div id="voicePickerList" class="voice-picker-list"></div>
+  </div>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>

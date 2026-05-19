@@ -94,6 +94,8 @@ const segmentCache = new Map();
 const ttsCache = new Map();
 const libraryCache = {};
 
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
 /* -----------------------------
    VOICE PICKER
 ----------------------------- */
@@ -355,12 +357,12 @@ function openAuthFromOverlay(mode = "signup") {
     if (loginBtn) loginBtn.hidden = true;
     if (signUpBtn) {
       signUpBtn.hidden = false;
-      signUpBtn.textContent = "Create account";
+      signUpBtn.textContent = getT().createAccount;
     }
 
     if (authMessage) {
       authMessage.textContent =
-        "Create an account to save your texts, vocabulary, and practice.";
+        getT().createAccountHint;
     }
   }
 
@@ -370,11 +372,11 @@ function openAuthFromOverlay(mode = "signup") {
     if (loginBtn) loginBtn.hidden = false;
     if (signUpBtn) {
       signUpBtn.hidden = false;
-      signUpBtn.textContent = "Create account";
+      signUpBtn.textContent = getT().createAccount;
     }
 
     if (authMessage) {
-      authMessage.textContent = "Log in to continue your practice.";
+      authMessage.textContent = getT().loginToContinue;
     }
   }
 
@@ -663,13 +665,7 @@ function updateLanguageBasedUI() {
 function updateWritingPlaceholder() {
   if (!writingInput || !sourceLangSelect) return;
 
-  if (sourceLangSelect.value === "ru") {
-    writingInput.placeholder = "Введите русские слова или фразы";
-  } else if (sourceLangSelect.value === "zh") {
-    writingInput.placeholder = "请输入汉字";
-  } else {
-    writingInput.placeholder = "Paste characters or words";
-  }
+  writingInput.placeholder = getT().writingPlaceholder;
 }
 
 sourceLangSelect?.addEventListener("change", () => {
@@ -1186,6 +1182,16 @@ function toggleSlowMode() {
 
 globalSlowBtn?.addEventListener("click", toggleSlowMode);
 document.getElementById("voicePickerBtn")?.addEventListener("click", openVoicePicker);
+document.getElementById("voicePickerBtnComposer")?.addEventListener("click", openVoicePicker);
+document.addEventListener("click", (e) => {
+  const panel = document.getElementById("voicePickerPanel");
+  if (!panel || panel.hidden) return;
+  if (!e.target.closest("#voicePickerPanel") &&
+      !e.target.closest("#voicePickerBtn") &&
+      !e.target.closest("#voicePickerBtnComposer")) {
+    panel.hidden = true;
+  }
+});
 sourceLangSelect?.addEventListener("change", () => {
   const panel = document.getElementById("voicePickerPanel");
   if (panel) panel.hidden = true;
@@ -1874,6 +1880,9 @@ async function prepareTTSInput(text, lang) {
 async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   if (!text) return;
 
+  // Unlock audio on iOS Safari — must be called synchronously before any await
+  if (audioCtx.state === "suspended") audioCtx.resume();
+
   const effectiveLang = langOverride || sourceLangSelect.value;
   const effectiveRate = ttsSlowMode ? 0.75 : 1.0;
 
@@ -2372,7 +2381,8 @@ async function renderFlashcards() {
   emptyEl.hidden = true;
   deckEl.hidden = false;
 
-  counterEl.textContent = `${deck?.name || "Deck"} · Card ${currentFlashcardIndex + 1} of ${cards.length}`;
+  const t = getT();
+  counterEl.textContent = `${deck?.name || t.deck} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
   sentenceEl.textContent = card.sentence || "";
