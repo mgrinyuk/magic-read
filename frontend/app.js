@@ -78,7 +78,8 @@ let freeTrialUsed = false;
 let authMode = "login";
 
 let currentRecognition = null;
-let currentAudio = null;
+let currentAudio = null;       // AudioBufferSourceNode
+let audioCtxSuspended = false; // true when audioCtx.suspend() was called (paused)
 let currentAudioText = "";
 let currentAudioRate = 1.0;
 
@@ -231,6 +232,8 @@ function openVoicePicker() {
 
     item.querySelector(".voice-preview-btn").addEventListener("click", async (e) => {
       e.stopPropagation();
+      // Unlock AudioContext synchronously before any await
+      if (audioCtx.state === "suspended") audioCtx.resume();
       const sample = SAMPLE_SENTENCES[lang] || "Hello.";
       const btn = e.currentTarget;
       btn.disabled = true;
@@ -242,12 +245,16 @@ function openVoicePicker() {
           body: JSON.stringify({ text: sample, sourceLang: lang, speakingRate: 1.0, voiceName: v.name })
         });
         const data = await response.json();
-        if (data.audioBase64) {
-          const audio = new Audio(`data:${data.mimeType};base64,${data.audioBase64}`);
-          await audio.play();
-          audio.onended = () => { btn.disabled = false; btn.innerHTML = "&#9654;"; };
-        }
-      } catch (_) {
+        if (!response.ok) throw new Error(data.error || "TTS failed");
+        const audioBuffer = await audioCtx.decodeAudioData(base64ToArrayBuffer(data.audioBase64));
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        source.onended = () => { btn.disabled = false; btn.innerHTML = "&#9654;"; };
+        source.start(0);
+      } catch (err) {
+        console.error("Voice preview failed:", err);
+        showToast(err.message || "Preview failed", "error");
         btn.disabled = false;
         btn.innerHTML = "&#9654;";
       }
@@ -1376,14 +1383,16 @@ async function renderCards(sentences) {
         currentAudioText === cleanSentence &&
         currentAudioRate === (ttsSlowMode ? 0.75 : 1.0);
 
-      if (isSameAudio && !currentAudio.paused) {
-        currentAudio.pause();
+      if (isSameAudio && !audioCtxSuspended) {
+        audioCtx.suspend();
+        audioCtxSuspended = true;
         ttsBtn.textContent = t.listen;
         return;
       }
 
-      if (isSameAudio && currentAudio.paused) {
-        await currentAudio.play();
+      if (isSameAudio && audioCtxSuspended) {
+        audioCtx.resume();
+        audioCtxSuspended = false;
         ttsBtn.textContent = getT().pause;
         return;
       }
@@ -1877,45 +1886,52 @@ async function prepareTTSInput(text, lang) {
   return text.trim();
 }
 
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
 async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   if (!text) return;
 
-  // Unlock audio on iOS Safari — must be called synchronously before any await
+  // Must be synchronous before any await — unlocks AudioContext on iOS Safari
   if (audioCtx.state === "suspended") audioCtx.resume();
 
   const effectiveLang = langOverride || sourceLangSelect.value;
   const effectiveRate = ttsSlowMode ? 0.75 : 1.0;
 
-  if (
-    currentAudio &&
-    currentAudioText === text &&
-    currentAudioRate === effectiveRate
-  ) {
-    if (currentAudio.paused) {
-      await currentAudio.play();
+  // Toggle pause/resume for same audio
+  if (currentAudio && currentAudioText === text && currentAudioRate === effectiveRate) {
+    if (audioCtxSuspended) {
+      audioCtx.resume();
+      audioCtxSuspended = false;
     } else {
-      currentAudio.pause();
+      audioCtx.suspend();
+      audioCtxSuspended = true;
     }
-
     return;
   }
 
+  // Stop any current audio
   if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
+    currentAudio.onended = null;
+    try { currentAudio.stop(); } catch (_) {}
     currentAudio = null;
-    currentAudioText = "";
-    currentAudioRate = 1.0;
   }
+  if (audioCtxSuspended) { audioCtx.resume(); audioCtxSuspended = false; }
+  currentAudioText = "";
+  currentAudioRate = 1.0;
 
   speechSynthesis.cancel();
 
   try {
     const selectedVoice = getSelectedVoice(effectiveLang);
     const cacheKey = `${text}|${effectiveLang}|${effectiveRate}|${selectedVoice || ""}`;
-    let audioData = ttsCache.get(cacheKey);
+    let audioBuffer = ttsCache.get(cacheKey);
 
-    if (!audioData) {
+    if (!audioBuffer) {
       const ttsBody = { text, sourceLang: effectiveLang, speakingRate: effectiveRate };
       if (selectedVoice) ttsBody.voiceName = selectedVoice;
       const response = await fetchWithAuth(`${API_BASE}/api/tts`, {
@@ -1925,38 +1941,41 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "TTS failed");
 
-      if (!response.ok) {
-        throw new Error(data.error || "TTS failed");
-      }
+      audioBuffer = await audioCtx.decodeAudioData(base64ToArrayBuffer(data.audioBase64));
 
-      audioData = { audioBase64: data.audioBase64, mimeType: data.mimeType };
-
-      if (ttsCache.size >= 50) {
-        ttsCache.delete(ttsCache.keys().next().value);
-      }
-      ttsCache.set(cacheKey, audioData);
+      if (ttsCache.size >= 50) ttsCache.delete(ttsCache.keys().next().value);
+      ttsCache.set(cacheKey, audioBuffer);
     }
 
-    const audio = new Audio(`data:${audioData.mimeType};base64,${audioData.audioBase64}`);
-    currentAudio = audio;
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.playbackRate.value = effectiveRate;
+    source.connect(audioCtx.destination);
+
+    currentAudio = source;
     currentAudioText = text;
     currentAudioRate = effectiveRate;
+    audioCtxSuspended = false;
 
-    audio.onended = () => {
-      currentAudio = null;
-      currentAudioText = "";
-      currentAudioRate = 1.0;
+    source.onended = () => {
+      if (currentAudio === source) {
+        currentAudio = null;
+        currentAudioText = "";
+        currentAudioRate = 1.0;
+        audioCtxSuspended = false;
+      }
       if (typeof onEnd === "function") onEnd();
     };
 
-
-    await audio.play();
+    source.start(0);
   } catch (error) {
     console.error("Google TTS failed, falling back to browser TTS:", error);
     currentAudio = null;
     currentAudioText = "";
     currentAudioRate = 1.0;
+    audioCtxSuspended = false;
     playBrowserTTS(text, effectiveLang);
     if (typeof onEnd === "function") onEnd();
   }
@@ -1978,13 +1997,14 @@ function playBrowserTTS(text, langOverride = null) {
 
 function stopAllTTS() {
   speechSynthesis.cancel();
-
   if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
+    currentAudio.onended = null;
+    try { currentAudio.stop(); } catch (_) {}
     currentAudio = null;
-    currentAudioText = "";
   }
+  if (audioCtxSuspended) { audioCtx.resume(); audioCtxSuspended = false; }
+  currentAudioText = "";
+  currentAudioRate = 1.0;
 }
 
 function stopRecognition() {
