@@ -97,6 +97,14 @@ const libraryCache = {};
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+// iOS Safari requires AudioContext to be unlocked on the very first user touch,
+// synchronously — before any await. Once running it stays unlocked.
+function _unlockAudio() {
+  if (audioCtx.state === "suspended") audioCtx.resume();
+}
+document.addEventListener("touchstart", _unlockAudio, { once: true, passive: true });
+document.addEventListener("click", _unlockAudio, { once: true });
+
 /* -----------------------------
    VOICE PICKER
 ----------------------------- */
@@ -215,8 +223,6 @@ function openVoicePicker() {
 
     item.querySelector(".voice-preview-btn").addEventListener("click", async (e) => {
       e.stopPropagation();
-      // Unlock AudioContext synchronously before any await
-      if (audioCtx.state === "suspended") audioCtx.resume();
       const sample = SAMPLE_SENTENCES[lang] || "Hello.";
       const btn = e.currentTarget;
       btn.disabled = true;
@@ -1878,9 +1884,6 @@ function base64ToArrayBuffer(base64) {
 
 async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   if (!text) return;
-
-  // Must be synchronous before any await — unlocks AudioContext on iOS Safari
-  if (audioCtx.state === "suspended") audioCtx.resume();
 
   const effectiveLang = langOverride || sourceLangSelect.value;
   const effectiveRate = ttsSlowMode ? 0.75 : 1.0;
