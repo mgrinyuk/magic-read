@@ -44,7 +44,6 @@ const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
 const container = document.getElementById("cardsContainer");
 
-const readingControlStrip = document.getElementById("readingControlStrip");
 const editTextBtn = document.getElementById("editTextBtn");
 const replaceTextBtn = document.getElementById("replaceTextBtn");
 const globalSlowBtn = document.getElementById("globalSlowBtn");
@@ -93,6 +92,178 @@ let currentSentences = [];
 let savedTextsCache = null;
 const segmentCache = new Map();
 const ttsCache = new Map();
+const libraryCache = {};
+
+/* -----------------------------
+   VOICE PICKER
+----------------------------- */
+
+const VOICE_LIST = {
+  zh: [
+    { name: "cmn-CN-Neural2-D", label: "Neural2 D", gender: "Male" },
+    { name: "cmn-CN-Neural2-B", label: "Neural2 B", gender: "Male" },
+    { name: "cmn-CN-Neural2-A", label: "Neural2 A", gender: "Female" },
+    { name: "cmn-CN-Neural2-C", label: "Neural2 C", gender: "Female" },
+    { name: "cmn-CN-Wavenet-D", label: "Wavenet D", gender: "Male" },
+    { name: "cmn-CN-Wavenet-A", label: "Wavenet A", gender: "Female" },
+    { name: "cmn-CN-Wavenet-B", label: "Wavenet B", gender: "Male" },
+    { name: "cmn-CN-Wavenet-C", label: "Wavenet C", gender: "Female" },
+  ],
+  en: [
+    { name: "en-US-Neural2-D", label: "Neural2 D", gender: "Male" },
+    { name: "en-US-Neural2-J", label: "Neural2 J", gender: "Male" },
+    { name: "en-US-Neural2-A", label: "Neural2 A", gender: "Male" },
+    { name: "en-US-Neural2-C", label: "Neural2 C", gender: "Female" },
+    { name: "en-US-Neural2-E", label: "Neural2 E", gender: "Female" },
+    { name: "en-US-Neural2-F", label: "Neural2 F", gender: "Female" },
+    { name: "en-US-Neural2-G", label: "Neural2 G", gender: "Female" },
+    { name: "en-US-Neural2-H", label: "Neural2 H", gender: "Female" },
+  ],
+  de: [
+    { name: "de-DE-Neural2-F", label: "Neural2 F", gender: "Female" },
+    { name: "de-DE-Neural2-A", label: "Neural2 A", gender: "Female" },
+    { name: "de-DE-Neural2-B", label: "Neural2 B", gender: "Male" },
+    { name: "de-DE-Neural2-C", label: "Neural2 C", gender: "Female" },
+    { name: "de-DE-Neural2-D", label: "Neural2 D", gender: "Male" },
+    { name: "de-DE-Wavenet-A", label: "Wavenet A", gender: "Female" },
+    { name: "de-DE-Wavenet-B", label: "Wavenet B", gender: "Male" },
+  ],
+  es: [
+    { name: "es-ES-Neural2-A", label: "Neural2 A", gender: "Female" },
+    { name: "es-ES-Neural2-B", label: "Neural2 B", gender: "Male" },
+    { name: "es-ES-Neural2-C", label: "Neural2 C", gender: "Female" },
+    { name: "es-ES-Neural2-D", label: "Neural2 D", gender: "Female" },
+    { name: "es-ES-Neural2-E", label: "Neural2 E", gender: "Female" },
+    { name: "es-ES-Neural2-F", label: "Neural2 F", gender: "Male" },
+    { name: "es-ES-Wavenet-B", label: "Wavenet B", gender: "Male" },
+    { name: "es-ES-Wavenet-C", label: "Wavenet C", gender: "Female" },
+  ],
+  fr: [
+    { name: "fr-FR-Neural2-A", label: "Neural2 A", gender: "Female" },
+    { name: "fr-FR-Neural2-B", label: "Neural2 B", gender: "Male" },
+    { name: "fr-FR-Neural2-C", label: "Neural2 C", gender: "Female" },
+    { name: "fr-FR-Neural2-D", label: "Neural2 D", gender: "Male" },
+    { name: "fr-FR-Neural2-E", label: "Neural2 E", gender: "Female" },
+    { name: "fr-FR-Wavenet-A", label: "Wavenet A", gender: "Female" },
+    { name: "fr-FR-Wavenet-B", label: "Wavenet B", gender: "Male" },
+    { name: "fr-FR-Wavenet-C", label: "Wavenet C", gender: "Female" },
+  ],
+  ja: [
+    { name: "ja-JP-Neural2-B", label: "Neural2 B", gender: "Male" },
+    { name: "ja-JP-Neural2-C", label: "Neural2 C", gender: "Male" },
+    { name: "ja-JP-Neural2-D", label: "Neural2 D", gender: "Female" },
+    { name: "ja-JP-Wavenet-A", label: "Wavenet A", gender: "Female" },
+    { name: "ja-JP-Wavenet-B", label: "Wavenet B", gender: "Male" },
+    { name: "ja-JP-Wavenet-C", label: "Wavenet C", gender: "Male" },
+    { name: "ja-JP-Wavenet-D", label: "Wavenet D", gender: "Female" },
+  ],
+  ru: [
+    { name: "ru-RU-Wavenet-A", label: "Wavenet A", gender: "Female" },
+    { name: "ru-RU-Wavenet-B", label: "Wavenet B", gender: "Male" },
+    { name: "ru-RU-Wavenet-C", label: "Wavenet C", gender: "Female" },
+    { name: "ru-RU-Wavenet-D", label: "Wavenet D", gender: "Male" },
+    { name: "ru-RU-Wavenet-E", label: "Wavenet E", gender: "Female" },
+  ],
+  tr: [
+    { name: "tr-TR-Wavenet-A", label: "Wavenet A", gender: "Female" },
+    { name: "tr-TR-Wavenet-B", label: "Wavenet B", gender: "Male" },
+    { name: "tr-TR-Wavenet-C", label: "Wavenet C", gender: "Female" },
+    { name: "tr-TR-Wavenet-D", label: "Wavenet D", gender: "Male" },
+    { name: "tr-TR-Wavenet-E", label: "Wavenet E", gender: "Female" },
+  ],
+};
+
+const SAMPLE_SENTENCES = {
+  zh: "今天天气真的很好，我们出去走走吧。",
+  en: "The quick brown fox jumps over the lazy dog.",
+  de: "Das Wetter ist heute wirklich schön.",
+  es: "El sol brilla con fuerza esta mañana.",
+  fr: "Le soleil brille fort ce matin.",
+  ja: "今日はとても良い天気ですね。",
+  ru: "Сегодня очень хорошая погода.",
+  tr: "Bugün hava gerçekten çok güzel.",
+};
+
+function getSelectedVoice(lang) {
+  return localStorage.getItem(`tts_voice_${lang}`) || null;
+}
+
+function setSelectedVoice(lang, name) {
+  localStorage.setItem(`tts_voice_${lang}`, name);
+}
+
+function openVoicePicker() {
+  const panel = document.getElementById("voicePickerPanel");
+  const list = document.getElementById("voicePickerList");
+  if (!panel || !list) return;
+
+  const lang = sourceLangSelect.value;
+  const voices = VOICE_LIST[lang] || [];
+  const selected = getSelectedVoice(lang);
+
+  if (panel.hidden === false) {
+    panel.hidden = true;
+    return;
+  }
+
+  list.innerHTML = "";
+
+  if (voices.length === 0) {
+    list.innerHTML = `<p class="voice-picker-empty">No voices available for this language.</p>`;
+    panel.hidden = false;
+    return;
+  }
+
+  voices.forEach(v => {
+    const isSelected = (selected === v.name) || (!selected && v.name === voices[0].name);
+    const item = document.createElement("div");
+    item.className = "voice-option" + (isSelected ? " voice-selected" : "");
+    item.dataset.voiceName = v.name;
+    item.innerHTML = `
+      <div class="voice-info">
+        <span class="voice-name">${v.label}</span>
+        <span class="voice-gender">${v.gender}</span>
+      </div>
+      <button class="voice-preview-btn" type="button" title="Preview">&#9654;</button>
+    `;
+
+    item.querySelector(".voice-preview-btn").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const sample = SAMPLE_SENTENCES[lang] || "Hello.";
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = "…";
+      try {
+        const response = await fetchWithAuth(`${API_BASE}/api/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: sample, sourceLang: lang, speakingRate: 1.0, voiceName: v.name })
+        });
+        const data = await response.json();
+        if (data.audioBase64) {
+          const audio = new Audio(`data:${data.mimeType};base64,${data.audioBase64}`);
+          await audio.play();
+          audio.onended = () => { btn.disabled = false; btn.innerHTML = "&#9654;"; };
+        }
+      } catch (_) {
+        btn.disabled = false;
+        btn.innerHTML = "&#9654;";
+      }
+    });
+
+    item.addEventListener("click", (e) => {
+      if (e.target.closest(".voice-preview-btn")) return;
+      setSelectedVoice(lang, v.name);
+      ttsCache.clear();
+      list.querySelectorAll(".voice-option").forEach(el => el.classList.remove("voice-selected"));
+      item.classList.add("voice-selected");
+    });
+
+    list.appendChild(item);
+  });
+
+  panel.hidden = false;
+}
 
 const FLASHCARD_STORAGE_KEY = "magicread_flashcard_decks";
 let flashcardDecks = [];
@@ -536,6 +707,7 @@ async function preloadChineseSegments(texts) {
   }
 
   (data.results || []).forEach(item => {
+    if (segmentCache.size >= 100) segmentCache.delete(segmentCache.keys().next().value);
     segmentCache.set(item.text, item.words || []);
   });
 }
@@ -544,7 +716,7 @@ async function startReadingFromText(text) {
   const cleanText = text.trim();
 
   if (!cleanText) {
-    alert("Please paste a text first.");
+    showToast("Please paste a text first.", "error");
     return;
   }
 
@@ -584,7 +756,7 @@ async function startReadingFromText(text) {
     const sentences = data.sentences || [];
 
     if (!sentences.length) {
-      alert("No sentences found. Try adding punctuation: . ! ? 。！？");
+      showToast("No sentences found. Try adding punctuation: . ! ? 。！？", "error");
       return;
     }
 
@@ -602,14 +774,13 @@ async function startReadingFromText(text) {
     await renderCards(sentences);
 
     if (fullTextTranslation) fullTextTranslation.textContent = "";
-    if (readingControlStrip) readingControlStrip.hidden = false;
-    if (textLibraryPanel) textLibraryPanel.hidden = true;
+      if (textLibraryPanel) textLibraryPanel.hidden = true;
     if (savedTextsPanel) savedTextsPanel.hidden = true;
 
     fullTextPanel?.scrollIntoView({ behavior: "smooth" });
   } catch (error) {
     console.error("Start reading error:", error);
-    alert("Could not start reading. Check the Console and Terminal.");
+    showToast("Could not start reading.", "error");
   } finally {
     if (createBtn) {
       createBtn.disabled = false;
@@ -639,12 +810,12 @@ replaceTextBtn?.addEventListener("click", () => {
 
   if (inputText) inputText.value = "";
   if (inputText) inputText.hidden = false;
+  if (startComposerArea) startComposerArea.hidden = false;
   if (container) container.innerHTML = "";
   if (fullTextContent) fullTextContent.innerHTML = "";
   if (fullTextPinyin) fullTextPinyin.textContent = "";
   if (fullTextTranslation) fullTextTranslation.textContent = "";
   if (fullTextPanel) fullTextPanel.hidden = true;
-  if (readingControlStrip) readingControlStrip.hidden = true;
 
   inputText?.scrollIntoView({ behavior: "smooth", block: "center" });
   inputText?.focus();
@@ -659,7 +830,7 @@ document.getElementById("toggleFullTextBtn")?.addEventListener("click", () => {
   fullTextContent.hidden = !isHidden;
 
   if (btn) {
-    btn.textContent = isHidden ? "Hide full text" : "Show full text";
+    btn.textContent = isHidden ? getT().hideFullText : getT().showFullText;
   }
 });
 /* -----------------------------
@@ -678,10 +849,16 @@ openLibraryBtn?.addEventListener("click", async () => {
 async function loadTextLibrary() {
   if (!textLibraryList || !sourceLangSelect) return;
 
+  const lang = sourceLangSelect.value;
+
+  if (libraryCache[lang]) {
+    renderLibraryList(libraryCache[lang]);
+    return;
+  }
+
   textLibraryList.innerHTML = `<p class="subtle">Loading library...</p>`;
 
   try {
-    const lang = sourceLangSelect.value;
     const res = await fetchWithAuth(`${API_BASE}/api/game-texts?lang=${lang}`);
     const data = await res.json();
 
@@ -690,6 +867,16 @@ async function loadTextLibrary() {
     }
 
     const texts = data.texts || [];
+    libraryCache[lang] = texts;
+    renderLibraryList(texts);
+  } catch (err) {
+    console.error("Library load error:", err);
+    textLibraryList.innerHTML = `<p class="subtle">Could not load library.</p>`;
+  }
+}
+
+function renderLibraryList(texts) {
+  if (!textLibraryList) return;
 
     if (!texts.length) {
       textLibraryList.innerHTML = `<p class="subtle">No library texts for this language yet.</p>`;
@@ -712,10 +899,6 @@ async function loadTextLibrary() {
         await loadLibraryText(item.dataset.id);
       });
     });
-  } catch (err) {
-    console.error("Library load error:", err);
-    textLibraryList.innerHTML = `<p class="subtle">Could not load library.</p>`;
-  }
 }
 
 async function loadLibraryText(id) {
@@ -731,14 +914,14 @@ async function loadLibraryText(id) {
     const fullText = (data.sentences || []).join(" ").trim();
 
     if (!fullText) {
-      alert("This library text is empty.");
+      showToast("This library text is empty.", "error");
       return;
     }
 
     await startReadingFromText(fullText);
   } catch (err) {
     console.error("Text load error:", err);
-    alert("Could not open this text.");
+    showToast("Could not open this text.", "error");
   }
 }
 
@@ -765,7 +948,7 @@ async function loadSavedTexts(forceOpen = false) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    alert("Please log in first.");
+    showToast("Please log in first.", "error");
     return;
   }
 
@@ -796,7 +979,7 @@ async function loadSavedTexts(forceOpen = false) {
 
   if (error) {
     console.error("Load saved texts error:", error);
-    savedTextsList.innerHTML = "Could not load saved texts.";
+    savedTextsList.innerHTML = getT().savedTextsError;
     return;
   }
 
@@ -835,7 +1018,7 @@ async function loadSavedTexts(forceOpen = false) {
 
   savedTextsList.querySelectorAll(".delete-saved-text-btn").forEach(btn => {
   btn.addEventListener("click", async () => {
-    const confirmed = confirm("Delete this saved text?");
+    const confirmed = await showConfirm("Delete this saved text?");
     if (!confirmed) return;
 
     const { error } = await supabase
@@ -845,7 +1028,7 @@ async function loadSavedTexts(forceOpen = false) {
 
     if (error) {
       console.error("Delete saved text error:", error);
-      alert("Could not delete saved text.");
+      showToast("Could not delete saved text.", "error");
       return;
     }
     savedTextsCache = null;
@@ -860,7 +1043,7 @@ document.querySelectorAll("#saveTextBtn, #saveTextBtnReading").forEach(btn => {
   const text = inputText.value.trim();
 
   if (!text) {
-    alert("Please paste a text first.");
+    showToast("Please paste a text first.", "error");
     return;
   }
 
@@ -869,11 +1052,11 @@ document.querySelectorAll("#saveTextBtn, #saveTextBtnReading").forEach(btn => {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    alert("Please log in first.");
+    showToast("Please log in first.", "error");
     return;
   }
 
-  const title = prompt("Text title:") || "Untitled text";
+  const title = (await showPrompt("Text title:", "Untitled text")) || "Untitled text";
 
   const { error } = await supabase.from("saved_texts").insert({
     user_id: user.id,
@@ -885,11 +1068,11 @@ document.querySelectorAll("#saveTextBtn, #saveTextBtnReading").forEach(btn => {
 
   if (error) {
     console.error("Save text error:", error);
-    alert("Could not save text.");
+    showToast("Could not save text.", "error");
     return;
   }
   savedTextsCache = null;
-  alert("Text saved.");
+  showToast("Text saved!", "success");
 });
 });
 
@@ -932,7 +1115,7 @@ document.getElementById("toggleFullTextPinyinBtn")?.addEventListener("click", ()
   const isHidden = fullTextPinyin.hidden;
 
   fullTextPinyin.hidden = !isHidden;
-  if (btn) btn.textContent = isHidden ? "Hide pinyin" : getT().showPinyin;
+  if (btn) btn.textContent = isHidden ? getT().hidePinyin : getT().showPinyin;
 });
 
 document.getElementById("readFullTextBtn")?.addEventListener("click", async () => {
@@ -1002,6 +1185,11 @@ function toggleSlowMode() {
 }
 
 globalSlowBtn?.addEventListener("click", toggleSlowMode);
+document.getElementById("voicePickerBtn")?.addEventListener("click", openVoicePicker);
+sourceLangSelect?.addEventListener("change", () => {
+  const panel = document.getElementById("voicePickerPanel");
+  if (panel) panel.hidden = true;
+}, { capture: true });
 document.getElementById("flashcardSlowBtn")?.addEventListener("click", (e) => {
   e.stopPropagation();
   toggleSlowMode();
@@ -1044,6 +1232,7 @@ async function renderChineseSentence(sentence) {
     }
 
     words = data.words || [];
+    if (segmentCache.size >= 100) segmentCache.delete(segmentCache.keys().next().value);
     segmentCache.set(sentence, words);
   }
 
@@ -1189,11 +1378,11 @@ async function renderCards(sentences) {
 
       if (isSameAudio && currentAudio.paused) {
         await currentAudio.play();
-        ttsBtn.textContent = "Pause";
+        ttsBtn.textContent = getT().pause;
         return;
       }
 
-      ttsBtn.textContent = "Pause";
+      ttsBtn.textContent = getT().pause;
 
       await playGoogleTTS(cleanSentence, sourceLangSelect.value, () => {
         ttsBtn.textContent = getT().listen || "Listen";
@@ -1237,14 +1426,14 @@ async function renderCards(sentences) {
             .join(" ");
         } catch (err) {
           console.error("Sentence pinyin error:", err);
-          sentencePinyinBox.textContent = "Could not load pinyin.";
+          sentencePinyinBox.textContent = getT().pinyinError;
         }
       }
 
       sentencePinyinBox.hidden = !sentencePinyinBox.hidden;
       sentencePinyinBtn.textContent = sentencePinyinBox.hidden
-        ? "Show pinyin"
-        : "Hide pinyin";
+        ? getT().showPinyin
+        : getT().hidePinyin;
     });
 
     recordBtn?.addEventListener("click", () => {
@@ -1350,7 +1539,7 @@ async function grammar(sentence, card) {
     return data;
   } catch (error) {
     console.error("Grammar error:", error);
-    resultBox.innerHTML = "Grammar failed.";
+    resultBox.innerHTML = getT().grammarFailed;
     return { items: [] };
   }
 }
@@ -1538,7 +1727,7 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
       });
 
       if (saved) {
-        saveBtn.textContent = getT().saved || "Saved";
+        saveBtn.textContent = getT().saved;
         wordEl.classList.add("word-saved");
 
         popup.style.transform = "scale(0.95)";
@@ -1713,18 +1902,17 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   speechSynthesis.cancel();
 
   try {
-    const cacheKey = `${text}|${effectiveLang}|${effectiveRate}`;
+    const selectedVoice = getSelectedVoice(effectiveLang);
+    const cacheKey = `${text}|${effectiveLang}|${effectiveRate}|${selectedVoice || ""}`;
     let audioData = ttsCache.get(cacheKey);
 
     if (!audioData) {
+      const ttsBody = { text, sourceLang: effectiveLang, speakingRate: effectiveRate };
+      if (selectedVoice) ttsBody.voiceName = selectedVoice;
       const response = await fetchWithAuth(`${API_BASE}/api/tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          sourceLang: effectiveLang,
-          speakingRate: effectiveRate
-        })
+        body: JSON.stringify(ttsBody)
       });
 
       const data = await response.json();
@@ -2232,7 +2420,7 @@ async function deleteCurrentFlashcard() {
     const { error } = await supabase.from("flashcards").delete().eq("id", card.id);
     if (error) {
       console.error("Delete flashcard error:", error);
-      alert("Could not delete card.");
+      showToast("Could not delete card.", "error");
       return;
     }
   }
@@ -2251,13 +2439,13 @@ async function clearFlashcards() {
   const deck = getCurrentDeck();
   if (!deck) return;
 
-  const confirmed = confirm(`Clear all cards in "${deck.name}"?`);
+  const confirmed = await showConfirm(`Clear all cards in "${deck.name}"?`);
   if (!confirmed) return;
 
   const { error } = await supabase.from("flashcards").delete().eq("deck_id", deck.id);
   if (error) {
     console.error("Clear flashcards error:", error);
-    alert("Could not clear cards.");
+    showToast("Could not clear cards.", "error");
     return;
   }
 
@@ -2269,8 +2457,8 @@ async function clearFlashcards() {
 }
 
 async function createDeck() {
-  const name = prompt("Deck name:");
-  if (!name || !name.trim()) return;
+  const name = await showPrompt("Deck name:");
+  if (!name) return;
 
   const {
     data: { user }
@@ -2289,7 +2477,7 @@ async function createDeck() {
 
   if (error) {
     console.error("Create deck error:", error);
-    alert("Could not create deck.");
+    showToast("Could not create deck.", "error");
     return;
   }
 
@@ -2308,20 +2496,20 @@ async function createDeck() {
 
 async function deleteCurrentDeck() {
   if (flashcardDecks.length === 1) {
-    alert("You need to keep at least one deck.");
+    showToast("You need at least one deck.", "error");
     return;
   }
 
   const deck = getCurrentDeck();
   if (!deck) return;
 
-  const confirmed = confirm(`Delete deck "${deck.name}"?`);
+  const confirmed = await showConfirm(`Delete deck "${deck.name}"?`);
   if (!confirmed) return;
 
   const { error } = await supabase.from("flashcard_decks").delete().eq("id", deck.id);
   if (error) {
     console.error("Delete deck error:", error);
-    alert("Could not delete deck.");
+    showToast("Could not delete deck.", "error");
     return;
   }
 
@@ -2337,12 +2525,12 @@ async function exportCurrentDeck() {
   const deck = getCurrentDeck();
 
   if (!deck) {
-    alert("No deck selected.");
+    showToast("No deck selected.", "error");
     return;
   }
 
   if (!deck.cards || !deck.cards.length) {
-    alert("This deck is empty.");
+    showToast("This deck is empty.", "error");
     return;
   }
 
@@ -2400,7 +2588,7 @@ async function exportCurrentDeck() {
     if (exportResult) {
       exportResult.textContent = `Could not export printable deck: ${error.message}`;
     } else {
-      alert("Could not export printable deck.");
+      showToast("Could not export printable deck.", "error");
     }
   }
 }
@@ -2534,4 +2722,55 @@ function escapeHtml(text = "") {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function showToast(message, type = "info") {
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function showConfirm(message) {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <p>${escapeHtml(message)}</p>
+        <div class="modal-actions">
+          <button class="modal-cancel ghost-btn">Cancel</button>
+          <button class="modal-confirm primary-btn">Confirm</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modal-confirm").addEventListener("click", () => { overlay.remove(); resolve(true); });
+    overlay.querySelector(".modal-cancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
+  });
+}
+
+function showPrompt(message, placeholder = "") {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <p>${escapeHtml(message)}</p>
+        <input class="modal-input auth-input" type="text" placeholder="${escapeHtml(placeholder)}" />
+        <div class="modal-actions">
+          <button class="modal-cancel ghost-btn">Cancel</button>
+          <button class="modal-confirm primary-btn">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector(".modal-input");
+    input.focus();
+    const confirm = () => { const v = input.value.trim(); overlay.remove(); resolve(v || null); };
+    overlay.querySelector(".modal-confirm").addEventListener("click", confirm);
+    overlay.querySelector(".modal-cancel").addEventListener("click", () => { overlay.remove(); resolve(null); });
+    input.addEventListener("keydown", e => { if (e.key === "Enter") confirm(); if (e.key === "Escape") { overlay.remove(); resolve(null); } });
+  });
 }

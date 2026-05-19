@@ -174,6 +174,54 @@ app.get("/api/game-texts", async (req, res) => {
   }
 });
 
+function drawCharacterGrid(doc, items, fontPath, titleText) {
+  const boxSize = 40;
+  const cols = 12;
+  const rows = 18;
+  const startX = 50;
+  const startY = 70;
+  const totalPages = Math.max(1, Math.ceil(items.length / rows));
+
+  for (let page = 0; page < totalPages; page++) {
+    if (page > 0) doc.addPage();
+
+    doc.font("Helvetica-Bold").fontSize(18).fillColor("#333").text(titleText, 50, 40);
+
+    const pageItems = items.slice(page * rows, page * rows + rows);
+
+    for (let row = 0; row < rows; row++) {
+      const item = pageItems[row];
+
+      for (let col = 0; col < cols; col++) {
+        const x = startX + col * boxSize;
+        const y = startY + row * boxSize;
+
+        doc.rect(x, y, boxSize, boxSize).stroke("#999");
+        doc.moveTo(x + boxSize / 2, y).lineTo(x + boxSize / 2, y + boxSize).stroke("#ccc");
+        doc.moveTo(x, y + boxSize / 2).lineTo(x + boxSize, y + boxSize / 2).stroke("#ccc");
+        doc.moveTo(x, y).lineTo(x + boxSize, y + boxSize).stroke("#ddd");
+        doc.moveTo(x + boxSize, y).lineTo(x, y + boxSize).stroke("#ddd");
+
+        const currentChar = item?.[col];
+
+        if (currentChar) {
+          if (fs.existsSync(fontPath)) {
+            doc.font(fontPath);
+          } else {
+            doc.font("Helvetica");
+          }
+
+          doc.fontSize(22).fillColor("#333").text(currentChar, x, y + 5, {
+            width: boxSize,
+            align: "center",
+            lineBreak: false
+          });
+        }
+      }
+    }
+  }
+}
+
 app.post("/api/create-writing-sheet", (req, res) => {
   try {
     const { text, sourceLang } = req.body || {};
@@ -240,66 +288,8 @@ app.post("/api/create-writing-sheet", (req, res) => {
         .map(w => w.trim())
         .filter(Boolean);
 
-      const boxSize = 40;
-      const cols = 12;
-      const rows = 18;
-      const itemsPerPage = rows;
-
-      const startX = 50;
-      const startY = 70;
-
       const zhFontPath = path.join(__dirname, "fonts", "NotoSansSC-Regular.ttf");
-
-      const totalPages = Math.max(1, Math.ceil(words.length / itemsPerPage));
-
-      for (let page = 0; page < totalPages; page++) {
-        if (page > 0) doc.addPage();
-
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(18)
-          .fillColor("#333")
-          .text("Chinese writing practice", 50, 40);
-
-        const pageWords = words.slice(
-          page * itemsPerPage,
-          page * itemsPerPage + itemsPerPage
-        );
-
-        for (let row = 0; row < rows; row++) {
-          const word = pageWords[row];
-
-          for (let col = 0; col < cols; col++) {
-            const x = startX + col * boxSize;
-            const y = startY + row * boxSize;
-
-            doc.rect(x, y, boxSize, boxSize).stroke("#999");
-            doc.moveTo(x + boxSize / 2, y).lineTo(x + boxSize / 2, y + boxSize).stroke("#ccc");
-            doc.moveTo(x, y + boxSize / 2).lineTo(x + boxSize, y + boxSize / 2).stroke("#ccc");
-            doc.moveTo(x, y).lineTo(x + boxSize, y + boxSize).stroke("#ddd");
-            doc.moveTo(x + boxSize, y).lineTo(x, y + boxSize).stroke("#ddd");
-
-            const currentChar = word?.[col];
-
-            if (currentChar) {
-              if (fs.existsSync(zhFontPath)) {
-                doc.font(zhFontPath);
-              } else {
-                doc.font("Helvetica");
-              }
-
-              doc
-                .fontSize(22)
-                .fillColor("#333")
-                .text(currentChar, x, y + 5, {
-                  width: boxSize,
-                  align: "center",
-                  lineBreak: false
-                });
-            }
-          }
-        }
-      }
+      drawCharacterGrid(doc, words, zhFontPath, "Chinese writing practice");
     }
 
     doc.end();
@@ -443,47 +433,27 @@ app.post("/api/dictionary", (req, res) => {
 
 app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
   try {
-    const { text, sourceLang, speakingRate } = req.body;
+    const { text, sourceLang, speakingRate, voiceName } = req.body;
 
     if (!text || !sourceLang) {
       return res.status(400).json({ error: "text and sourceLang are required" });
     }
 
     const voiceMap = {
-      zh: {
-        languageCode: "cmn-CN",
-        name: "cmn-CN-Wavenet-A"
-      },
-      tr: {
-        languageCode: "tr-TR",
-        name: "tr-TR-Wavenet-A"
-      },
-      ru: {
-        languageCode: "ru-RU",
-        name: "ru-RU-Wavenet-A"
-      },
-      en: {
-        languageCode: "en-US",
-        name: "en-US-Wavenet-D"
-      },
-      de: {
-        languageCode: "de-DE",
-        name: "de-DE-Wavenet-A"
-      },
-      es: {
-        languageCode: "es-ES",
-        name: "es-ES-Wavenet-C"
-      },
-      fr: {
-        languageCode: "fr-FR",
-        name: "fr-FR-Wavenet-D"
-      },
-      ja: {
-        languageCode: "ja-JP"
-      }
+      zh: { languageCode: "cmn-CN", name: "cmn-CN-Neural2-D" },
+      en: { languageCode: "en-US", name: "en-US-Neural2-D" },
+      de: { languageCode: "de-DE", name: "de-DE-Neural2-F" },
+      es: { languageCode: "es-ES", name: "es-ES-Neural2-A" },
+      fr: { languageCode: "fr-FR", name: "fr-FR-Neural2-A" },
+      ja: { languageCode: "ja-JP", name: "ja-JP-Neural2-B" },
+      ru: { languageCode: "ru-RU", name: "ru-RU-Wavenet-A" },
+      tr: { languageCode: "tr-TR", name: "tr-TR-Wavenet-A" }
     };
 
-    const voiceConfig = voiceMap[sourceLang] || voiceMap.en;
+    const baseConfig = voiceMap[sourceLang] || voiceMap.en;
+    const voiceConfig = voiceName
+      ? { languageCode: baseConfig.languageCode, name: voiceName }
+      : baseConfig;
 
     const [response] = await ttsClient.synthesizeSpeech({
       input: { text },
@@ -558,42 +528,40 @@ async function analyzeGrammar(sentence, sourceLang) {
         continue;
       }
 
-      if (sourceLang !== "zh") {
-        const words = normalizedSentence
-          .replace(/[.,!?;:«»"'()]/g, " ")
-          .split(/\s+/)
-          .filter(Boolean);
+      const words = normalizedSentence
+        .replace(/[.,!?;:«»"'()]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean);
 
-        if (marker.startsWith("-") && marker.endsWith("-")) {
-          const infix = marker.slice(1, -1);
-          const hasInfix = words.some(word => word.includes(infix));
+      if (marker.startsWith("-") && marker.endsWith("-")) {
+        const infix = marker.slice(1, -1);
+        const hasInfix = words.some(word => word.includes(infix));
 
-          if (hasInfix) {
-            matched = true;
-            matchedText = rawMarker;
-            break;
-          }
-        } else if (marker.startsWith("-")) {
-          const suffix = marker.slice(1);
-          const hasSuffix = words.some(word => word.endsWith(suffix));
+        if (hasInfix) {
+          matched = true;
+          matchedText = rawMarker;
+          break;
+        }
+      } else if (marker.startsWith("-")) {
+        const suffix = marker.slice(1);
+        const hasSuffix = words.some(word => word.endsWith(suffix));
 
-          if (hasSuffix) {
-            matched = true;
-            matchedText = rawMarker;
-            break;
-          }
-        } else {
-          const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const regex = new RegExp(
-            `(^|\\s|[.,!?;:«»"'()-])${escaped}($|\\s|[.,!?;:«»"'()-])`,
-            "i"
-          );
+        if (hasSuffix) {
+          matched = true;
+          matchedText = rawMarker;
+          break;
+        }
+      } else {
+        const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(
+          `(^|\\s|[.,!?;:«»"'()-])${escaped}($|\\s|[.,!?;:«»"'()-])`,
+          "i"
+        );
 
-          if (regex.test(sentenceText)) {
-            matched = true;
-            matchedText = rawMarker;
-            break;
-          }
+        if (regex.test(sentenceText)) {
+          matched = true;
+          matchedText = rawMarker;
+          break;
         }
       }
     }
@@ -879,64 +847,8 @@ app.post("/api/export-flashcard-deck", (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     doc.pipe(res);
 
-    const boxSize = 40;
-    const cols = 12;
-    const rows = 18;
-    const itemsPerPage = rows;
-    const startX = 50;
-    const startY = 70;
-
     const fontPath = path.join(__dirname, "fonts", "NotoSansSC-Regular.ttf");
-    const totalPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
-
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) doc.addPage();
-
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(18)
-        .fillColor("#333")
-        .text(`Deck: ${deckName}`, 50, 40);
-
-      const pageItems = items.slice(
-        page * itemsPerPage,
-        page * itemsPerPage + itemsPerPage
-      );
-
-      for (let row = 0; row < rows; row++) {
-        const item = pageItems[row];
-
-        for (let col = 0; col < cols; col++) {
-          const x = startX + col * boxSize;
-          const y = startY + row * boxSize;
-
-          doc.rect(x, y, boxSize, boxSize).stroke("#999");
-          doc.moveTo(x + boxSize / 2, y).lineTo(x + boxSize / 2, y + boxSize).stroke("#ccc");
-          doc.moveTo(x, y + boxSize / 2).lineTo(x + boxSize, y + boxSize / 2).stroke("#ccc");
-          doc.moveTo(x, y).lineTo(x + boxSize, y + boxSize).stroke("#ddd");
-          doc.moveTo(x + boxSize, y).lineTo(x, y + boxSize).stroke("#ddd");
-
-          const currentChar = item?.[col];
-
-          if (currentChar) {
-            if (fs.existsSync(fontPath)) {
-              doc.font(fontPath);
-            } else {
-              doc.font("Helvetica");
-            }
-
-            doc
-              .fontSize(22)
-              .fillColor("#333")
-              .text(currentChar, x, y + 5, {
-                width: boxSize,
-                align: "center",
-                lineBreak: false
-              });
-          }
-                  }
-      }
-    }
+    drawCharacterGrid(doc, items, fontPath, `Deck: ${deckName}`);
 
     doc.end();
   } catch (error) {

@@ -1841,3 +1841,148 @@ body.is-logged-in .top-ui-language {
     transform: rotate(360deg);
   }
 }
+
+/* Toast notifications */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  padding: 12px 22px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: toastIn 0.2s ease, toastOut 0.3s ease 2.7s forwards;
+}
+.toast-success { background: #22c55e; }
+.toast-error   { background: #ef4444; }
+.toast-info    { background: var(--brand); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes toastOut {
+  to { opacity: 0; }
+}
+
+/* Inline modal (replaces alert/confirm/prompt) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+}
+.modal-box {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 28px 32px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: var(--shadow-pop);
+}
+.modal-box p {
+  margin: 0 0 20px;
+  font-size: 15px;
+  color: var(--text);
+}
+.modal-input {
+  width: 100%;
+  margin-bottom: 20px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Voice picker panel */
+.voice-picker-panel {
+  margin-top: 10px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.voice-picker-panel .voice-picker-heading {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.voice-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.voice-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface-soft);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.voice-option:hover {
+  border-color: var(--brand);
+  background: var(--surface);
+}
+.voice-option.voice-selected {
+  border-color: var(--brand);
+  background: #ece9ff;
+}
+.voice-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.voice-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.voice-gender {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.voice-preview-btn {
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+.voice-preview-btn:hover {
+  background: var(--brand-dark);
+}
+.voice-preview-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.voice-picker-empty {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 12px 0;
+}

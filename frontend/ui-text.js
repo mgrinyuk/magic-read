@@ -81,7 +81,18 @@ export const UI_TEXT = {
 
     noWords: "No words yet",
     clickToSave: "Click any word in a text to save it.",
-    calligraphy: "Calligraphy"
+    calligraphy: "Calligraphy",
+
+    saved: "Saved",
+    savedTextsError: "Could not load saved texts.",
+    hidePinyin: "Hide pinyin",
+    voice: "Voice",
+    voicePickerHeading: "Choose a voice for this language",
+    wordSaveHint: "Tip: click any word to hear it, translate it, and save it to flashcards.",
+    hideFullText: "Hide full text",
+    showFullText: "Show full text",
+    grammarFailed: "Grammar check failed.",
+    pinyinError: "Could not load pinyin."
   },
 
   ru: {
@@ -166,7 +177,18 @@ export const UI_TEXT = {
 
     noWords: "Пока нет слов",
     clickToSave: "Нажмите на любое слово в тексте, чтобы сохранить его.",
-    calligraphy: "Каллиграфия"
+    calligraphy: "Каллиграфия",
+
+    saved: "Сохранено",
+    savedTextsError: "Не удалось загрузить тексты.",
+    hidePinyin: "Скрыть пиньинь",
+    voice: "Голос",
+    voicePickerHeading: "Выберите голос для этого языка",
+    wordSaveHint: "Совет: нажмите на любое слово, чтобы услышать, перевести и сохранить его.",
+    hideFullText: "Скрыть текст",
+    showFullText: "Показать текст",
+    grammarFailed: "Ошибка проверки грамматики.",
+    pinyinError: "Не удалось загрузить пиньинь."
   },
 
   zh: {
@@ -251,7 +273,18 @@ export const UI_TEXT = {
 
     noWords: "还没有词语",
     clickToSave: "点击文本中的任意词语即可保存。",
-    calligraphy: "书写"
+    calligraphy: "书写",
+
+    saved: "已保存",
+    savedTextsError: "无法加载已保存的文本。",
+    hidePinyin: "隐藏拼音",
+    voice: "语音",
+    voicePickerHeading: "为该语言选择语音",
+    wordSaveHint: "提示：点击任意词语可以听读、翻译并保存到词卡。",
+    hideFullText: "隐藏全文",
+    showFullText: "显示全文",
+    grammarFailed: "语法检查失败。",
+    pinyinError: "无法加载拼音。"
   },
 
   tr: {
@@ -336,7 +369,18 @@ export const UI_TEXT = {
 
     noWords: "Henüz kelime yok",
     clickToSave: "Kaydetmek için metindeki herhangi bir kelimeye tıkla.",
-    calligraphy: "Yazı"
+    calligraphy: "Yazı",
+
+    saved: "Kaydedildi",
+    savedTextsError: "Kaydedilen metinler yüklenemedi.",
+    hidePinyin: "Pinyini gizle",
+    voice: "Ses",
+    voicePickerHeading: "Bu dil için bir ses seç",
+    wordSaveHint: "İpucu: herhangi bir kelimeye tıkla, duyabilir, çevirebilir ve kartlara kaydedebilirsin.",
+    hideFullText: "Metni gizle",
+    showFullText: "Metni göster",
+    grammarFailed: "Dilbilgisi kontrolü başarısız.",
+    pinyinError: "Pinyin yüklenemedi."
   },
 
   de: {
@@ -421,7 +465,18 @@ flashcards: "Karteikarten",
 
 noWords: "Noch keine Wörter",
 clickToSave: "Klicke auf ein Wort im Text, um es zu speichern.",
-calligraphy: "Kalligraphie"
+calligraphy: "Kalligraphie",
+
+saved: "Gespeichert",
+savedTextsError: "Texte konnten nicht geladen werden.",
+hidePinyin: "Pinyin ausblenden",
+voice: "Stimme",
+voicePickerHeading: "Stimme für diese Sprache wählen",
+wordSaveHint: "Tipp: Klicke auf ein Wort, um es anzuhören, zu übersetzen und zu speichern.",
+hideFullText: "Text ausblenden",
+showFullText: "Text einblenden",
+grammarFailed: "Grammatikprüfung fehlgeschlagen.",
+pinyinError: "Pinyin konnte nicht geladen werden."
 },
 
 es: {
@@ -506,7 +561,18 @@ flashcards: "Tarjetas",
 
 noWords: "Todavía no hay palabras",
 clickToSave: "Haz clic en cualquier palabra para guardarla.",
-calligraphy: "Caligrafía"
+calligraphy: "Caligrafía",
+
+saved: "Guardada",
+savedTextsError: "No se pudieron cargar los textos guardados.",
+hidePinyin: "Ocultar pinyin",
+voice: "Voz",
+voicePickerHeading: "Elige una voz para este idioma",
+wordSaveHint: "Consejo: haz clic en cualquier palabra para escucharla, traducirla y guardarla.",
+hideFullText: "Ocultar texto",
+showFullText: "Mostrar texto",
+grammarFailed: "Error al revisar la gramática.",
+pinyinError: "No se pudo cargar el pinyin."
 },
 
 fr: {
@@ -591,7 +657,18 @@ flashcards: "Cartes mémoire",
 
 noWords: "Pas encore de mots",
 clickToSave: "Cliquez sur un mot pour le sauvegarder.",
-calligraphy: "Calligraphie"
+calligraphy: "Calligraphie",
+
+saved: "Sauvegardé",
+savedTextsError: "Impossible de charger les textes sauvegardés.",
+hidePinyin: "Masquer le pinyin",
+voice: "Voix",
+voicePickerHeading: "Choisissez une voix pour cette langue",
+wordSaveHint: "Astuce : cliquez sur un mot pour l'écouter, le traduire et le sauvegarder.",
+hideFullText: "Masquer le texte",
+showFullText: "Afficher le texte",
+grammarFailed: "Échec de la vérification grammaticale.",
+pinyinError: "Impossible de charger le pinyin."
 },
 
 ja: {
@@ -676,7 +753,18 @@ flashcards: "単語カード",
 
 noWords: "まだ単語がありません",
 clickToSave: "テキスト内の単語をクリックして保存できます。",
-calligraphy: "書き取り"
+calligraphy: "書き取り",
+
+saved: "保存しました",
+savedTextsError: "保存されたテキストを読み込めませんでした。",
+hidePinyin: "読み方を隠す",
+voice: "音声",
+voicePickerHeading: "この言語の音声を選択",
+wordSaveHint: "ヒント：単語をクリックして聞き、翻訳し、単語カードに保存できます。",
+hideFullText: "テキストを隠す",
+showFullText: "テキストを表示",
+grammarFailed: "文法チェックに失敗しました。",
+pinyinError: "読み方を読み込めませんでした。"
 }
 
 };

@@ -127,27 +127,27 @@
               Calligraphy
             </button>
           </div>
+          <div id="textLibraryPanel" class="text-library-panel" hidden>
+            <div class="workspace-head">
+              <div>
+                <h3 data-i18n="library">Library</h3>
+                <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
+              </div>
+            </div>
+
+            <div id="textLibraryList" class="text-library-list"></div>
+          </div>
+
+          <div id="savedTextsPanel" class="saved-texts-panel" hidden>
+            <h3 data-i18n="savedTextsTitle">My texts</h3>
+            <div id="savedTextsList"></div>
+          </div>
+
           <div id="startComposerArea">
             <div class="start-copy">
               <p class="eyebrow">Magic Read</p>
               <h1 data-i18n="pasteToStart">Practice pronunciation with your own texts</h1>
               <p class="subtle" data-i18n="orLibrary">Paste homework, articles, or exam texts and start speaking immediately.</p>
-            </div>
-
-            <div id="textLibraryPanel" class="text-library-panel" hidden>
-              <div class="workspace-head">
-                <div>
-                  <h3 data-i18n="library">Library</h3>
-                  <p class="subtle" data-i18n="orLibrary">or choose one from the library</p>
-                </div>
-              </div>
-
-              <div id="textLibraryList" class="text-library-list"></div>
-            </div>
-
-            <div id="savedTextsPanel" class="saved-texts-panel" hidden>
-              <h3 data-i18n="savedTextsTitle">My texts</h3>
-              <div id="savedTextsList"></div>
             </div>
 
             <textarea
@@ -204,18 +204,22 @@
             <div class="card-buttons">
               <button id="readFullTextBtn" data-i18n="listen" class="tts-btn">Listen</button>
               <button id="globalSlowBtn" type="button" class="translate-btn" data-i18n="slowOff">Slow: OFF</button>
+              <button id="voicePickerBtn" type="button" class="translate-btn" data-i18n="voice">Voice</button>
               <button id="saveTextBtnReading" type="button" class="translate-btn" data-i18n="saveText">Save text</button>
               <button id="editTextBtn" type="button" class="translate-btn" data-i18n="edit">Edit</button>
               <button id="toggleFullTextPinyinBtn" data-i18n="showPinyin" class="translate-btn">Pinyin</button>
               <button id="translateFullTextBtn" data-i18n="translate" class="translate-btn">Translate</button>
-              <button id="toggleFullTextBtn" class="translate-btn" type="button">Hide</button>
+              <button id="toggleFullTextBtn" class="translate-btn" type="button" data-i18n="hideFullText">Hide full text</button>
             </div>
           </div>
 
+          <div id="voicePickerPanel" class="voice-picker-panel panel-box" hidden>
+            <p class="voice-picker-heading" data-i18n="voicePickerHeading">Choose a voice for this language</p>
+            <div id="voicePickerList" class="voice-picker-list"></div>
+          </div>
+
           <div id="fullTextContent" class="full-text-box"></div>
-          <p class="word-save-hint">
-            Tip: click any word to hear it, translate it, and save it to flashcards.
-          </p>
+          <p class="word-save-hint" data-i18n="wordSaveHint">Tip: click any word to hear it, translate it, and save it to flashcards.</p>
           <div id="fullTextPinyin" class="full-text-pinyin" hidden></div>
           <div id="fullTextTranslation" class="translation-box panel-box"></div>
 
