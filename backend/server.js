@@ -8,7 +8,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import textToSpeech from "@google-cloud/text-to-speech";
-import nodejieba from "nodejieba";
 import { pinyin } from "pinyin-pro";
 import { google } from "googleapis";
 import PDFDocument from "pdfkit";
@@ -336,24 +335,12 @@ function segmentChineseText(text) {
   let words = [];
 
   try {
-    words = nodejieba.cut(text, true);
-  } catch (jiebaError) {
-    console.error("nodejieba failed:", jiebaError);
-  }
-
-  const mostlySingleChars =
-    words.length > 0 &&
-    words.filter(w => /[\u4e00-\u9fff]/.test(w) && w.length === 1).length / words.length > 0.7;
-
-  if (!words.length || mostlySingleChars) {
-    try {
-      const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
-      words = Array.from(segmenter.segment(text))
-        .map(item => item.segment)
-        .filter(item => item.trim());
-    } catch (intlError) {
-      console.error("Intl.Segmenter failed:", intlError);
-    }
+    const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
+    words = Array.from(segmenter.segment(text))
+      .map(item => item.segment)
+      .filter(item => item.trim());
+  } catch (intlError) {
+    console.error("Intl.Segmenter failed:", intlError);
   }
 
   if (!words.length) {
@@ -440,17 +427,6 @@ app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
     }
 
     const voiceMap = {
-      zh: { languageCode: "cmn-CN", name: "cmn-CN-Neural2-D" },
-      en: { languageCode: "en-US", name: "en-US-Neural2-D" },
-      de: { languageCode: "de-DE", name: "de-DE-Neural2-F" },
-      es: { languageCode: "es-ES", name: "es-ES-Neural2-A" },
-      fr: { languageCode: "fr-FR", name: "fr-FR-Neural2-A" },
-      ja: { languageCode: "ja-JP", name: "ja-JP-Neural2-B" },
-      ru: { languageCode: "ru-RU", name: "ru-RU-Wavenet-A" },
-      tr: { languageCode: "tr-TR", name: "tr-TR-Wavenet-A" }
-    };
-
-    const wavenetFallback = {
       zh: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-D" },
       en: { languageCode: "en-US", name: "en-US-Wavenet-D" },
       de: { languageCode: "de-DE", name: "de-DE-Wavenet-B" },
@@ -466,29 +442,11 @@ app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
       ? { languageCode: baseConfig.languageCode, name: voiceName }
       : baseConfig;
 
-    async function synthesize(voice) {
-      const [r] = await ttsClient.synthesizeSpeech({
-        input: { text },
-        voice,
-        audioConfig: { audioEncoding: "MP3", speakingRate: speakingRate || 1.0 }
-      });
-      return r;
-    }
-
-    let response;
-    try {
-      response = await synthesize(voiceConfig);
-    } catch (primaryErr) {
-      // Neural2 unavailable (billing not enabled) — fall back to Wavenet
-      const isNeural2 = voiceConfig.name?.includes("Neural2");
-      if (isNeural2) {
-        console.warn("Neural2 TTS failed, falling back to Wavenet:", primaryErr.message);
-        const fallback = wavenetFallback[sourceLang] || wavenetFallback.en;
-        response = await synthesize(fallback);
-      } else {
-        throw primaryErr;
-      }
-    }
+    const [response] = await ttsClient.synthesizeSpeech({
+      input: { text },
+      voice: voiceConfig,
+      audioConfig: { audioEncoding: "MP3", speakingRate: speakingRate || 1.0 }
+    });
 
     if (!response.audioContent) {
       return res.status(500).json({ error: "No audio returned from TTS" });
