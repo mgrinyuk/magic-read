@@ -1111,6 +1111,7 @@ document.getElementById("toggleFullTextPinyinBtn")?.addEventListener("click", ()
 });
 
 document.getElementById("readFullTextBtn")?.addEventListener("click", async () => {
+  unlockAudioForMobile();
   if (!fullTextContent) return;
 
   const text = fullTextContent.dataset.fullSentence || fullTextContent.textContent.trim();
@@ -1353,6 +1354,7 @@ async function renderCards(sentences) {
     });
 
     ttsBtn?.addEventListener("click", async () => {
+      unlockAudioForMobile();
       const { data } = await supabase.auth.getSession();
 
       if (!data.session && freeTrialUsed) {
@@ -1661,6 +1663,7 @@ function attachWordListeners(sentenceEl) {
 });
 
     wordEl.addEventListener("click", (event) => {
+      unlockAudioForMobile();
       event.stopPropagation();
 
       const word = wordEl.dataset.word;
@@ -1873,6 +1876,21 @@ async function prepareTTSInput(text, lang) {
   }
 
   return text.trim();
+}
+
+function unlockAudioForMobile() {
+  try {
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+    const buffer = audioCtx.createBuffer(1, 1, 22050);
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+  } catch (error) {
+    console.warn("Audio unlock failed:", error);
+  }
 }
 
 function base64ToArrayBuffer(base64) {
@@ -2625,6 +2643,7 @@ document.getElementById("flashcardDeckSelect")?.addEventListener("change", (e) =
 });
 
 document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async (e) => {
+  unlockAudioForMobile();
   e.stopPropagation();
 
   const cards = getCurrentCards();
@@ -2641,6 +2660,7 @@ document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async
 });
 
 document.getElementById("flashcardPlaySentenceBtn")?.addEventListener("click", async (e) => {
+  unlockAudioForMobile();
   e.stopPropagation();
 
   const cards = getCurrentCards();
