@@ -314,6 +314,16 @@ let grammarCache = {
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+function splitIntoSentences(text) {
+  const PH = "\x00";
+  const protected_text = text
+    .replace(/\b(\d+)\. /g, `$1${PH} `)
+    .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Jr|Sr|St|vs|etc|e\.g|i\.e|No|Vol|Fig)\./gi, `$1${PH}`);
+
+  return (protected_text.match(/[^.!?。！？]+[.!?。！？]?/g) || [])
+    .map(s => s.replace(/\x00/g, ".").trim())
+    .filter(Boolean);
+}
 
 app.post("/api/split-text", (req, res) => {
   const { text } = req.body || {};
@@ -322,13 +332,7 @@ app.post("/api/split-text", (req, res) => {
     return res.status(400).json({ error: "Text is required" });
   }
 
-  const sentences =
-    text
-      .match(/[^.!?。！？]+[.!?。！？]?/g)
-      ?.map(s => s.trim())
-      .filter(Boolean) || [];
-
-  res.json({ sentences });
+  res.json({ sentences: splitIntoSentences(text) });
 });
 
 function segmentChineseText(text) {
@@ -663,10 +667,7 @@ app.get("/api/game-texts/:id", async (req, res) => {
       return res.status(404).json({ error: "Game text not found" });
     }
 
-    const sentences = row.text
-      .match(/[^.!?。！？]+[.!?。！？]?/g)
-      ?.map(s => s.trim())
-      .filter(Boolean) || [];
+    const sentences = splitIntoSentences(row.text);
 
     res.json({
       id: row.id,
