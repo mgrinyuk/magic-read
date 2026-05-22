@@ -82,6 +82,7 @@ let currentAudio = null;       // AudioBufferSourceNode
 let audioCtxSuspended = false; // true when audioCtx.suspend() was called (paused)
 let currentAudioText = "";
 let currentAudioRate = 1.0;
+let highlightTimers = [];
 
 let ttsSlowMode = false;
 let popupTimeout = null;
@@ -1397,7 +1398,7 @@ async function renderCards(sentences) {
           recordBtn.hidden = false;
           recordBtn.textContent = getT().yourTurn || "Your turn";
         }
-      });
+      }, sentenceEl);
     });
 
     translateBtn?.addEventListener("click", () => {
@@ -1900,7 +1901,13 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-async function playGoogleTTS(text, langOverride = null, onEnd = null) {
+function clearWordHighlights() {
+  highlightTimers.forEach(t => clearTimeout(t));
+  highlightTimers = [];
+  document.querySelectorAll(".word.word-speaking").forEach(el => el.classList.remove("word-speaking"));
+}
+
+async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl = null) {
   if (!text) return;
 
   const effectiveLang = langOverride || sourceLangSelect.value;
@@ -1919,6 +1926,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   }
 
   // Stop any current audio
+  clearWordHighlights();
   if (currentAudio) {
     currentAudio.onended = null;
     try { currentAudio.stop(); } catch (_) {}
@@ -1933,11 +1941,16 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
   try {
     const selectedVoice = getSelectedVoice(effectiveLang);
     const cacheKey = `${text}|${effectiveLang}|${effectiveRate}|${selectedVoice || ""}`;
-    let audioBuffer = ttsCache.get(cacheKey);
+    let cached = ttsCache.get(cacheKey);
 
-    if (!audioBuffer) {
+    if (!cached) {
+      const wordEls = sentenceEl ? Array.from(sentenceEl.querySelectorAll(".word")) : [];
+      const words = wordEls.map(el => el.dataset.word).filter(Boolean);
+
       const ttsBody = { text, sourceLang: effectiveLang, speakingRate: effectiveRate };
       if (selectedVoice) ttsBody.voiceName = selectedVoice;
+      if (words.length > 0) ttsBody.words = words;
+
       const response = await fetchWithAuth(`${API_BASE}/api/tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1947,12 +1960,14 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "TTS failed");
 
-      audioBuffer = await audioCtx.decodeAudioData(base64ToArrayBuffer(data.audioBase64));
+      const audioBuffer = await audioCtx.decodeAudioData(base64ToArrayBuffer(data.audioBase64));
 
       if (ttsCache.size >= 50) ttsCache.delete(ttsCache.keys().next().value);
-      ttsCache.set(cacheKey, audioBuffer);
+      cached = { audioBuffer, timepoints: data.timepoints || [] };
+      ttsCache.set(cacheKey, cached);
     }
 
+    const { audioBuffer, timepoints } = cached;
     const source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     source.playbackRate.value = effectiveRate;
@@ -1963,7 +1978,20 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
     currentAudioRate = effectiveRate;
     audioCtxSuspended = false;
 
+    if (sentenceEl && timepoints.length > 0) {
+      const wordEls = Array.from(sentenceEl.querySelectorAll(".word"));
+      timepoints.forEach(tp => {
+        const idx = parseInt(tp.markName.replace("w", ""), 10);
+        const delayMs = tp.timeSeconds * 1000;
+        highlightTimers.push(setTimeout(() => {
+          document.querySelectorAll(".word.word-speaking").forEach(el => el.classList.remove("word-speaking"));
+          if (wordEls[idx]) wordEls[idx].classList.add("word-speaking");
+        }, delayMs));
+      });
+    }
+
     source.onended = () => {
+      clearWordHighlights();
       if (currentAudio === source) {
         currentAudio = null;
         currentAudioText = "";
@@ -1976,6 +2004,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null) {
     source.start(0);
   } catch (error) {
     console.error("Google TTS failed, falling back to browser TTS:", error);
+    clearWordHighlights();
     currentAudio = null;
     currentAudioText = "";
     currentAudioRate = 1.0;
@@ -2000,6 +2029,7 @@ function playBrowserTTS(text, langOverride = null) {
 }
 
 function stopAllTTS() {
+  clearWordHighlights();
   speechSynthesis.cancel();
   if (currentAudio) {
     currentAudio.onended = null;

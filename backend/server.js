@@ -422,9 +422,29 @@ app.post("/api/dictionary", (req, res) => {
   }
 });
 
+function escapeXml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
+function buildSSMLWithMarks(text, words) {
+  let result = "";
+  let pos = 0;
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const idx = text.indexOf(word, pos);
+    if (idx === -1) continue;
+    result += escapeXml(text.slice(pos, idx));
+    result += `<mark name="w${i}"/>` + escapeXml(word);
+    pos = idx + word.length;
+  }
+  result += escapeXml(text.slice(pos));
+  return `<speak>${result}</speak>`;
+}
+
 app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
   try {
-    const { text, sourceLang, speakingRate, voiceName } = req.body;
+    const { text, sourceLang, speakingRate, voiceName, words } = req.body;
 
     if (!text || !sourceLang) {
       return res.status(400).json({ error: "text and sourceLang are required" });
@@ -446,10 +466,16 @@ app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
       ? { languageCode: baseConfig.languageCode, name: voiceName }
       : baseConfig;
 
+    const useMarks = Array.isArray(words) && words.length > 0;
+    const input = useMarks
+      ? { ssml: buildSSMLWithMarks(text, words) }
+      : { text };
+
     const [response] = await ttsClient.synthesizeSpeech({
-      input: { text },
+      input,
       voice: voiceConfig,
-      audioConfig: { audioEncoding: "MP3", speakingRate: speakingRate || 1.0 }
+      audioConfig: { audioEncoding: "MP3", speakingRate: speakingRate || 1.0 },
+      ...(useMarks && { enableTimePointing: ["SSML_MARK"] })
     });
 
     if (!response.audioContent) {
@@ -458,7 +484,8 @@ app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
 
     res.json({
       audioBase64: response.audioContent.toString("base64"),
-      mimeType: "audio/mpeg"
+      mimeType: "audio/mpeg",
+      timepoints: response.timepoints || []
     });
   } catch (error) {
     console.error("TTS route error:", error);

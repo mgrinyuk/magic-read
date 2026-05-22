@@ -1020,6 +1020,12 @@ textarea:focus,
   border-radius: 5px;
 }
 
+.word-speaking {
+  background: rgba(255, 180, 0, 0.45);
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
 .sentence-pinyin-box {
   background: rgba(58, 154, 255, 0.15);
   color: var(--text-on-dark-soft);
