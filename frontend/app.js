@@ -86,6 +86,7 @@ let activePopup = null;
 let activeHighlightTimer = null;
 
 let ttsSlowMode = false;
+let readingAnimationMode = true;
 let popupTimeout = null;
 let guestPracticeCount = 0;
 const FREE_TRIAL_LISTENS = 3;
@@ -1122,6 +1123,12 @@ document.getElementById("readFullTextBtn")?.addEventListener("click", async () =
   const cleanText = await prepareTTSInput(text, sourceLangSelect.value);
 
   stopAllTTS();
+
+  if (readingAnimationMode) {
+    playBrowserTTS(cleanText, sourceLangSelect.value, fullTextContent, null);
+    return;
+  }
+
   await playGoogleTTS(cleanText, sourceLangSelect.value, null, fullTextContent);
 });
 
@@ -1392,14 +1399,20 @@ async function renderCards(sentences) {
 
       ttsBtn.textContent = getT().pause;
 
-      await playGoogleTTS(cleanSentence, sourceLangSelect.value, () => {
+      const onSentenceEnd = () => {
         ttsBtn.textContent = getT().listen || "Listen";
-
         if (recordBtn) {
           recordBtn.hidden = false;
           recordBtn.textContent = getT().yourTurn || "Your turn";
         }
-      }, sentenceEl);
+      };
+
+      if (readingAnimationMode) {
+        playBrowserTTS(cleanSentence, sourceLangSelect.value, sentenceEl, onSentenceEnd);
+        return;
+      }
+
+      await playGoogleTTS(cleanSentence, sourceLangSelect.value, onSentenceEnd, sentenceEl);
     });
 
     translateBtn?.addEventListener("click", () => {
@@ -1928,6 +1941,22 @@ function clearWordHighlights() {
   document.querySelectorAll(".word-speaking").forEach(el => el.classList.remove("word-speaking"));
 }
 
+function highlightByCharIndex(container, charIndex) {
+  if (!container) return;
+  const units = Array.from(container.querySelectorAll(".word, .hanzi-char"));
+  if (!units.length) return;
+  units.forEach(u => u.classList.remove("word-speaking"));
+  let pos = 0;
+  for (const unit of units) {
+    const len = (unit.textContent || "").length;
+    if (charIndex >= pos && charIndex < pos + len) {
+      unit.classList.add("word-speaking");
+      break;
+    }
+    pos += len;
+  }
+}
+
 function highlightWordsSequentially(container, durationMs) {
   if (!container) return;
   clearWordHighlights();
@@ -2076,14 +2105,20 @@ function playBrowserTTS(text, langOverride = null, sentenceEl = null, onEnd = nu
   utterance.lang = lang;
   utterance.rate = rate;
 
-  const sourceLang = langOverride || sourceLangSelect.value;
-  const isCJK = ["zh", "ja"].includes(sourceLang);
-  const estimatedMs = isCJK
-    ? Math.max(text.length * 520, 2200)
-    : Math.max(text.split(/\s+/).length * 320, 1400);
+  let boundaryFired = false;
+
+  utterance.onboundary = (event) => {
+    boundaryFired = true;
+    if (!sentenceEl || event.charIndex == null) return;
+    highlightByCharIndex(sentenceEl, event.charIndex);
+  };
 
   if (sentenceEl) {
-    highlightWordsSequentially(sentenceEl, estimatedMs);
+    setTimeout(() => {
+      if (!boundaryFired) {
+        highlightWordsSequentially(sentenceEl, null);
+      }
+    }, 700);
   }
 
   utterance.onend = () => {
