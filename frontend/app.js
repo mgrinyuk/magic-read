@@ -1932,7 +1932,19 @@ function highlightWordsSequentially(container, durationMs) {
   if (!container) return;
   clearWordHighlights();
 
-  const words = Array.from(container.querySelectorAll(".word")).filter(el => el.textContent.trim());
+  let words = Array.from(container.querySelectorAll(".word")).filter(el => el.textContent.trim());
+
+  if (!words.length) {
+    words = Array.from(container.querySelectorAll(".hanzi-char")).filter(el => el.textContent.trim());
+  }
+
+  if (!words.length) {
+    const chars = [...container.textContent].filter(c => c.trim());
+    if (!chars.length) return;
+    container.innerHTML = chars.map(c => `<span class="word">${c}</span>`).join("");
+    words = Array.from(container.querySelectorAll(".word"));
+  }
+
   if (!words.length) return;
 
   const safeDuration = Math.max(durationMs || words.length * 260, 1200);
@@ -2035,28 +2047,47 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
     source.start(0);
   } catch (error) {
     console.error("Google TTS failed, falling back to browser TTS:", error);
-    clearWordHighlights();
     currentAudio = null;
     currentAudioText = "";
     currentAudioRate = 1.0;
     audioCtxSuspended = false;
-    playBrowserTTS(text, effectiveLang);
-    if (typeof onEnd === "function") onEnd();
+    playBrowserTTS(text, effectiveLang, sentenceEl, onEnd);
   }
 }
 
-function playBrowserTTS(text, langOverride = null) {
+function playBrowserTTS(text, langOverride = null, sentenceEl = null, onEnd = null, onError = null) {
   if (!text) return;
 
-  const lang = mapToSpeechLang(langOverride || sourceLangSelect.value);
+  unlockAudioForMobile();
+  clearWordHighlights();
 
-  speechSynthesis.cancel();
+  const lang = mapToSpeechLang(langOverride || sourceLangSelect.value);
+  const rate = ttsSlowMode ? 0.75 : 0.9;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang;
-  utterance.rate = ttsSlowMode ? 0.75 : 0.9;
+  utterance.rate = rate;
 
-  speechSynthesis.speak(utterance);
+  const estimatedMs = (text.length / (rate * 14)) * 1000;
+
+  if (sentenceEl) {
+    highlightWordsSequentially(sentenceEl, estimatedMs);
+  }
+
+  utterance.onend = () => {
+    clearWordHighlights();
+    if (typeof onEnd === "function") onEnd();
+  };
+
+  utterance.onerror = (event) => {
+    clearWordHighlights();
+    console.error("Browser TTS error:", event);
+    if (typeof onError === "function") onError(event);
+    if (typeof onEnd === "function") onEnd();
+  };
+
+  window.speechSynthesis.cancel();
+  setTimeout(() => window.speechSynthesis.speak(utterance), 0);
 }
 
 function stopAllTTS() {
