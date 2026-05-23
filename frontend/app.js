@@ -1125,7 +1125,11 @@ document.getElementById("readFullTextBtn")?.addEventListener("click", async () =
   stopAllTTS();
 
   if (readingAnimationMode) {
-    playBrowserTTS(cleanText, sourceLangSelect.value, fullTextContent, null);
+    if (sourceLangSelect.value === "zh" && ttsSlowMode) {
+      await playGoogleTTS(cleanText, sourceLangSelect.value, null, fullTextContent);
+    } else {
+      playBrowserTTS(cleanText, sourceLangSelect.value, fullTextContent, null);
+    }
     return;
   }
 
@@ -1408,7 +1412,11 @@ async function renderCards(sentences) {
       };
 
       if (readingAnimationMode) {
-        playBrowserTTS(cleanSentence, sourceLangSelect.value, sentenceEl, onSentenceEnd);
+        if (sourceLangSelect.value === "zh" && ttsSlowMode) {
+          await playGoogleTTS(cleanSentence, sourceLangSelect.value, onSentenceEnd, sentenceEl);
+        } else {
+          playBrowserTTS(cleanSentence, sourceLangSelect.value, sentenceEl, onSentenceEnd);
+        }
         return;
       }
 
@@ -2056,7 +2064,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
     const { audioBuffer } = cached;
     const source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.playbackRate.value = effectiveRate;
+    source.playbackRate.value = 1.0;
     source.connect(audioCtx.destination);
 
     currentAudio = source;
