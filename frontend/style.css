@@ -2013,3 +2013,13 @@ body.is-logged-in .top-ui-language {
   text-align: center;
   padding: 12px 0;
 }
+/* Strong visible TTS word highlighting */
+.word.word-speaking,
+.sentence .word.word-speaking,
+.full-text-box .word.word-speaking {
+  background: var(--yellow) !important;
+  color: var(--brand-dark) !important;
+  border-radius: 7px;
+  padding: 1px 4px;
+  box-shadow: 0 0 0 2px rgba(241, 255, 94, 0.45);
+}
