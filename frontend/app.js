@@ -1381,7 +1381,7 @@ async function renderCards(sentences) {
       const isSameAudio =
         currentAudio &&
         currentAudioText === cleanSentence &&
-        currentAudioRate === (ttsSlowMode ? 0.75 : 1.0);
+        currentAudioRate === (ttsSlowMode ? 0.85 : 1.0);
 
       if (isSameAudio && !audioCtxSuspended) {
         audioCtx.suspend();
@@ -2001,7 +2001,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
   if (!text) return;
 
   const effectiveLang = langOverride || sourceLangSelect.value;
-  const effectiveRate = ttsSlowMode ? 0.75 : 1.0;
+  const effectiveRate = ttsSlowMode ? 0.85 : 1.0;
 
   // Toggle pause/resume for same audio
   if (currentAudio && currentAudioText === text && currentAudioRate === effectiveRate) {
@@ -2099,11 +2099,13 @@ function playBrowserTTS(text, langOverride = null, sentenceEl = null, onEnd = nu
   clearWordHighlights();
 
   const lang = mapToSpeechLang(langOverride || sourceLangSelect.value);
-  const rate = ttsSlowMode ? 0.75 : 0.9;
+  const rate = ttsSlowMode ? 0.85 : 1.0;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang;
   utterance.rate = rate;
+  utterance.pitch = 1;
+  utterance.volume = 1;
 
   let boundaryFired = false;
 
