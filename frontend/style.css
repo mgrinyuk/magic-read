@@ -1021,9 +1021,22 @@ textarea:focus,
 }
 
 .word-speaking {
-  background: rgba(255, 180, 0, 0.45);
-  border-radius: 4px;
-  transition: background 0.1s;
+  background: var(--yellow) !important;
+  color: var(--brand-dark) !important;
+  border-radius: 6px;
+  padding: 1px 3px;
+  box-shadow: 0 0 0 3px rgba(241, 255, 94, 0.28);
+  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.card .word-speaking {
+  background: var(--yellow) !important;
+  color: var(--brand-dark) !important;
+}
+
+.full-text-box .word-speaking {
+  background: var(--yellow) !important;
+  color: var(--brand-dark) !important;
 }
 
 .sentence-pinyin-box {
