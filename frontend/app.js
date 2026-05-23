@@ -1947,7 +1947,13 @@ function highlightWordsSequentially(container, durationMs) {
 
   if (!words.length) return;
 
-  const safeDuration = Math.max(durationMs || words.length * 260, 1200);
+  const lang = document.getElementById("sourceLang")?.value || "en";
+  const isCJK = ["zh", "ja"].includes(lang);
+
+  const safeDuration = isCJK
+    ? Math.max(words.length * 520, 2200)
+    : Math.max(durationMs || words.length * 260, 1200);
+
   const step = safeDuration / words.length;
   let index = 0;
 
@@ -2030,7 +2036,9 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
     audioCtxSuspended = false;
 
     if (sentenceEl) {
-      highlightWordsSequentially(sentenceEl, audioBuffer.duration * 1000);
+      const isCJK = ["zh", "ja"].includes(effectiveLang);
+      const durationMs = isCJK ? null : audioBuffer.duration * 1000;
+      highlightWordsSequentially(sentenceEl, durationMs);
     }
 
     source.onended = () => {
@@ -2068,7 +2076,11 @@ function playBrowserTTS(text, langOverride = null, sentenceEl = null, onEnd = nu
   utterance.lang = lang;
   utterance.rate = rate;
 
-  const estimatedMs = (text.length / (rate * 14)) * 1000;
+  const sourceLang = langOverride || sourceLangSelect.value;
+  const isCJK = ["zh", "ja"].includes(sourceLang);
+  const estimatedMs = isCJK
+    ? Math.max(text.length * 520, 2200)
+    : Math.max(text.split(/\s+/).length * 320, 1400);
 
   if (sentenceEl) {
     highlightWordsSequentially(sentenceEl, estimatedMs);
