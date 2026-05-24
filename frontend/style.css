@@ -19,7 +19,7 @@
   --radius-lg: 26px;
   --radius-xl: 32px;
   --radius-pill: 999px;
-  --page-width: 1280px;
+  --page-width: 1120px;
   --transition: 0.2s ease;
 }
 
@@ -1581,6 +1581,40 @@ body.is-logged-in .top-ui-language {
 
   .benefit-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+@media (min-width: 1200px) {
+  .site-container {
+    width: min(1120px, calc(100% - 120px));
+  }
+
+  .main .site-container {
+    width: min(1120px, calc(100% - 120px));
+  }
+
+  .workspace-card,
+  .start-panel {
+    max-width: 1120px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (min-width: 1500px) {
+  .site-container {
+    width: min(1120px, calc(100% - 180px));
+  }
+
+  .main .site-container {
+    width: min(1120px, calc(100% - 180px));
   }
 }
 
