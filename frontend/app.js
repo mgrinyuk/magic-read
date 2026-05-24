@@ -715,15 +715,7 @@ async function startReadingFromText(text) {
     return;
   }
 
-  if (container) {
-    container.innerHTML = `
-      <div class="magic-loading">
-        <div class="magic-loader"></div>
-        <strong>Magic is being created ✨</strong>
-        <p>Please wait while your text becomes practice cards.</p>
-      </div>
-    `;
-  }
+  showMagicLoadingOverlay();
 
   if (createBtn) {
     createBtn.disabled = true;
@@ -777,6 +769,7 @@ async function startReadingFromText(text) {
     console.error("Start reading error:", error);
     showToast("Could not start reading.", "error");
   } finally {
+    hideMagicLoadingOverlay();
     if (createBtn) {
       createBtn.disabled = false;
       createBtn.textContent = getT().start || "Start";
@@ -891,6 +884,8 @@ function renderLibraryList(texts) {
 
     textLibraryList.querySelectorAll(".text-library-item").forEach(item => {
       item.addEventListener("click", async () => {
+        textLibraryPanel.hidden = true;
+        showMagicLoadingOverlay();
         await loadLibraryText(item.dataset.id);
       });
     });
@@ -917,6 +912,8 @@ async function loadLibraryText(id) {
   } catch (err) {
     console.error("Text load error:", err);
     showToast("Could not open this text.", "error");
+  } finally {
+    hideMagicLoadingOverlay();
   }
 }
 
@@ -1001,13 +998,14 @@ async function loadSavedTexts(forceOpen = false) {
       const savedText = data.find(item => item.id === btn.dataset.id);
       if (!savedText) return;
 
+      savedTextsPanel.hidden = true;
+      showMagicLoadingOverlay();
+
       if (savedText.source_lang) sourceLangSelect.value = savedText.source_lang;
       if (savedText.target_lang) targetLangSelect.value = savedText.target_lang;
 
       updateLanguageBasedUI();
       await startReadingFromText(savedText.text || "");
-
-      savedTextsPanel.hidden = true;
     });
   });
 
@@ -2949,6 +2947,30 @@ function escapeHtml(text = "") {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function showMagicLoadingOverlay(message = "Please wait, magic is being created…") {
+  let overlay = document.getElementById("magicLoadingOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "magicLoadingOverlay";
+    overlay.className = "magic-loading-overlay";
+    overlay.innerHTML = `
+      <div class="magic-loading-card">
+        <div class="magic-loader"></div>
+        <strong></strong>
+        <p>This can take a moment.</p>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.querySelector("strong").textContent = message;
+  overlay.hidden = false;
+}
+
+function hideMagicLoadingOverlay() {
+  const overlay = document.getElementById("magicLoadingOverlay");
+  if (overlay) overlay.hidden = true;
 }
 
 function showToast(message, type = "info") {
