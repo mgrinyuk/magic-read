@@ -123,9 +123,7 @@ h1 {
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: var(--yellow);
-  color: var(--brand-dark);
-  font-weight: 950;
+  overflow: hidden;
 }
 
 .brand-name {
