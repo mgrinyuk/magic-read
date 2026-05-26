@@ -130,9 +130,17 @@ function loadCedict() {
 
 const GRAMMAR_SHEET_ID = process.env.GRAMMAR_SHEET_ID;
 const app = express();
-const googleCredentials = process.env.GOOGLE_TTS_KEY_JSON
-  ? JSON.parse(process.env.GOOGLE_TTS_KEY_JSON)
-  : undefined;
+let googleCredentials;
+try {
+  if (process.env.GOOGLE_TTS_KEY_JSON) {
+    googleCredentials = JSON.parse(process.env.GOOGLE_TTS_KEY_JSON);
+    console.log("[TTS] Credentials loaded for:", googleCredentials.client_email || "(no client_email)");
+  } else {
+    console.warn("[TTS] GOOGLE_TTS_KEY_JSON is not set — will fail at runtime");
+  }
+} catch (err) {
+  console.error("[TTS] Failed to parse GOOGLE_TTS_KEY_JSON:", err.message);
+}
 
 const ttsClient = new textToSpeech.TextToSpeechClient({
   credentials: googleCredentials
@@ -488,8 +496,13 @@ app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
       timepoints: response.timepoints || []
     });
   } catch (error) {
-    console.error("TTS route error:", error);
-    res.status(500).json({ error: "TTS generation failed" });
+    const code = error.code ?? error.status ?? "unknown";
+    const detail = error.message ?? String(error);
+    console.error(`[TTS] synthesizeSpeech failed — code: ${code} | message: ${detail}`);
+    if (!googleCredentials) {
+      console.error("[TTS] No credentials — GOOGLE_TTS_KEY_JSON missing or unparseable");
+    }
+    res.status(500).json({ error: "TTS generation failed", code, detail });
   }
 });
 
