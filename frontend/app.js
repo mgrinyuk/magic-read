@@ -86,7 +86,6 @@ let activePopup = null;
 let activeHighlightTimer = null;
 
 let ttsSlowMode = false;
-let readingAnimationMode = true;
 let popupTimeout = null;
 let guestPracticeCount = 0;
 const FREE_TRIAL_LISTENS = 3;
@@ -1119,25 +1118,8 @@ document.getElementById("readFullTextBtn")?.addEventListener("click", async () =
   const text = fullTextContent.dataset.fullSentence || fullTextContent.textContent.trim();
   if (!text) return;
 
-  if (isIOS() && readingAnimationMode) {
-    stopAllTTS();
-    playBrowserTTS(text, sourceLangSelect.value, fullTextContent, null);
-    return;
-  }
-
   const cleanText = await prepareTTSInput(text, sourceLangSelect.value);
-
   stopAllTTS();
-
-  if (readingAnimationMode) {
-    if (sourceLangSelect.value === "zh" && ttsSlowMode) {
-      await playGoogleTTS(cleanText, sourceLangSelect.value, null, fullTextContent);
-    } else {
-      playBrowserTTS(cleanText, sourceLangSelect.value, fullTextContent, null);
-    }
-    return;
-  }
-
   await playGoogleTTS(cleanText, sourceLangSelect.value, null, fullTextContent);
 });
 
@@ -1373,31 +1355,6 @@ async function renderCards(sentences) {
 
     ttsBtn?.addEventListener("click", async () => {
       unlockAudioForMobile();
-      window.speechSynthesis.cancel();
-
-      if (isIOS() && readingAnimationMode) {
-        ttsBtn.textContent = getT().pause;
-        const onSentenceEnd = () => {
-          ttsBtn.textContent = getT().listen || "Listen";
-          if (recordBtn) {
-            recordBtn.hidden = false;
-            recordBtn.textContent = getT().yourTurn || "Your turn";
-          }
-        };
-        playBrowserTTS(sentence, sourceLangSelect.value, sentenceEl, onSentenceEnd);
-
-        const { data } = await supabase.auth.getSession();
-        if (!data.session && freeTrialUsed) {
-          window.speechSynthesis.cancel();
-          ttsBtn.textContent = getT().listen || "Listen";
-          document.getElementById("authOverlay")?.removeAttribute("hidden");
-          document.body.style.overflow = "hidden";
-        } else {
-          guestPracticeCount += 1;
-          if (guestPracticeCount >= FREE_TRIAL_LISTENS) await maybeShowAuthOverlay();
-        }
-        return;
-      }
 
       const { data } = await supabase.auth.getSession();
 
@@ -1411,6 +1368,7 @@ async function renderCards(sentences) {
       if (guestPracticeCount >= FREE_TRIAL_LISTENS) {
         await maybeShowAuthOverlay();
       }
+
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
 
       const isSameAudio =
@@ -1441,15 +1399,6 @@ async function renderCards(sentences) {
           recordBtn.textContent = getT().yourTurn || "Your turn";
         }
       };
-
-      if (readingAnimationMode) {
-        if (sourceLangSelect.value === "zh" && ttsSlowMode) {
-          await playGoogleTTS(cleanSentence, sourceLangSelect.value, onSentenceEnd, sentenceEl);
-        } else {
-          playBrowserTTS(cleanSentence, sourceLangSelect.value, sentenceEl, onSentenceEnd);
-        }
-        return;
-      }
 
       await playGoogleTTS(cleanSentence, sourceLangSelect.value, onSentenceEnd, sentenceEl);
     });
