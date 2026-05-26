@@ -2130,6 +2130,19 @@ body.is-logged-in .top-ui-language {
   color: var(--brand);
 }
 
+.footer-copy {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.legal-page address {
+  font-style: normal;
+  line-height: 1.8;
+  color: var(--text-soft);
+  margin: 12px 0 20px;
+}
+
 /* ─── LEGAL PAGES ────────────────────────────── */
 
 .legal-page {
