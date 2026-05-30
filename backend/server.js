@@ -182,17 +182,25 @@ app.get("/api/game-texts", async (req, res) => {
 });
 
 function drawCharacterGrid(doc, items, fontPath, titleText) {
-  const boxSize = 40;
-  const cols = 12;
-  const rows = 18;
-  const startX = 50;
-  const startY = 70;
+  // A4 = 595 × 842 pts. Compute layout from actual page dimensions.
+  const PAGE_W  = 595;
+  const PAGE_H  = 842;
+  const boxSize = 32;
+  const marginH = 40;         // left & right margin
+  const startY  = 70;         // title lives in the 0–70 zone
+  const marginB = 40;         // bottom margin
+
+  const cols    = Math.floor((PAGE_W - marginH * 2) / boxSize);   // 16
+  const rows    = Math.floor((PAGE_H - startY - marginB) / boxSize); // 22
+  const startX  = Math.round((PAGE_W - cols * boxSize) / 2);      // centres grid ≈ 42
+  const fontSize = Math.round(22 * (boxSize / 40));               // 18 (scaled from 22)
+
   const totalPages = Math.max(1, Math.ceil(items.length / rows));
 
   for (let page = 0; page < totalPages; page++) {
     if (page > 0) doc.addPage();
 
-    doc.font("Helvetica-Bold").fontSize(18).fillColor("#333").text(titleText, 50, 40);
+    doc.font("Helvetica-Bold").fontSize(16).fillColor("#333").text(titleText, startX, 40);
 
     const pageItems = items.slice(page * rows, page * rows + rows);
 
@@ -201,7 +209,7 @@ function drawCharacterGrid(doc, items, fontPath, titleText) {
 
       for (let col = 0; col < cols; col++) {
         const x = startX + col * boxSize;
-        const y = startY + row * boxSize;
+        const y = startY  + row * boxSize;
 
         doc.rect(x, y, boxSize, boxSize).stroke("#999");
         doc.moveTo(x + boxSize / 2, y).lineTo(x + boxSize / 2, y + boxSize).stroke("#ccc");
@@ -218,7 +226,7 @@ function drawCharacterGrid(doc, items, fontPath, titleText) {
             doc.font("Helvetica");
           }
 
-          doc.fontSize(22).fillColor("#333").text(currentChar, x, y + 5, {
+          doc.fontSize(fontSize).fillColor("#333").text(currentChar, x, y + 4, {
             width: boxSize,
             align: "center",
             lineBreak: false

@@ -1337,7 +1337,7 @@ textarea:focus,
 }
 
 .flashcard-front h3 {
-  margin: 18px 0 14px;
+  margin: 0;
   font-size: 2.6rem;
 }
 
@@ -1351,7 +1351,7 @@ textarea:focus,
 }
 
 .flashcard-pinyin {
-  margin: 10px 0 0;
+  margin: 0;
   color: var(--yellow);
 }
 

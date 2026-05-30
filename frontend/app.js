@@ -640,6 +640,14 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
   showScreen(screenMain);
 });
 
+  document.querySelector(".brand")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    stopAllTTS();
+    stopRecognition();
+    showScreen(screenMain);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
 /* -----------------------------
    LANGUAGE-BASED UI
 ----------------------------- */
@@ -2166,16 +2174,16 @@ function stopRecognition() {
 ----------------------------- */
 
 function normalizeText(text, lang = "") {
-  let cleaned = text
-    .toLowerCase()
-    .replace(/[.,!?;:«»"'()\[\]{}…。，！？、]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (lang.startsWith("zh")) {
+  let cleaned = text.toLowerCase();
+  try {
+    cleaned = cleaned.replace(/[\p{P}\p{S}]/gu, "");
+  } catch {
+    cleaned = cleaned.replace(/[.,!?;:«»"'`()\[\]{}…。，！？、—–·•\/\\|@#$%^&*+=~<>]/g, "");
+  }
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+  if (lang.startsWith("zh") || lang.startsWith("ja")) {
     cleaned = cleaned.replace(/\s+/g, "");
   }
-
   return cleaned;
 }
 
