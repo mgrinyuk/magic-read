@@ -2530,9 +2530,11 @@ async function renderFlashcards() {
   const cardEl = document.getElementById("flashcardCard");
   const wordEl = document.getElementById("flashcardWord");
   const wordPinyinEl = document.getElementById("flashcardWordPinyin");
+  const wordBackEl = document.getElementById("flashcardWordBack");
   const sentenceEl = document.getElementById("flashcardSentence");
   const sentencePinyinEl = document.getElementById("flashcardSentencePinyin");
   const translationEl = document.getElementById("flashcardTranslation");
+  const contextBlockEl = document.querySelector(".flashcard-context-block");
 
   if (!emptyEl || !deckEl || !cardEl) return;
 
@@ -2555,10 +2557,12 @@ async function renderFlashcards() {
   counterEl.textContent = `${deck?.name || t.deck} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
+  if (wordBackEl) wordBackEl.textContent = card.word || "";
   sentenceEl.textContent = card.sentence || "";
   sentenceEl.dataset.fullSentence = card.sentence || "";
   sentencePinyinEl.textContent = card.sentencePinyin || "";
   translationEl.textContent = card.translation || "";
+  if (contextBlockEl) contextBlockEl.hidden = !card.sentence;
 
   flashcardFlipped = false;
   cardEl.classList.remove("is-flipped");
