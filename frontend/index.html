@@ -262,40 +262,41 @@
           </div>
 
           <div id="flashcardDeck" class="flashcard-deck" hidden>
-            <div class="flashcard-progress">
+            <div class="flashcard-meta">
               <span id="flashcardCounter">Card 1 of 1</span>
+              <button id="flashcardDeleteBtn" class="flashcard-delete-btn" type="button" data-i18n="deleteCard">Delete card</button>
             </div>
 
-            <div id="flashcardCard" class="flashcard-card">
-              <div class="flashcard-card-inner">
-                <div class="flashcard-face flashcard-front">
-                  <p class="flashcard-label" data-i18n="wordLabel">Word</p>
-                  <h3 id="flashcardWord">图书馆</h3>
-                  <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
+            <div class="flashcard-area">
+              <button id="flashcardPrevBtn" class="flashcard-arrow" type="button" aria-label="Previous card">&#8249;</button>
 
-                  <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">🔊</button>
-                  <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" data-i18n="slowOff">
-                    Slow: OFF
-                  </button>
-                </div>
+              <div id="flashcardCard" class="flashcard-card">
+                <div class="flashcard-card-inner">
+                  <div class="flashcard-face flashcard-front">
+                    <p class="flashcard-label" data-i18n="wordLabel">Word</p>
+                    <h3 id="flashcardWord">图书馆</h3>
+                    <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
 
-                <div class="flashcard-face flashcard-back">
-                  <p id="flashcardWordBack" class="flashcard-word-back"></p>
-                  <p id="flashcardTranslation" class="flashcard-translation"></p>
-                  <div class="flashcard-context-block">
-                    <p class="flashcard-label" data-i18n="context">Context</p>
-                    <p id="flashcardSentence" class="flashcard-sentence"></p>
-                    <p id="flashcardSentencePinyin" class="flashcard-pinyin"></p>
+                    <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">🔊</button>
+                    <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" data-i18n="slowOff">
+                      Slow: OFF
+                    </button>
                   </div>
-                  <button id="flashcardPlaySentenceBtn" class="flashcard-play-btn" type="button">🔊</button>
+
+                  <div class="flashcard-face flashcard-back">
+                    <p id="flashcardWordBack" class="flashcard-word-back"></p>
+                    <p id="flashcardTranslation" class="flashcard-translation"></p>
+                    <div class="flashcard-context-block">
+                      <p class="flashcard-label" data-i18n="context">Context</p>
+                      <p id="flashcardSentence" class="flashcard-sentence"></p>
+                      <p id="flashcardSentencePinyin" class="flashcard-pinyin"></p>
+                    </div>
+                    <button id="flashcardPlaySentenceBtn" class="flashcard-play-btn" type="button">🔊</button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="game-navigation">
-              <button id="flashcardPrevBtn" class="game-nav-btn" data-i18n="previous">Previous</button>
-              <button id="flashcardDeleteBtn" class="game-nav-btn" data-i18n="delete">Delete</button>
-              <button id="flashcardNextBtn" class="game-nav-btn game-nav-btn-primary" data-i18n="next">Next</button>
+              <button id="flashcardNextBtn" class="flashcard-arrow" type="button" aria-label="Next card">&#8250;</button>
             </div>
           </div>
         </section>

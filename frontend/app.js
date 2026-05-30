@@ -2924,6 +2924,14 @@ document.getElementById("flashcardCard")?.addEventListener("click", flipFlashcar
 document.getElementById("flashcardNextBtn")?.addEventListener("click", goToNextFlashcard);
 document.getElementById("flashcardPrevBtn")?.addEventListener("click", goToPrevFlashcard);
 document.getElementById("flashcardDeleteBtn")?.addEventListener("click", deleteCurrentFlashcard);
+
+document.addEventListener("keydown", (e) => {
+  if (!screenFlashcards?.classList.contains("active")) return;
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); goToPrevFlashcard(); }
+  if (e.key === "ArrowRight") { e.preventDefault(); goToNextFlashcard(); }
+  if (e.key === " " || e.key === "Enter") { e.preventDefault(); flipFlashcard(); }
+});
 document.getElementById("flashcardClearBtn")?.addEventListener("click", clearFlashcards);
 document.getElementById("flashcardNewDeckBtn")?.addEventListener("click", createDeck);
 document.getElementById("flashcardDeleteDeckBtn")?.addEventListener("click", deleteCurrentDeck);

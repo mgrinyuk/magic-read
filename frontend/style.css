@@ -1284,17 +1284,69 @@ textarea:focus,
 }
 
 #screen-flashcards .flashcard-deck {
-  margin-top: 34px;
+  margin-top: 28px;
 }
 
-#screen-flashcards .flashcard-progress {
-  margin: 0 0 24px;
+.flashcard-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.flashcard-meta > span {
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.92rem;
+}
+
+.flashcard-delete-btn {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.flashcard-delete-btn:hover {
+  color: #d94f4f;
+  background: rgba(217, 79, 79, 0.08);
+}
+
+.flashcard-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.flashcard-arrow {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--brand-dark);
+  font-size: 2.2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.flashcard-arrow:hover {
+  background: var(--surface-soft);
+  box-shadow: 0 2px 14px rgba(28, 7, 112, 0.12);
 }
 
 #screen-flashcards .flashcard-card {
-  margin: 26px 0;
+  width: 100%;
+  max-width: 500px;
   perspective: 1200px;
   cursor: pointer;
 }
@@ -1427,12 +1479,6 @@ textarea:focus,
   margin-top: 0;
 }
 
-#screen-flashcards .game-navigation {
-  margin-top: 34px;
-  display: flex;
-  gap: 14px;
-  justify-content: flex-start;
-}
 
 .flashcard-empty {
   padding: 28px;
@@ -1817,7 +1863,21 @@ body.is-logged-in .top-ui-language {
   }
 
   #screen-flashcards .flashcard-card {
-    margin: 20px 0 28px;
+    max-width: 100%;
+    margin: 0;
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  .flashcard-area {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .flashcard-arrow {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
   }
 
   #screen-flashcards .flashcard-card-inner {
@@ -1847,12 +1907,6 @@ body.is-logged-in .top-ui-language {
     word-break: break-word;
   }
 
-  #screen-flashcards .game-navigation {
-    margin-top: 42px;
-    position: relative;
-    z-index: 5;
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 380px) {
