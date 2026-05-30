@@ -2705,6 +2705,16 @@ async function deleteCurrentDeck() {
   renderFlashcards();
 }
 
+function limitMeanings(text, max = 3) {
+  return String(text || "")
+    .split(/[;,/|]+/)
+    .map(item => item.trim())
+    .filter(Boolean)
+    .filter((item, i, arr) => arr.indexOf(item) === i)
+    .slice(0, max)
+    .join("; ");
+}
+
 async function importWords() {
   const deck = getCurrentDeck();
   if (!deck) {
@@ -2768,17 +2778,43 @@ async function importWords() {
       progressEl.textContent = `Importing ${i + 1} of ${words.length}…`;
 
       try {
-        const transRes = await fetchWithAuth(`${API_BASE}/api/translate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sentence: word, sourceLang: lang, targetLang })
-        });
-        const transData = await transRes.json();
-        if (!transRes.ok) throw new Error(transData.error || "Translation failed");
-        const translation = transData.translation || "";
-
+        let translation = "";
         let pinyin = "";
+
         if (isZh) {
+          try {
+            const dictRes = await fetchWithAuth(`${API_BASE}/api/dictionary`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ word })
+            });
+            const dictData = await dictRes.json();
+            if (dictRes.ok && dictData.entries?.length) {
+              const entry = dictData.entries[0];
+              translation = entry.definitions
+                .map(d => d.trim())
+                .filter(Boolean)
+                .slice(0, 3)
+                .join("; ");
+              pinyin = entry.pinyin || "";
+            }
+          } catch {
+            // fall through to translate
+          }
+        }
+
+        if (!translation) {
+          const transRes = await fetchWithAuth(`${API_BASE}/api/translate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sentence: word, sourceLang: lang, targetLang })
+          });
+          const transData = await transRes.json();
+          if (!transRes.ok) throw new Error(transData.error || "Translation failed");
+          translation = limitMeanings(transData.translation || "", 3);
+        }
+
+        if (isZh && !pinyin) {
           try {
             const segRes = await fetchWithAuth(`${API_BASE}/api/segment`, {
               method: "POST",
