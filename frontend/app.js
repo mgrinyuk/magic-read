@@ -2701,6 +2701,113 @@ async function deleteCurrentDeck() {
   renderFlashcards();
 }
 
+async function importWords() {
+  const deck = getCurrentDeck();
+  if (!deck) {
+    showToast("Please select or create a deck first.", "error");
+    return;
+  }
+
+  const lang = sourceLangSelect.value;
+  const targetLang = targetLangSelect.value;
+  const isZh = lang === "zh";
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-box import-modal-box">
+      <h3 class="import-modal-title">Import words</h3>
+      <p class="import-modal-hint">One word per line, or separated by commas or semicolons.</p>
+      <textarea class="import-modal-textarea" placeholder="图书馆&#10;学习&#10;天气&#10;朋友"></textarea>
+      <div class="import-progress" hidden></div>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn">Cancel</button>
+        <button class="modal-confirm primary-btn">Import</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const textarea = overlay.querySelector(".import-modal-textarea");
+  const progressEl = overlay.querySelector(".import-progress");
+  const confirmBtn = overlay.querySelector(".modal-confirm");
+  const cancelBtn = overlay.querySelector(".modal-cancel");
+
+  textarea.focus();
+
+  cancelBtn.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+
+  confirmBtn.addEventListener("click", async () => {
+    const words = textarea.value
+      .split(/[\n,;]+/)
+      .map(w => w.trim())
+      .filter(Boolean)
+      .filter((w, i, arr) => arr.indexOf(w) === i);
+
+    if (!words.length) {
+      showToast("Please enter at least one word.", "error");
+      return;
+    }
+
+    confirmBtn.disabled = true;
+    cancelBtn.disabled = true;
+    textarea.disabled = true;
+    progressEl.hidden = false;
+
+    let imported = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      progressEl.textContent = `Importing ${i + 1} of ${words.length}…`;
+
+      try {
+        const transRes = await fetchWithAuth(`${API_BASE}/api/translate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sentence: word, sourceLang: lang, targetLang })
+        });
+        const transData = await transRes.json();
+        if (!transRes.ok) throw new Error(transData.error || "Translation failed");
+        const translation = transData.translation || "";
+
+        let pinyin = "";
+        if (isZh) {
+          try {
+            const segRes = await fetchWithAuth(`${API_BASE}/api/segment`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: word })
+            });
+            const segData = await segRes.json();
+            if (segRes.ok && segData.words) {
+              pinyin = segData.words.map(s => s.pinyin || "").filter(Boolean).join(" ");
+            }
+          } catch {
+            // pinyin is optional
+          }
+        }
+
+        const added = await addFlashcard({ word, pinyin, sentence: "", sentencePinyin: "", translation, lang });
+        if (added) { imported++; } else { skipped++; }
+      } catch (err) {
+        console.error(`Import failed for "${word}":`, err);
+        failed++;
+      }
+    }
+
+    overlay.remove();
+
+    const parts = [];
+    if (imported) parts.push(`${imported} word${imported !== 1 ? "s" : ""} imported`);
+    if (skipped) parts.push(`${skipped} skipped (already in deck)`);
+    if (failed) parts.push(`${failed} failed`);
+    showToast(parts.join(", ") + ".", failed > 0 ? "error" : "success");
+  });
+}
+
 async function exportCurrentDeck() {
   const deck = getCurrentDeck();
 
@@ -2780,6 +2887,7 @@ document.getElementById("flashcardDeleteBtn")?.addEventListener("click", deleteC
 document.getElementById("flashcardClearBtn")?.addEventListener("click", clearFlashcards);
 document.getElementById("flashcardNewDeckBtn")?.addEventListener("click", createDeck);
 document.getElementById("flashcardDeleteDeckBtn")?.addEventListener("click", deleteCurrentDeck);
+document.getElementById("flashcardImportBtn")?.addEventListener("click", importWords);
 document.getElementById("flashcardExportBtn")?.addEventListener("click", exportCurrentDeck);
 
 document.getElementById("flashcardDeckSelect")?.addEventListener("change", (e) => {
