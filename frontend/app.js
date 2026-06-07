@@ -2249,13 +2249,36 @@ function stopFlashcardRecognition() {
   }
 }
 
+function normalizePinyin(text = "") {
+  return String(text)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")  // strip tone diacritics: wēi → wei
+    .replace(/ü/g, "v")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function getPinyinForText(text) {
+  const res = await fetchWithAuth(`${API_BASE}/api/pinyin`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Pinyin failed");
+  return data.pinyin || "";
+}
+
 function startFlashcardSpeakingPractice() {
   const cards = getCurrentCards();
   const card = cards[currentFlashcardIndex];
   if (!card) return;
 
+  const cardLang = card.lang || sourceLangSelect.value;
+  const isChinese = cardLang === "zh";
   const expected = card.word || "";
-  const speechLang = mapToSpeechLang(card.lang || sourceLangSelect.value);
+  const speechLang = mapToSpeechLang(cardLang);
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const resultEl = document.getElementById("flashcardSpeakingResult");
 
@@ -2276,21 +2299,66 @@ function startFlashcardSpeakingPractice() {
 
   if (resultEl) { resultEl.hidden = false; resultEl.textContent = "Listening…"; }
 
-  recognition.onresult = (event) => {
+  recognition.onresult = async (event) => {
     const transcript = event.results[0][0].transcript || "";
-    const result = compareText(expected, transcript, speechLang);
 
-    if (result.score >= FLASHCARD_PASS_SCORE) {
-      flashcardSpeakingUnlocked = true;
-      if (resultEl) {
-        resultEl.hidden = false;
-        resultEl.innerHTML = `<strong>✓ ${escapeHtml(result.message)}!</strong><p>You said: ${escapeHtml(transcript)}</p><p>Score: ${result.score}%</p>`;
+    let result;
+
+    if (isChinese) {
+      if (resultEl) { resultEl.hidden = false; resultEl.textContent = "Scoring…"; }
+      try {
+        const transcriptPinyin = await getPinyinForText(transcript);
+        const expectedNorm = normalizePinyin(card.pinyin || expected);
+        const actualNorm   = normalizePinyin(transcriptPinyin);
+
+        const score = (actualNorm.includes(expectedNorm) || expectedNorm.includes(actualNorm))
+          ? 100
+          : compareByEditDistance(expectedNorm, actualNorm);
+
+        result = { score, message: score >= FLASHCARD_PASS_SCORE ? "Great" : "Try again" };
+
+        if (result.score >= FLASHCARD_PASS_SCORE) {
+          flashcardSpeakingUnlocked = true;
+          if (resultEl) {
+            resultEl.hidden = false;
+            resultEl.innerHTML =
+              `<strong>✓ ${escapeHtml(result.message)}!</strong>` +
+              `<p>You said: ${escapeHtml(transcript)}</p>` +
+              `<p>Pronunciation: ${escapeHtml(transcriptPinyin)}</p>` +
+              `<p>Expected: ${escapeHtml(card.pinyin || expected)}</p>` +
+              `<p>Score: ${result.score}%</p>`;
+          }
+        } else {
+          flashcardSpeakingUnlocked = false;
+          if (resultEl) {
+            resultEl.hidden = false;
+            resultEl.innerHTML =
+              `<strong>Try again</strong>` +
+              `<p>You said: ${escapeHtml(transcript)}</p>` +
+              `<p>Pronunciation: ${escapeHtml(transcriptPinyin)}</p>` +
+              `<p>Expected: ${escapeHtml(card.pinyin || expected)}</p>` +
+              `<p>Score: ${result.score}%</p>`;
+          }
+        }
+      } catch {
+        // Pinyin conversion failed — fall back to character comparison
+        result = compareText(expected, transcript, speechLang);
+        flashcardSpeakingUnlocked = result.score >= FLASHCARD_PASS_SCORE;
+        if (resultEl) {
+          resultEl.hidden = false;
+          resultEl.innerHTML =
+            `<strong>${flashcardSpeakingUnlocked ? "✓ " + escapeHtml(result.message) + "!" : "Try again"}</strong>` +
+            `<p>You said: ${escapeHtml(transcript)}</p><p>Score: ${result.score}%</p>`;
+        }
       }
     } else {
-      flashcardSpeakingUnlocked = false;
+      result = compareText(expected, transcript, speechLang);
+      flashcardSpeakingUnlocked = result.score >= FLASHCARD_PASS_SCORE;
       if (resultEl) {
         resultEl.hidden = false;
-        resultEl.innerHTML = `<strong>Try again</strong><p>You said: ${escapeHtml(transcript)}</p><p>Score: ${result.score}%</p>`;
+        resultEl.innerHTML = flashcardSpeakingUnlocked
+          ? `<strong>✓ ${escapeHtml(result.message)}!</strong><p>You said: ${escapeHtml(transcript)}</p><p>Score: ${result.score}%</p>`
+          : `<strong>Try again</strong><p>You said: ${escapeHtml(transcript)}</p><p>Score: ${result.score}%</p>`;
       }
     }
 

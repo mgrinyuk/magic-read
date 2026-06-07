@@ -438,6 +438,18 @@ app.post("/api/dictionary", (req, res) => {
   }
 });
 
+app.post("/api/pinyin", (req, res) => {
+  try {
+    const { text } = req.body || {};
+    if (!text) return res.status(400).json({ error: "Text is required" });
+    const result = pinyin(text, { toneType: "symbol", type: "array" }).join(" ");
+    res.json({ pinyin: result });
+  } catch (error) {
+    console.error("Pinyin route error:", error);
+    res.status(500).json({ error: "Pinyin conversion failed" });
+  }
+});
+
 function escapeXml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
