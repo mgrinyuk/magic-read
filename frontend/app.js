@@ -89,6 +89,11 @@ const guestUsage = {
 };
 
 let currentRecognition = null;
+let currentFlashcardRecognition = null;
+let flashcardSpeakingMode = null; // null | "easy" | "hard"
+let flashcardSpeakingUnlocked = true;
+const FLASHCARD_PASS_SCORE = 75;
+
 let currentAudio = null;       // AudioBufferSourceNode
 let audioCtxSuspended = false; // true when audioCtx.suspend() was called (paused)
 let currentAudioText = "";
@@ -2237,6 +2242,73 @@ function stopRecognition() {
   }
 }
 
+function stopFlashcardRecognition() {
+  if (currentFlashcardRecognition) {
+    try { currentFlashcardRecognition.abort(); } catch { /* already stopped */ }
+    currentFlashcardRecognition = null;
+  }
+}
+
+function startFlashcardSpeakingPractice() {
+  const cards = getCurrentCards();
+  const card = cards[currentFlashcardIndex];
+  if (!card) return;
+
+  const expected = card.word || "";
+  const speechLang = mapToSpeechLang(card.lang || sourceLangSelect.value);
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const resultEl = document.getElementById("flashcardSpeakingResult");
+
+  if (!SpeechRecognition) {
+    if (resultEl) { resultEl.hidden = false; resultEl.textContent = "Speech recognition is not supported in this browser."; }
+    return;
+  }
+
+  stopAllTTS();
+  stopFlashcardRecognition();
+
+  const recognition = new SpeechRecognition();
+  currentFlashcardRecognition = recognition;
+  recognition.lang = speechLang;
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  if (resultEl) { resultEl.hidden = false; resultEl.textContent = "Listening…"; }
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript || "";
+    const result = compareText(expected, transcript, speechLang);
+
+    if (result.score >= FLASHCARD_PASS_SCORE) {
+      flashcardSpeakingUnlocked = true;
+      if (resultEl) {
+        resultEl.hidden = false;
+        resultEl.innerHTML = `<strong>✓ ${escapeHtml(result.message)}!</strong><p>You said: ${escapeHtml(transcript)}</p><p>Score: ${result.score}%</p>`;
+      }
+    } else {
+      flashcardSpeakingUnlocked = false;
+      if (resultEl) {
+        resultEl.hidden = false;
+        resultEl.innerHTML = `<strong>Try again</strong><p>You said: ${escapeHtml(transcript)}</p><p>Score: ${result.score}%</p>`;
+      }
+    }
+
+    renderFlashcards();
+  };
+
+  recognition.onerror = () => {
+    if (resultEl) { resultEl.hidden = false; resultEl.textContent = "Could not hear you. Please try again."; }
+    currentFlashcardRecognition = null;
+  };
+
+  recognition.onend = () => {
+    currentFlashcardRecognition = null;
+  };
+
+  recognition.start();
+}
+
 /* -----------------------------
    SPEECH RECOGNITION
 ----------------------------- */
@@ -2633,6 +2705,52 @@ async function renderFlashcards() {
 
   flashcardFlipped = false;
   cardEl.classList.remove("is-flipped");
+
+  // ── Speaking mode UI ─────────────────────────────
+  const speakBtn      = document.getElementById("flashcardSpeakBtn");
+  const speakPromptEl = document.getElementById("flashcardSpeakPrompt");
+  const hardTranslEl  = document.getElementById("flashcardHardTranslation");
+  const resultEl      = document.getElementById("flashcardSpeakingResult");
+  const nextBtn       = document.getElementById("flashcardNextBtn");
+  const speakEasyBtn  = document.getElementById("flashcardSpeakEasyBtn");
+  const speakHardBtn  = document.getElementById("flashcardSpeakHardBtn");
+  const speakExitBtn  = document.getElementById("flashcardSpeakExitBtn");
+
+  if (flashcardSpeakingMode) {
+    if (speakEasyBtn) speakEasyBtn.hidden = true;
+    if (speakHardBtn) speakHardBtn.hidden = true;
+    if (speakExitBtn) speakExitBtn.hidden = false;
+    if (nextBtn) nextBtn.disabled = !flashcardSpeakingUnlocked;
+
+    if (flashcardSpeakingMode === "easy") {
+      if (hardTranslEl)  hardTranslEl.hidden = true;
+      if (speakPromptEl) speakPromptEl.hidden = true;
+      if (speakBtn) { speakBtn.hidden = false; speakBtn.textContent = "Say it 🎤"; }
+    }
+
+    if (flashcardSpeakingMode === "hard") {
+      if (!flashcardSpeakingUnlocked) {
+        wordEl.textContent = "???";
+        wordPinyinEl.textContent = "";
+        if (wordBackEl) wordBackEl.textContent = "???";
+        if (hardTranslEl) { hardTranslEl.hidden = false; hardTranslEl.textContent = card.translation || ""; }
+        if (speakPromptEl) { speakPromptEl.hidden = false; speakPromptEl.textContent = "Say this in the target language"; }
+        if (speakBtn) { speakBtn.hidden = false; speakBtn.textContent = "Say it 🎤"; }
+      } else {
+        if (hardTranslEl)  hardTranslEl.hidden = true;
+        if (speakPromptEl) speakPromptEl.hidden = true;
+        if (speakBtn)      speakBtn.hidden = true;
+      }
+    }
+  } else {
+    if (speakEasyBtn)  speakEasyBtn.hidden = false;
+    if (speakHardBtn)  speakHardBtn.hidden = false;
+    if (speakExitBtn)  speakExitBtn.hidden = true;
+    if (speakBtn)      speakBtn.hidden = true;
+    if (speakPromptEl) speakPromptEl.hidden = true;
+    if (hardTranslEl)  hardTranslEl.hidden = true;
+    if (nextBtn)       nextBtn.disabled = false;
+  }
 }
 
 function flipFlashcard() {
@@ -2649,7 +2767,18 @@ function goToNextFlashcard() {
   const cards = getCurrentCards();
   if (!cards.length) return;
 
+  if (flashcardSpeakingMode && !flashcardSpeakingUnlocked) {
+    showToast("Pronounce the word correctly to continue.", "error");
+    return;
+  }
+
   currentFlashcardIndex = (currentFlashcardIndex + 1) % cards.length;
+  if (flashcardSpeakingMode) {
+    flashcardSpeakingUnlocked = false;
+    stopFlashcardRecognition();
+    const resultEl = document.getElementById("flashcardSpeakingResult");
+    if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
+  }
   renderFlashcards();
 }
 
@@ -2658,6 +2787,12 @@ function goToPrevFlashcard() {
   if (!cards.length) return;
 
   currentFlashcardIndex = (currentFlashcardIndex - 1 + cards.length) % cards.length;
+  if (flashcardSpeakingMode) {
+    flashcardSpeakingUnlocked = false;
+    stopFlashcardRecognition();
+    const resultEl = document.getElementById("flashcardSpeakingResult");
+    if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
+  }
   renderFlashcards();
 }
 
@@ -3008,7 +3143,44 @@ document.getElementById("flashcardExportBtn")?.addEventListener("click", exportC
 document.getElementById("flashcardDeckSelect")?.addEventListener("change", (e) => {
   currentDeckId = e.target.value;
   currentFlashcardIndex = 0;
+  flashcardSpeakingMode = null;
+  flashcardSpeakingUnlocked = true;
+  stopFlashcardRecognition();
   renderFlashcards();
+});
+
+document.getElementById("flashcardSpeakEasyBtn")?.addEventListener("click", () => {
+  if (!getCurrentCards().length) { showToast("No cards in deck.", "error"); return; }
+  flashcardSpeakingMode = "easy";
+  flashcardSpeakingUnlocked = false;
+  stopFlashcardRecognition();
+  const resultEl = document.getElementById("flashcardSpeakingResult");
+  if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
+  renderFlashcards();
+});
+
+document.getElementById("flashcardSpeakHardBtn")?.addEventListener("click", () => {
+  if (!getCurrentCards().length) { showToast("No cards in deck.", "error"); return; }
+  flashcardSpeakingMode = "hard";
+  flashcardSpeakingUnlocked = false;
+  stopFlashcardRecognition();
+  const resultEl = document.getElementById("flashcardSpeakingResult");
+  if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
+  renderFlashcards();
+});
+
+document.getElementById("flashcardSpeakExitBtn")?.addEventListener("click", () => {
+  flashcardSpeakingMode = null;
+  flashcardSpeakingUnlocked = true;
+  stopFlashcardRecognition();
+  const resultEl = document.getElementById("flashcardSpeakingResult");
+  if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
+  renderFlashcards();
+});
+
+document.getElementById("flashcardSpeakBtn")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  startFlashcardSpeakingPractice();
 });
 
 document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async (e) => {

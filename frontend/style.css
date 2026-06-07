@@ -2086,6 +2086,61 @@ body.is-logged-in .top-ui-language {
   justify-content: flex-end;
 }
 
+.flashcard-speaking-result {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(58, 154, 255, 0.12);
+  color: var(--brand-dark);
+  line-height: 1.6;
+  font-size: 0.95rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.flashcard-speaking-result strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1rem;
+}
+
+.flashcard-speaking-result p {
+  margin: 2px 0;
+}
+
+.flashcard-speaking-prompt {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+}
+
+.flashcard-hard-translation {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--brand-dark);
+  line-height: 1.2;
+}
+
+.flashcard-speak-btn {
+  align-self: center;
+  margin-top: 4px;
+  padding: 10px 24px;
+  font-size: 0.95rem;
+}
+
+.game-nav-btn:disabled,
+.game-nav-btn-primary:disabled,
+.flashcard-arrow:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .guest-nudge-box {
   max-width: 420px;
   text-align: center;

@@ -253,6 +253,9 @@
               <button id="flashcardClearBtn" class="game-nav-btn" data-i18n="clear">Clear</button>
               <button id="flashcardImportBtn" class="game-nav-btn" data-i18n="importWords">Import words</button>
               <button id="flashcardExportBtn" class="game-nav-btn game-nav-btn-primary" data-i18n="exportPDF">Export PDF</button>
+              <button id="flashcardSpeakEasyBtn" class="game-nav-btn" type="button">Speak: Term</button>
+              <button id="flashcardSpeakHardBtn" class="game-nav-btn" type="button">Speak: Translation</button>
+              <button id="flashcardSpeakExitBtn" class="game-nav-btn" type="button" hidden>Exit speaking</button>
             </div>
           </div>
 
@@ -276,11 +279,13 @@
                     <p class="flashcard-label" data-i18n="wordLabel">Word</p>
                     <h3 id="flashcardWord">图书馆</h3>
                     <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
-
+                    <p id="flashcardHardTranslation" class="flashcard-hard-translation" hidden></p>
+                    <p id="flashcardSpeakPrompt" class="flashcard-speaking-prompt" hidden></p>
                     <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">🔊</button>
                     <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" data-i18n="slowOff">
                       Slow: OFF
                     </button>
+                    <button id="flashcardSpeakBtn" class="primary-btn flashcard-speak-btn" type="button" hidden>Say it 🎤</button>
                   </div>
 
                   <div class="flashcard-face flashcard-back">
@@ -298,6 +303,8 @@
 
               <button id="flashcardNextBtn" class="flashcard-arrow" type="button" aria-label="Next card">&#8250;</button>
             </div>
+
+            <div id="flashcardSpeakingResult" class="flashcard-speaking-result" hidden></div>
           </div>
         </section>
       </section>
