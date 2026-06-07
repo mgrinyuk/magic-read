@@ -299,7 +299,21 @@ function applyLocalization(lang = "en") {
   updateSlowLabels();
 }
 
-const savedUiLang = localStorage.getItem("magicread_ui_lang") || "en";
+function detectUserLanguage() {
+  const supported = ["en", "ru", "zh", "tr", "de", "es", "fr", "ja"];
+  for (const pref of (navigator.languages || [navigator.language || "en"])) {
+    const code = pref.slice(0, 2).toLowerCase();
+    if (supported.includes(code)) return code;
+  }
+  return "en";
+}
+
+const savedUiLang = localStorage.getItem("magicread_ui_lang")
+  ?? (() => {
+    const detected = detectUserLanguage();
+    localStorage.setItem("magicread_ui_lang", detected);
+    return detected;
+  })();
 
 if (uiLangSelect) {
   uiLangSelect.value = savedUiLang;
