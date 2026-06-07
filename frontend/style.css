@@ -2086,6 +2086,30 @@ body.is-logged-in .top-ui-language {
   justify-content: flex-end;
 }
 
+.guest-nudge-box {
+  max-width: 420px;
+  text-align: center;
+}
+
+.guest-nudge-title {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  color: var(--brand-dark);
+}
+
+.guest-nudge-body {
+  margin: 0 0 20px;
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.guest-nudge-box .modal-actions {
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .import-modal-box {
   max-width: 520px;
 }

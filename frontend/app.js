@@ -74,8 +74,19 @@ const writingResult = document.getElementById("writingResult");
 ----------------------------- */
 
 let authPromptShown = false;
-let freeTrialUsed = false;
+let authFriendlyShown = false;
 let authMode = "login";
+
+const guestUsage = {
+  cardsPlayed: 0,
+  wordClicks: 0,
+  translations: 0,
+  grammarViews: 0,
+  fullTextsGenerated: 0,
+  graceModeActive: false,
+  graceListens: 0,
+  graceWords: 0
+};
 
 let currentRecognition = null;
 let currentAudio = null;       // AudioBufferSourceNode
@@ -87,8 +98,6 @@ let activeHighlightTimer = null;
 
 let ttsSlowMode = false;
 let popupTimeout = null;
-let guestPracticeCount = 0;
-const FREE_TRIAL_LISTENS = 3;
 
 let currentText = "";
 let currentSentences = [];
@@ -330,7 +339,6 @@ applyLocalization(savedUiLang);
 document.getElementById("closeAuthOverlayBtn")?.addEventListener("click", () => {
   document.getElementById("authOverlay")?.setAttribute("hidden", "");
   document.body.style.overflow = "";
-  freeTrialUsed = true;
 });
 
 async function checkAuth() {
@@ -780,6 +788,7 @@ async function startReadingFromText(text) {
 
     await showImportedText(cleanText);
     await renderCards(sentences);
+    trackGuest("fullTextsGenerated");
 
     if (fullTextTranslation) fullTextTranslation.textContent = "";
       if (textLibraryPanel) textLibraryPanel.hidden = true;
@@ -1150,6 +1159,7 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
 
   const text = fullTextContent.dataset.fullSentence || fullTextContent.textContent.trim();
   if (!text) return;
+  trackGuest("translations");
 
   try {
     fullTextTranslation.textContent = "Translating...";
@@ -1274,19 +1284,72 @@ async function renderChineseSentence(sentence) {
 }
 
 
-async function maybeShowAuthOverlay() {
-  const { data } = await supabase.auth.getSession();
+function trackGuest(event) {
+  if (document.body.classList.contains("is-logged-in")) return;
 
-  if (data.session) return;
-  if (authPromptShown) return;
-
-  const overlay = document.getElementById("authOverlay");
-
-  if (overlay) {
-    overlay.hidden = false;
+  if (guestUsage.graceModeActive) {
+    if (event === "cardsPlayed") guestUsage.graceListens++;
+    if (event === "wordClicks")  guestUsage.graceWords++;
+    if (guestUsage.graceListens >= 5 && guestUsage.graceWords >= 5) {
+      maybeShowAuthOverlay();
+    }
+    return;
   }
 
+  if (event in guestUsage) guestUsage[event]++;
+
+  const limitReached =
+    guestUsage.fullTextsGenerated >= 2 ||
+    guestUsage.cardsPlayed >= 12 ||
+    guestUsage.wordClicks >= 20 ||
+    guestUsage.translations >= 8 ||
+    guestUsage.grammarViews >= 8;
+
+  if (limitReached) maybeShowAuthOverlay();
+}
+
+async function maybeShowAuthOverlay() {
+  const { data } = await supabase.auth.getSession();
+  if (data.session) return;
+  if (authPromptShown) return;
   authPromptShown = true;
+
+  if (!authFriendlyShown) {
+    authFriendlyShown = true;
+
+    const nudge = document.createElement("div");
+    nudge.className = "modal-overlay";
+    nudge.innerHTML = `
+      <div class="modal-box guest-nudge-box">
+        <h3 class="guest-nudge-title">Enjoying Magic Read?</h3>
+        <p class="guest-nudge-body">Create a free account to save texts, flashcards, and progress.</p>
+        <div class="modal-actions">
+          <button class="modal-cancel ghost-btn">Continue for now</button>
+          <button class="modal-confirm primary-btn">Create free account</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(nudge);
+
+    nudge.querySelector(".modal-confirm").addEventListener("click", () => {
+      nudge.remove();
+      openAuthFromOverlay("signup");
+    });
+
+    nudge.querySelector(".modal-cancel").addEventListener("click", () => {
+      nudge.remove();
+      guestUsage.graceModeActive = true;
+      guestUsage.graceListens = 0;
+      guestUsage.graceWords = 0;
+      authPromptShown = false;
+    });
+  } else {
+    const overlay = document.getElementById("authOverlay");
+    if (overlay) {
+      overlay.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+  }
 }
 
 async function renderCards(sentences) {
@@ -1377,19 +1440,7 @@ async function renderCards(sentences) {
 
     ttsBtn?.addEventListener("click", async () => {
       unlockAudioForMobile();
-
-      const { data } = await supabase.auth.getSession();
-
-      if (!data.session && freeTrialUsed) {
-        document.getElementById("authOverlay")?.removeAttribute("hidden");
-        document.body.style.overflow = "hidden";
-        return;
-      }
-      guestPracticeCount += 1;
-
-      if (guestPracticeCount >= FREE_TRIAL_LISTENS) {
-        await maybeShowAuthOverlay();
-      }
+      trackGuest("cardsPlayed");
 
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
 
@@ -1492,6 +1543,7 @@ async function renderCards(sentences) {
 ----------------------------- */
 
 async function translateSentence(sentence, card) {
+  trackGuest("translations");
   const translationBox = card.querySelector(".translation-box");
 
   try {
@@ -1576,6 +1628,7 @@ async function grammar(sentence, card) {
 }
 
 async function openGrammarArticle(articleId, card) {
+  trackGuest("grammarViews");
   const resultBox = card.querySelector(".grammar-box");
   if (!resultBox) return;
 
@@ -1730,6 +1783,7 @@ function renderPopupDeckSelect() {
 }
 
 async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", allowSave = true) {
+  trackGuest("wordClicks");
   removeExistingPopup();
 
   const popup = document.createElement("div");
@@ -2315,7 +2369,6 @@ function record(sentence, card, recordBtn = null) {
   resultBox.innerHTML = t.listening || "Listening…";
 
   recognition.onresult = (event) => {
-    maybeShowAuthOverlay();
     const transcript = event.results[0][0].transcript || "";
     const result = compareText(sentence, transcript, lang);
 
