@@ -100,9 +100,95 @@
   </section>
   <main class="main">
     <div class="site-container">
+
+      <section id="screen-onboarding" class="app-screen">
+        <div class="onboarding-card workspace-card">
+
+          <div id="onboarding-step-a" class="language-step">
+            <p class="eyebrow">Get started</p>
+            <h2>Choose your languages</h2>
+            <div class="onboarding-lang-grid">
+              <div class="onboarding-lang-row">
+                <label class="onboarding-lang-label" for="onboardingTargetLang">I speak</label>
+                <select id="onboardingTargetLang" class="language-select onboarding-select">
+                  <option value="en">English</option>
+                  <option value="ru">Русский</option>
+                  <option value="de">Deutsch</option>
+                  <option value="tr">Türkçe</option>
+                  <option value="zh">中文</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="ja">日本語</option>
+                </select>
+              </div>
+              <div class="onboarding-lang-row">
+                <label class="onboarding-lang-label" for="onboardingSourceLang">I'm learning</label>
+                <select id="onboardingSourceLang" class="language-select onboarding-select">
+                  <option value="zh">Chinese</option>
+                  <option value="ru">Russian</option>
+                  <option value="tr">Turkish</option>
+                  <option value="en">English</option>
+                  <option value="de">German</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="ja">日本語</option>
+                </select>
+              </div>
+            </div>
+            <button id="onboardingContinueBtn" class="primary-btn onboarding-continue-btn">Continue →</button>
+          </div>
+
+          <div id="onboarding-step-b" class="skill-step" hidden>
+            <p class="eyebrow">Today's practice</p>
+            <h2>What do you want to practice?</h2>
+            <div class="skill-grid">
+              <button class="skill-card" data-skill="pronunciation">
+                <span class="skill-icon">🎤</span>
+                <strong>Pronunciation</strong>
+                <span class="skill-desc">Listen, repeat, and improve your spoken language.</span>
+              </button>
+              <button class="skill-card" data-skill="vocabulary">
+                <span class="skill-icon">🧠</span>
+                <strong>Vocabulary</strong>
+                <span class="skill-desc">Study and review words with flashcards.</span>
+              </button>
+              <button id="skillCardWriting" class="skill-card" data-skill="writing" hidden>
+                <span class="skill-icon">✍️</span>
+                <strong>Writing</strong>
+                <span class="skill-desc">Practice characters with calligraphy worksheets.</span>
+              </button>
+            </div>
+
+            <div id="routeChoicePronunciation" class="route-choice-grid" hidden>
+              <button class="route-choice-card" data-route="own-text">
+                <strong>Use my own text</strong>
+                <span>Paste articles, dialogues, or homework.</span>
+              </button>
+              <button class="route-choice-card" data-route="library">
+                <strong>Choose from library</strong>
+                <span>Pick from curated texts for your level.</span>
+              </button>
+            </div>
+
+            <div id="routeChoiceVocabulary" class="route-choice-grid" hidden>
+              <button class="route-choice-card" data-route="import-words">
+                <strong>Import my words</strong>
+                <span>Bring a word list and start drilling immediately.</span>
+              </button>
+              <button class="route-choice-card" data-route="builtin-deck">
+                <strong>Use built-in deck</strong>
+                <span>Study a curated vocabulary set for your language.</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
       <section id="screen-main" class="app-screen">
+        <button id="homeBackBtn" class="home-back-btn" type="button">← Home</button>
         <section id="readerStart" class="start-panel workspace-card">
-          <div class="workspace-tabs">
+          <div class="workspace-tabs" hidden>
             <button id="openLibraryBtn" type="button" class="workspace-tab active" data-i18n="library">
               Library
             </button>
@@ -238,7 +324,7 @@
 
       <section id="screen-flashcards" class="app-screen">
         <section class="workspace-card">
-          <button id="backToReaderBtn" class="ghost-btn" data-i18n="backToReading">← Back to reading</button>
+          <button id="backToReaderBtn" class="ghost-btn home-back-btn" type="button">← Home</button>
           <div class="workspace-head">
             <div>
               <p class="eyebrow" data-i18n="flashcards">Flashcards</p>
@@ -311,7 +397,7 @@
 
       <section id="screen-writing" class="app-screen">
         <section class="workspace-card">
-          <button id="backToReaderBtnWriting" class="ghost-btn" data-i18n="backToReading">← Back to reading</button>
+          <button id="backToReaderBtnWriting" class="ghost-btn home-back-btn" type="button">← Home</button>
           <div class="workspace-head">
             <div>
               <p class="eyebrow" data-i18n="calligraphy">Calligraphy</p>

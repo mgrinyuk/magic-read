@@ -39,6 +39,7 @@ const targetLangSelect = document.getElementById("targetLang");
 const screenMain = document.getElementById("screen-main");
 const screenFlashcards = document.getElementById("screen-flashcards");
 const screenWriting = document.getElementById("screen-writing");
+const screenOnboarding = document.getElementById("screen-onboarding");
 
 const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
@@ -660,20 +661,134 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
   const backToReaderBtn = document.getElementById("backToReaderBtn");
   const backToReaderBtnWriting = document.getElementById("backToReaderBtnWriting");
 
-  backToReaderBtn?.addEventListener("click", () => {
-    showScreen(screenMain);
-  });
-  backToReaderBtnWriting?.addEventListener("click", () => {
-  showScreen(screenMain);
-});
+  backToReaderBtn?.addEventListener("click", goHome);
+  backToReaderBtnWriting?.addEventListener("click", goHome);
 
   document.querySelector(".brand")?.addEventListener("click", (e) => {
     e.preventDefault();
     stopAllTTS();
     stopRecognition();
-    showScreen(screenMain);
+    showOnboardingStepA();
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
+
+/* -----------------------------
+   ONBOARDING
+----------------------------- */
+
+const onboardingStepA = document.getElementById("onboarding-step-a");
+const onboardingStepB = document.getElementById("onboarding-step-b");
+const onboardingSourceLangEl = document.getElementById("onboardingSourceLang");
+const onboardingTargetLangEl = document.getElementById("onboardingTargetLang");
+const skillCardWritingEl = document.getElementById("skillCardWriting");
+const routeChoicePronunciationEl = document.getElementById("routeChoicePronunciation");
+const routeChoiceVocabularyEl = document.getElementById("routeChoiceVocabulary");
+const homeBackBtn = document.getElementById("homeBackBtn");
+
+function syncOnboardingToMain() {
+  if (onboardingSourceLangEl && sourceLangSelect) {
+    sourceLangSelect.value = onboardingSourceLangEl.value;
+    sourceLangSelect.dispatchEvent(new Event("change"));
+  }
+  if (onboardingTargetLangEl && targetLangSelect) {
+    targetLangSelect.value = onboardingTargetLangEl.value;
+  }
+}
+
+function syncMainToOnboarding() {
+  if (onboardingSourceLangEl && sourceLangSelect) {
+    onboardingSourceLangEl.value = sourceLangSelect.value;
+  }
+  if (onboardingTargetLangEl && targetLangSelect) {
+    onboardingTargetLangEl.value = targetLangSelect.value;
+  }
+}
+
+function updateWritingSkillCard() {
+  const lang = onboardingSourceLangEl?.value || sourceLangSelect?.value;
+  if (skillCardWritingEl) {
+    skillCardWritingEl.hidden = !["zh", "ja", "ru"].includes(lang);
+  }
+}
+
+function showOnboardingStepA() {
+  if (onboardingStepA) onboardingStepA.hidden = false;
+  if (onboardingStepB) onboardingStepB.hidden = true;
+  syncMainToOnboarding();
+  showScreen(screenOnboarding);
+}
+
+function showOnboardingStepB() {
+  if (onboardingStepA) onboardingStepA.hidden = true;
+  if (onboardingStepB) onboardingStepB.hidden = false;
+  if (routeChoicePronunciationEl) routeChoicePronunciationEl.hidden = true;
+  if (routeChoiceVocabularyEl) routeChoiceVocabularyEl.hidden = true;
+  document.querySelectorAll(".skill-card").forEach(c => c.classList.remove("skill-card-active"));
+  updateWritingSkillCard();
+  showScreen(screenOnboarding);
+}
+
+function goHome() {
+  showOnboardingStepB();
+}
+
+document.getElementById("onboardingContinueBtn")?.addEventListener("click", () => {
+  syncOnboardingToMain();
+  showOnboardingStepB();
+});
+
+onboardingSourceLangEl?.addEventListener("change", updateWritingSkillCard);
+
+document.querySelectorAll(".skill-card").forEach(card => {
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".skill-card").forEach(c => c.classList.remove("skill-card-active"));
+    card.classList.add("skill-card-active");
+
+    const skill = card.dataset.skill;
+    if (routeChoicePronunciationEl) routeChoicePronunciationEl.hidden = true;
+    if (routeChoiceVocabularyEl) routeChoiceVocabularyEl.hidden = true;
+
+    if (skill === "pronunciation") {
+      if (routeChoicePronunciationEl) routeChoicePronunciationEl.hidden = false;
+    } else if (skill === "vocabulary") {
+      if (routeChoiceVocabularyEl) routeChoiceVocabularyEl.hidden = false;
+    } else if (skill === "writing") {
+      showScreen(screenWriting);
+    }
+  });
+});
+
+document.querySelectorAll(".route-choice-card").forEach(card => {
+  card.addEventListener("click", () => {
+    const route = card.dataset.route;
+
+    if (route === "own-text") {
+      showScreen(screenMain);
+      if (startComposerArea) startComposerArea.hidden = false;
+      if (textLibraryPanel) textLibraryPanel.hidden = true;
+      if (savedTextsPanel) savedTextsPanel.hidden = true;
+    } else if (route === "library") {
+      showScreen(screenMain);
+      if (savedTextsPanel) savedTextsPanel.hidden = true;
+      if (textLibraryPanel) {
+        textLibraryPanel.hidden = false;
+        loadTextLibrary();
+      }
+    } else if (route === "import-words") {
+      showScreen(screenFlashcards);
+      renderDeckSelector();
+      renderFlashcards();
+      setTimeout(() => importWords(), 400);
+    } else if (route === "builtin-deck") {
+      showScreen(screenFlashcards);
+      renderDeckSelector();
+      renderFlashcards();
+      showToast("Built-in decks coming soon!", "info");
+    }
+  });
+});
+
+homeBackBtn?.addEventListener("click", goHome);
 
 /* -----------------------------
    LANGUAGE-BASED UI
@@ -1390,7 +1505,7 @@ async function renderCards(sentences) {
       return `
         <div class="card" data-card-index="${index}">
           <div class="card-head">
-            <h3>Sentence ${index + 1}</h3>
+            <p class="card-progress">Sentence ${index + 1} <span class="card-progress-total">of ${sentences.length}</span></p>
             <span class="card-badge">${badgeText}</span>
           </div>
 
@@ -3347,7 +3462,9 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
 ----------------------------- */
 
 window.addEventListener("DOMContentLoaded", async () => {
-  showScreen(screenMain);
+  syncMainToOnboarding();
+  updateWritingSkillCard();
+  showOnboardingStepA();
   updateLanguageBasedUI();
   updateSlowLabels();
 
