@@ -36,15 +36,37 @@ async function extractUser(req, _res, next) {
   next();
 }
 
-// Rate limiter for expensive Google API calls (TTS, translate).
-// Authenticated users are skipped; guests are capped at 15/hour.
-const expensiveLimiter = rateLimit({
+const RATE_LIMIT_MSG = { error: "Too many requests. Please wait or sign in for more access." };
+const skipAuth = (req) => req.user !== null;
+
+// TTS: expensive Google API call — 80/hour for guests.
+const ttsLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 15,
-  skip: (req) => req.user !== null,
+  limit: 80,
+  skip: skipAuth,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Rate limit exceeded. Please sign in for more access." }
+  message: RATE_LIMIT_MSG
+});
+
+// Translate: moderate cost — 100/hour for guests.
+const translateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 100,
+  skip: skipAuth,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: RATE_LIMIT_MSG
+});
+
+// Dictionary: cheap local lookup — 600/hour for guests.
+const dictionaryLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 600,
+  skip: skipAuth,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: RATE_LIMIT_MSG
 });
 
 // Baseline protection for all endpoints (300 req / 15 min per IP).
@@ -411,7 +433,7 @@ app.post("/api/segment-many", (req, res) => {
 });
 
 
-app.post("/api/dictionary", (req, res) => {
+app.post("/api/dictionary", extractUser, dictionaryLimiter, (req, res) => {
   const { word } = req.body;
 
   if (!word) {
@@ -470,7 +492,7 @@ function buildSSMLWithMarks(text, words) {
   return `<speak>${result}</speak>`;
 }
 
-app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
+app.post("/api/tts", extractUser, ttsLimiter, async (req, res) => {
   try {
     const { text, sourceLang, speakingRate, voiceName, words } = req.body;
 
@@ -527,7 +549,7 @@ app.post("/api/tts", extractUser, expensiveLimiter, async (req, res) => {
 });
 
 
-app.post("/api/translate", extractUser, expensiveLimiter, async (req, res) => {
+app.post("/api/translate", extractUser, translateLimiter, async (req, res) => {
   try {
     const { sentence, sourceLang, targetLang } = req.body;
 

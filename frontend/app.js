@@ -89,6 +89,8 @@ const guestUsage = {
   graceWords: 0
 };
 
+const wordPopupCache = new Map();
+
 let currentRecognition = null;
 let currentFlashcardRecognition = null;
 let flashcardSpeakingMode = null; // null | "easy" | "hard"
@@ -1854,11 +1856,20 @@ function attachWordListeners(sentenceEl) {
     if (wordEl.dataset.listenerAttached === "true") return;
 
     wordEl.addEventListener("mouseenter", () => {
-  const word = wordEl.dataset.word;
-  if (!word) return;
+      const word = wordEl.dataset.word;
+      if (!word) return;
+      if (wordEl._popupTimer) clearTimeout(wordEl._popupTimer);
+      wordEl._popupTimer = setTimeout(() => {
+        showWordPopup(wordEl, word, sentenceText, sentencePinyin, false).catch(console.error);
+      }, 300);
+    });
 
-  showWordPopup(wordEl, word, sentenceText, sentencePinyin, false).catch(console.error);
-});
+    wordEl.addEventListener("mouseleave", () => {
+      if (wordEl._popupTimer) {
+        clearTimeout(wordEl._popupTimer);
+        wordEl._popupTimer = null;
+      }
+    });
 
     wordEl.addEventListener("click", (event) => {
       unlockAudioForMobile();
@@ -1966,41 +1977,54 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
     }
   }
 
-  let result = { translation: "", pinyin: pinyinText };
+  const cacheKey = `${word}|${sourceLangSelect.value}|${targetLangSelect.value}`;
+  let result = wordPopupCache.get(cacheKey) || { translation: "", pinyin: pinyinText };
 
-  try {
-    const dictResponse = await fetchWithAuth(`${API_BASE}/api/dictionary`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word })
-    });
-
-    const dictData = await dictResponse.json();
-
-    if (dictResponse.ok && dictData.entries && dictData.entries.length > 0) {
-      const firstEntry = dictData.entries[0];
-      result = {
-        translation: firstEntry.definitions.slice(0, 3).join("; "),
-        pinyin: firstEntry.pinyin || pinyinText
-      };
-    } else {
-      const response = await fetchWithAuth(`${API_BASE}/api/translate`, {
+  if (!wordPopupCache.has(cacheKey)) {
+    try {
+      const dictResponse = await fetchWithAuth(`${API_BASE}/api/dictionary`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sentence: word,
-          sourceLang: sourceLangSelect.value,
-          targetLang: targetLangSelect.value
-        })
+        body: JSON.stringify({ word })
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Translation failed");
-      result = { translation: data.translation || "", pinyin: pinyinText };
+      if (dictResponse.status === 429) {
+        result = { translation: "Too many requests. Please wait a moment.", pinyin: pinyinText };
+      } else {
+        const dictData = await dictResponse.json();
+
+        if (dictResponse.ok && dictData.entries && dictData.entries.length > 0) {
+          const firstEntry = dictData.entries[0];
+          result = {
+            translation: firstEntry.definitions.slice(0, 3).join("; "),
+            pinyin: firstEntry.pinyin || pinyinText
+          };
+          wordPopupCache.set(cacheKey, result);
+        } else {
+          const response = await fetchWithAuth(`${API_BASE}/api/translate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sentence: word,
+              sourceLang: sourceLangSelect.value,
+              targetLang: targetLangSelect.value
+            })
+          });
+
+          if (response.status === 429) {
+            result = { translation: "Too many requests. Please wait a moment.", pinyin: pinyinText };
+          } else {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Translation failed");
+            result = { translation: data.translation || "", pinyin: pinyinText };
+            wordPopupCache.set(cacheKey, result);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Word popup error:", err);
+      result = { translation: "Lookup failed", pinyin: pinyinText };
     }
-  } catch (err) {
-    console.error("Word popup error:", err);
-    result = { translation: "Lookup failed", pinyin: pinyinText };
   }
 
   if (!document.body.contains(popup)) return;
@@ -2232,6 +2256,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
         body: JSON.stringify(ttsBody)
       });
 
+      if (response.status === 429) throw new Error("RATE_LIMIT");
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "TTS failed");
 
@@ -2272,11 +2297,15 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
 
     source.start(0);
   } catch (error) {
-    console.error("Google TTS failed, falling back to browser TTS:", error);
     currentAudio = null;
     currentAudioText = "";
     currentAudioRate = 1.0;
     audioCtxSuspended = false;
+    if (error.message === "RATE_LIMIT") {
+      showToast("Too many requests. Please wait a moment.", "error");
+      return;
+    }
+    console.error("Google TTS failed, falling back to browser TTS:", error);
     playBrowserTTS(text, effectiveLang, sentenceEl, onEnd);
   }
 }
