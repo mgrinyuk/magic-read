@@ -1588,8 +1588,7 @@ textarea:focus,
 body.is-logged-out [data-tool-screen="flashcards"],
 body.is-logged-out [data-tool-screen="calligraphy"],
 body.is-logged-out #saveTextBtn,
-body.is-logged-out #saveTextBtnReading,
-body.is-logged-out #showSavedTextsBtn {
+body.is-logged-out #saveTextBtnReading {
   opacity: 0.45;
   pointer-events: none;
 }
@@ -1605,7 +1604,6 @@ body.is-logged-out #guestLoginBtn {
 body.is-logged-out #logoutBtn,
 body.is-logged-out .profile-menu,
 body.is-logged-out .top-ui-language,
-body.is-logged-out .workspace-tabs,
 body.is-logged-out #saveTextBtn,
 body.is-logged-out #textLibraryPanel,
 body.is-logged-out #savedTextsPanel {

@@ -1074,6 +1074,13 @@ async function loadLibraryText(id) {
 ----------------------------- */
 
 showSavedTextsBtn?.addEventListener("click", async () => {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
+    document.getElementById("authOverlay")?.removeAttribute("hidden");
+    document.body.style.overflow = "hidden";
+    return;
+  }
+
   if (textLibraryPanel) textLibraryPanel.hidden = true;
 
   if (!savedTextsPanel.hidden) {
