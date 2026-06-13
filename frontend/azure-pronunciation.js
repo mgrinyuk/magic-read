@@ -64,6 +64,22 @@ function extractWords(detailJson) {
 }
 
 export async function assessPronunciation(referenceText, lang, { tokenUrl, fetchWithAuth }) {
+  // 0) Acquire mic permission up-front, while the user gesture is still active.
+  //    Safari is strict: if the mic is only requested AFTER the async token
+  //    fetch below, it opens the mic but records silence ("didn't hear you").
+  //    We release this warm-up stream immediately; the granted permission
+  //    persists for the SDK's own capture a moment later.
+  if (navigator.mediaDevices?.getUserMedia) {
+    let warmup = null;
+    try {
+      warmup = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      throw makeErr("Microphone is blocked or unavailable", "MIC_DENIED");
+    } finally {
+      if (warmup) warmup.getTracks().forEach((tr) => tr.stop());
+    }
+  }
+
   // 1) Token — this is the quota gate. Non-200 carries a typed code.
   const res = await fetchWithAuth(tokenUrl, { method: "POST" });
   let data = {};
