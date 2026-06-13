@@ -21,6 +21,19 @@ const supabase = createSupabaseClient(
   process.env.SUPABASE_ANON_KEY
 );
 
+// Privileged client for server-side reads/writes that must bypass RLS
+// (entitlement lookups + usage metering). Falls back to the anon client if
+// no service-role key is set, but the pronunciation quota needs the service key.
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createSupabaseClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : supabase;
+
+// --- Azure Speech (pronunciation assessment) config ---
+const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY;
+const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION;
+// Free signed-in users get this many Azure-scored checks per day. Pro users are unlimited.
+const FREE_DAILY_PRONUNCIATION_LIMIT = Number(process.env.FREE_DAILY_PRONUNCIATION_LIMIT || 20);
+
 // Attaches req.user from a Bearer JWT; silently treats invalid tokens as guests.
 async function extractUser(req, _res, next) {
   req.user = null;
@@ -81,6 +94,17 @@ const globalLimiter = rateLimit({
 function requireAdmin(req, res, next) {
   if (req.headers["x-admin-secret"] !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: "Forbidden" });
+  }
+  next();
+}
+
+// Pronunciation assessment is a paid-cost feature — signed-in users only.
+function requireUser(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      error: "Please sign in to use the pronunciation coach.",
+      code: "NO_AUTH"
+    });
   }
   next();
 }
@@ -563,6 +587,95 @@ app.post("/api/translate", extractUser, translateLimiter, async (req, res) => {
   } catch (error) {
     console.error("Translation route error:", error);
     res.status(500).json({ error: "Translation failed" });
+  }
+});
+
+
+/* -----------------------------
+   PRONUNCIATION ASSESSMENT (Azure)
+   Mints a short-lived Azure token. This endpoint is the metering point:
+   one token = one pronunciation check. Free signed-in users are quota-limited
+   here; pro users are unlimited. The Azure key never reaches the browser.
+----------------------------- */
+app.post("/api/speech-token", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!AZURE_SPEECH_KEY || !AZURE_SPEECH_REGION) {
+      return res.status(503).json({
+        error: "Pronunciation service is not configured.",
+        code: "NOT_CONFIGURED"
+      });
+    }
+
+    const userId = req.user.id;
+
+    // Entitlement: read the user's plan ('free' | 'pro').
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from("profiles")
+      .select("plan")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileErr) console.error("[Speech] profile lookup error:", profileErr.message);
+    const isPro = profile?.plan === "pro";
+
+    // Quota: free users are capped per UTC day. Metered at token issuance.
+    if (!isPro) {
+      const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+
+      const { data: usageRow, error: usageErr } = await supabaseAdmin
+        .from("pronunciation_usage")
+        .select("count")
+        .eq("user_id", userId)
+        .eq("day", day)
+        .maybeSingle();
+
+      if (usageErr) console.error("[Speech] usage lookup error:", usageErr.message);
+
+      const used = usageRow?.count || 0;
+      if (used >= FREE_DAILY_PRONUNCIATION_LIMIT) {
+        return res.status(429).json({
+          error: "You've used today's free pronunciation checks. Upgrade for unlimited.",
+          code: "QUOTA_EXCEEDED",
+          used,
+          limit: FREE_DAILY_PRONUNCIATION_LIMIT
+        });
+      }
+
+      // Atomic increment (Postgres function). Counts this check.
+      const { error: incErr } = await supabaseAdmin.rpc("increment_pronunciation_usage", {
+        p_user_id: userId,
+        p_day: day
+      });
+      if (incErr) console.error("[Speech] usage increment error:", incErr.message);
+    }
+
+    // Mint a short-lived (~10 min) Azure authorization token.
+    const tokenResponse = await fetch(
+      `https://${AZURE_SPEECH_REGION}.api.cognitive.microsoft.com/sts/v1.0/issueToken`,
+      {
+        method: "POST",
+        headers: {
+          "Ocp-Apim-Subscription-Key": AZURE_SPEECH_KEY,
+          "Content-Length": "0"
+        }
+      }
+    );
+
+    if (!tokenResponse.ok) {
+      const detail = await tokenResponse.text().catch(() => "");
+      console.error("[Speech] issueToken failed:", tokenResponse.status, detail);
+      return res.status(502).json({ error: "Could not get speech token.", code: "TOKEN_FAILED" });
+    }
+
+    const token = await tokenResponse.text();
+    res.json({
+      token,
+      region: AZURE_SPEECH_REGION,
+      plan: isPro ? "pro" : "free"
+    });
+  } catch (error) {
+    console.error("[Speech] token route error:", error);
+    res.status(500).json({ error: "Speech token error." });
   }
 });
 

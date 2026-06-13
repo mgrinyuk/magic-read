@@ -2648,3 +2648,12 @@ body.is-logged-in .top-ui-language {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Azure pronunciation assessment results --- */
+.pa-result { line-height: 1.5; }
+.pa-overall { font-size: 1.05rem; margin: 0 0 .35rem; }
+.pa-words { margin: .25rem 0; }
+.pa-word { font-weight: 600; }
+.pa-metrics { font-size: .85rem; color: #555; margin: .25rem 0; }
+.pa-metric { white-space: nowrap; }
+.pa-heard { font-size: .85rem; color: #777; margin: .25rem 0 0; }

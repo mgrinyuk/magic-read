@@ -4,3 +4,4 @@ node_modules
 backend/google-tts-key.json
 backend/public/worksheets/
 backend/public/exports/
+*.bak

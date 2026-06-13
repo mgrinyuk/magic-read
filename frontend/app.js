@@ -1,9 +1,63 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 import { UI_TEXT } from "./ui-text.js";
+import { assessPronunciation, renderAssessment } from "./azure-pronunciation.js";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
 const API_BASE = "https://magic-read.onrender.com";
+
+// --- Azure pronunciation assessment ---
+// Flip to true AFTER the backend AZURE_SPEECH_* env vars are set and
+// pronunciation-setup.sql has been run in Supabase. While false, the app
+// keeps the original browser-based scoring with zero behavior change.
+const AZURE_PRONUNCIATION = false;
+const SPEECH_TOKEN_URL = `${API_BASE}/api/speech-token`;
+// Set once we learn Azure isn't usable for this session (guest / unconfigured /
+// SDK load failure) so we stop calling the endpoint and just use legacy scoring.
+let azurePronDisabled = false;
+
+// Attempts Azure scoring. Returns { score } if it handled the attempt (success
+// or a user-facing message), or null if the caller should fall back to legacy
+// browser scoring. `renderTo` is the element to show results in.
+async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t) {
+  if (!AZURE_PRONUNCIATION || azurePronDisabled || !referenceText) return null;
+
+  if (renderTo) {
+    renderTo.hidden = false;
+    renderTo.innerHTML = `<p>${escapeHtml(t?.listening || "Listening…")}</p>`;
+  }
+  if (recordBtn) recordBtn.disabled = true;
+
+  try {
+    const result = await assessPronunciation(referenceText, lang, {
+      tokenUrl: SPEECH_TOKEN_URL,
+      fetchWithAuth
+    });
+    if (renderTo) renderTo.innerHTML = renderAssessment(result, lang);
+    return { score: Math.round(result.pronunciation ?? result.accuracy ?? 0) };
+  } catch (err) {
+    // Guest / not configured / SDK unavailable -> use legacy scoring instead.
+    if (err.code === "NO_AUTH" || err.code === "NOT_CONFIGURED" || err.code === "SDK_LOAD_FAILED") {
+      azurePronDisabled = true;
+      return null;
+    }
+    const messages = {
+      QUOTA_EXCEEDED: err.info?.error || "You've used today's free pronunciation checks. Upgrade for unlimited.",
+      MIC_DENIED: "Microphone is blocked. Please allow mic access in your browser.",
+      NO_SPEECH: "I didn't hear anything. Tap and speak again.",
+      TOKEN_FAILED: "Pronunciation service is busy. Please try again.",
+      CANCELED: "Recording stopped. Please try again.",
+      SDK_ERROR: "Something went wrong scoring your speech. Please try again."
+    };
+    if (renderTo) {
+      renderTo.hidden = false;
+      renderTo.innerHTML = `<p>${escapeHtml(messages[err.code] || "Could not score your speech.")}</p>`;
+    }
+    return { score: 0 };
+  } finally {
+    if (recordBtn) recordBtn.disabled = false;
+  }
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2421,7 +2475,7 @@ async function getPinyinForText(text) {
   return data.pinyin || "";
 }
 
-function startFlashcardSpeakingPractice() {
+async function startFlashcardSpeakingPractice() {
   const cards = getCurrentCards();
   const card = cards[currentFlashcardIndex];
   if (!card) return;
@@ -2430,8 +2484,17 @@ function startFlashcardSpeakingPractice() {
   const isChinese = cardLang === "zh";
   const expected = card.word || "";
   const speechLang = mapToSpeechLang(cardLang);
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const resultEl = document.getElementById("flashcardSpeakingResult");
+
+  // Azure pronunciation assessment (signed-in users, when enabled).
+  const azure = await tryAzurePronunciation(expected, speechLang, resultEl, null, getT());
+  if (azure) {
+    flashcardSpeakingUnlocked = azure.score >= FLASHCARD_PASS_SCORE;
+    renderFlashcards();
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
     if (resultEl) { resultEl.hidden = false; resultEl.textContent = "Speech recognition is not supported in this browser."; }
@@ -2613,12 +2676,26 @@ function compareText(expected, actual, lang) {
   return { score, message };
 }
 
-function record(sentence, card, recordBtn = null) {
+async function record(sentence, card, recordBtn = null) {
   const resultBox = card.querySelector(".pronunciation-box");
+  const t = getT();
+
+  // Azure pronunciation assessment (signed-in users, when enabled).
+  // Falls through to legacy browser scoring for guests / unconfigured.
+  const azureLang = mapToSpeechLang(sourceLangSelect.value);
+  const azure = await tryAzurePronunciation(sentence, azureLang, resultBox, recordBtn, t);
+  if (azure) {
+    if (azure.score >= 70) {
+      const nextCard = card.nextElementSibling;
+      setTimeout(() => {
+        nextCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 600);
+    }
+    return;
+  }
+
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  const t = getT();
 
   if (!SpeechRecognition) {
     resultBox.innerHTML = "Speech recognition is not supported in this browser.";
