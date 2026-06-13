@@ -141,25 +141,30 @@
           <div id="onboarding-step-b" class="skill-step" hidden>
             <p class="eyebrow">Today's practice</p>
             <h2>What do you want to practice?</h2>
-            <div class="skill-grid">
-              <button class="skill-card" data-skill="pronunciation">
+            <div class="skill-grid skill-grid-modes">
+              <button class="skill-card" data-mode="pronunciation">
                 <span class="skill-icon">🎤</span>
                 <strong>Pronunciation</strong>
-                <span class="skill-desc">Listen, repeat, and improve your spoken language.</span>
+                <span class="skill-desc">Practice speaking sentence by sentence — listen, repeat, improve.</span>
               </button>
-              <button class="skill-card" data-skill="vocabulary">
+              <button class="skill-card" data-mode="reading">
+                <span class="skill-icon">📖</span>
+                <strong>Reading</strong>
+                <span class="skill-desc">Read the full text, then fill in the gaps to check what you understood.</span>
+              </button>
+              <button class="skill-card" data-mode="flashcards">
                 <span class="skill-icon">🧠</span>
-                <strong>Vocabulary</strong>
-                <span class="skill-desc">Study and review words with flashcards.</span>
+                <strong>Flashcards</strong>
+                <span class="skill-desc">Study and review the words you've saved.</span>
               </button>
-              <button id="skillCardWriting" class="skill-card" data-skill="writing" hidden>
+              <button id="skillCardWriting" class="skill-card" data-mode="calligraphy" hidden>
                 <span class="skill-icon">✍️</span>
-                <strong>Writing</strong>
-                <span class="skill-desc">Practice characters with calligraphy worksheets.</span>
+                <strong>Calligraphy</strong>
+                <span class="skill-desc">Practice characters with handwriting worksheets.</span>
               </button>
             </div>
 
-            <div id="routeChoicePronunciation" class="route-choice-grid" hidden>
+            <div id="routeChoiceText" class="route-choice-grid" hidden>
               <button class="route-choice-card" data-route="own-text">
                 <strong>Use my own text</strong>
                 <span>Paste articles, dialogues, or homework.</span>
@@ -167,17 +172,6 @@
               <button class="route-choice-card" data-route="library">
                 <strong>Choose from library</strong>
                 <span>Pick from curated texts for your level.</span>
-              </button>
-            </div>
-
-            <div id="routeChoiceVocabulary" class="route-choice-grid" hidden>
-              <button class="route-choice-card" data-route="import-words">
-                <strong>Import my words</strong>
-                <span>Bring a word list and start drilling immediately.</span>
-              </button>
-              <button class="route-choice-card" data-route="builtin-deck">
-                <strong>Use built-in deck</strong>
-                <span>Study a curated vocabulary set for your language.</span>
               </button>
             </div>
           </div>
@@ -291,15 +285,24 @@
             </div>
 
             <div class="card-buttons">
-              <button id="readFullTextBtn" data-i18n="listen" class="tts-btn">Listen</button>
-              <button id="globalSlowBtn" type="button" class="translate-btn" data-i18n="slowOff">Slow: OFF</button>
-              <button id="voicePickerBtn" type="button" class="translate-btn" data-i18n="voice">Voice</button>
-              <button id="saveTextBtnReading" type="button" class="translate-btn" data-i18n="saveText">Save text</button>
-              <button id="replaceTextBtn" type="button" class="translate-btn" data-i18n="replaceText">Replace text</button>
-              <button id="editTextBtn" type="button" class="translate-btn" data-i18n="edit">Edit</button>
-              <button id="toggleFullTextPinyinBtn" data-i18n="showPinyin" class="translate-btn">Pinyin</button>
+              <button id="readFullTextBtn" data-i18n="listen" class="primary-btn">Listen</button>
+              <button id="globalSlowBtn" type="button" class="translate-btn toggle-btn" aria-pressed="false">
+                <span class="switch" aria-hidden="true"></span><span class="toggle-label" data-i18n="slow">Slow</span>
+              </button>
+              <button id="toggleFullTextPinyinBtn" type="button" class="translate-btn toggle-btn" aria-pressed="false">
+                <span class="switch" aria-hidden="true"></span><span class="toggle-label" data-i18n="showPinyin">Pinyin</span>
+              </button>
               <button id="translateFullTextBtn" data-i18n="translate" class="translate-btn">Translate</button>
-              <button id="toggleFullTextBtn" class="translate-btn" type="button" data-i18n="hideFullText">Hide full text</button>
+              <div class="tb-more">
+                <button type="button" class="translate-btn tb-more-btn" data-more-toggle aria-expanded="false" aria-haspopup="true"><span data-i18n="more">More</span> ⋯</button>
+                <div class="tb-more-menu" hidden>
+                  <button id="voicePickerBtn" type="button" class="tb-more-item" data-i18n="voice">Voice</button>
+                  <button id="saveTextBtnReading" type="button" class="tb-more-item" data-i18n="saveText">Save text</button>
+                  <button id="replaceTextBtn" type="button" class="tb-more-item" data-i18n="replaceText">Replace text</button>
+                  <button id="editTextBtn" type="button" class="tb-more-item" data-i18n="edit">Edit</button>
+                  <button id="toggleFullTextBtn" type="button" class="tb-more-item" data-i18n="hideFullText">Hide full text</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -310,7 +313,7 @@
 
         </section>
 
-        <section class="cards-section">
+        <section id="cardsSection" class="cards-section">
           <div class="section-head">
             <div>
               <h3 data-i18n="practiceCards">Practice</h3>
@@ -319,6 +322,22 @@
           </div>
 
           <section id="cardsContainer" class="cards"></section>
+        </section>
+
+        <section id="readingExercise" class="workspace-card reading-exercise" hidden>
+          <div class="workspace-head">
+            <div>
+              <p class="eyebrow" data-i18n="exerciseEyebrow">After reading</p>
+              <h3 data-i18n="exerciseTitle">Fill in the gaps</h3>
+              <p class="subtle" data-i18n="exerciseHint">Pick the missing word for each gap, then check your answers.</p>
+            </div>
+            <div class="card-buttons">
+              <button id="exerciseRevealBtn" type="button" class="translate-btn" data-i18n="showAnswers">Show answers</button>
+              <button id="exerciseCheckBtn" type="button" class="primary-btn" data-i18n="checkAnswers">Check answers</button>
+            </div>
+          </div>
+          <div id="exerciseScore" class="exercise-score" hidden></div>
+          <div id="exerciseBody" class="exercise-body"></div>
         </section>
       </section>
 
@@ -335,13 +354,18 @@
             <div class="flashcard-top-actions">
               <select id="flashcardDeckSelect" class="deck-select"></select>
               <button id="flashcardNewDeckBtn" class="game-nav-btn" data-i18n="newDeck">New deck</button>
-              <button id="flashcardDeleteDeckBtn" class="game-nav-btn" data-i18n="deleteDeck">Delete deck</button>
-              <button id="flashcardClearBtn" class="game-nav-btn" data-i18n="clear">Clear</button>
-              <button id="flashcardImportBtn" class="game-nav-btn" data-i18n="importWords">Import words</button>
               <button id="flashcardExportBtn" class="game-nav-btn game-nav-btn-primary" data-i18n="exportPDF">Export PDF</button>
               <button id="flashcardSpeakEasyBtn" class="game-nav-btn" type="button">Speak: Term</button>
               <button id="flashcardSpeakHardBtn" class="game-nav-btn" type="button">Speak: Translation</button>
               <button id="flashcardSpeakExitBtn" class="game-nav-btn" type="button" hidden>Exit speaking</button>
+              <div class="tb-more">
+                <button type="button" class="game-nav-btn tb-more-btn" data-more-toggle aria-expanded="false" aria-haspopup="true"><span data-i18n="more">More</span> ⋯</button>
+                <div class="tb-more-menu" hidden>
+                  <button id="flashcardImportBtn" class="tb-more-item" data-i18n="importWords">Import words</button>
+                  <button id="flashcardDeleteDeckBtn" class="tb-more-item" data-i18n="deleteDeck">Delete deck</button>
+                  <button id="flashcardClearBtn" class="tb-more-item" data-i18n="clear">Clear</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -368,8 +392,8 @@
                     <p id="flashcardHardTranslation" class="flashcard-hard-translation" hidden></p>
                     <p id="flashcardSpeakPrompt" class="flashcard-speaking-prompt" hidden></p>
                     <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">🔊</button>
-                    <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" data-i18n="slowOff">
-                      Slow: OFF
+                    <button id="flashcardSlowBtn" class="slow-tts-btn toggle-btn" type="button" aria-pressed="false">
+                      <span class="switch" aria-hidden="true"></span><span class="toggle-label" data-i18n="slow">Slow</span>
                     </button>
                     <button id="flashcardSpeakBtn" class="primary-btn flashcard-speak-btn" type="button" hidden>Say it 🎤</button>
                   </div>

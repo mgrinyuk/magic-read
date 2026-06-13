@@ -140,7 +140,9 @@ h1 {
 
 .top-ui-language .menu-select {
   min-width: 150px;
-  height: 42px;
+  height: 44px;
+  padding: 8px 14px;
+  line-height: 1.4;
 }
 
 .profile-menu {
@@ -211,8 +213,8 @@ h1 {
   justify-content: center;
   border: none;
   border-radius: var(--radius-pill);
-  background: var(--yellow);
-  color: var(--brand-dark);
+  background: var(--brand);
+  color: #ffffff;
   padding: 13px 24px;
   font-weight: 950;
   transition: var(--transition);
@@ -221,7 +223,8 @@ h1 {
 .primary-btn:hover,
 .game-nav-btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 16px 34px rgba(241, 255, 94, 0.35);
+  background: var(--brand-dark);
+  box-shadow: 0 16px 34px rgba(38, 28, 193, 0.30);
 }
 
 .game-nav-btn,
@@ -246,6 +249,94 @@ h1 {
 .strip-btn:hover,
 .load-saved-text-btn:hover {
   background: rgba(58, 154, 255, 0.12);
+  color: var(--brand);
+}
+
+/* Toggle buttons (Slow, Pinyin): real sliding switch */
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-btn .switch {
+  flex: none;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(91, 100, 114, 0.30);
+  position: relative;
+  transition: background var(--transition);
+}
+
+.toggle-btn .switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform var(--transition);
+}
+
+.toggle-btn.is-active {
+  color: var(--brand);
+}
+
+.toggle-btn.is-active .switch {
+  background: var(--brand);
+}
+
+.toggle-btn.is-active .switch::after {
+  transform: translateX(14px);
+}
+
+/* Toolbar "More" overflow menu (distinct from the practice-card .more-btn) */
+.tb-more {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.tb-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.tb-more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 200;
+  min-width: 190px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tb-more-item {
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.tb-more-item:hover {
+  background: var(--surface-soft);
   color: var(--brand);
 }
 
@@ -558,9 +649,28 @@ h1 {
 .workspace-head,
 .section-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 18px;
+}
+
+/* Keep the action row from overflowing the card; let it wrap and right-align */
+.workspace-head .card-buttons {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* Full-text toolbar: stack under the title and wrap so nothing runs off the card */
+#fullTextPanel .workspace-head {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#fullTextPanel .workspace-head .card-buttons {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .workspace-head h3,
@@ -882,8 +992,8 @@ textarea:focus,
 .card-primary-btn {
   border: none;
   border-radius: var(--radius-pill);
-  background: var(--yellow);
-  color: var(--brand-dark);
+  background: var(--brand);
+  color: #ffffff;
   padding: 11px 18px;
   font-weight: 950;
 }
@@ -1119,8 +1229,8 @@ textarea:focus,
   margin-top: 10px;
   border: none;
   border-radius: var(--radius-pill);
-  background: var(--yellow);
-  color: var(--brand-dark);
+  background: var(--brand);
+  color: #ffffff;
   padding: 9px 14px;
   font-weight: 900;
 }
@@ -1190,8 +1300,8 @@ textarea:focus,
 
 .auth-main-btn {
   border: none;
-  background: var(--yellow);
-  color: var(--brand-dark);
+  background: var(--brand);
+  color: #ffffff;
 }
 
 .auth-secondary-btn {
@@ -1577,8 +1687,8 @@ textarea:focus,
   display: inline-flex;
   padding: 10px 16px;
   border-radius: var(--radius-pill);
-  background: var(--yellow);
-  color: var(--brand-dark);
+  background: var(--brand);
+  color: #ffffff;
   font-weight: 950;
   text-decoration: none;
 }
@@ -1851,6 +1961,15 @@ body.is-logged-in .top-ui-language {
     font-size: 0.9rem;
     text-align: center;
     white-space: nowrap;
+  }
+
+  #fullTextPanel .card-buttons .tb-more {
+    display: flex;
+  }
+
+  #fullTextPanel .card-buttons .tb-more .tb-more-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .full-text-box {
@@ -2521,6 +2640,17 @@ body.is-logged-in .top-ui-language {
   margin-bottom: 28px;
 }
 
+/* Four-mode picker reads better as a 2x2 grid */
+.skill-grid-modes {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 600px) {
+  .skill-grid-modes {
+    grid-template-columns: 1fr;
+  }
+}
+
 .skill-card {
   display: flex;
   flex-direction: column;
@@ -2604,6 +2734,130 @@ body.is-logged-in .top-ui-language {
   font-size: 0.82rem;
   color: var(--text-soft);
   line-height: 1.4;
+}
+
+/* READING EXERCISE (cloze / fill the gaps) */
+
+.exercise-body {
+  margin-top: 8px;
+}
+
+.exercise-note {
+  margin: 0 0 18px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.exercise-empty {
+  margin: 8px 0 0;
+  color: var(--text-soft);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.cloze-item {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cloze-item:last-child {
+  border-bottom: none;
+}
+
+.cloze-sentence {
+  margin: 0 0 14px;
+  font-size: 1.2rem;
+  line-height: 1.9;
+  color: var(--text);
+}
+
+/* The gap inside the sentence, filled as the learner picks an option */
+.cloze-slot {
+  display: inline-block;
+  min-width: 84px;
+  margin: 0 3px;
+  padding: 1px 10px;
+  border-bottom: 2px solid var(--brand);
+  background: var(--surface-soft);
+  border-radius: 8px 8px 0 0;
+  color: var(--brand-dark);
+  font-weight: 800;
+  text-align: center;
+}
+
+.cloze-slot.cloze-correct {
+  border-bottom-color: #1ca672;
+  background: #e6f7ef;
+  color: #0f7a52;
+}
+
+.cloze-slot.cloze-wrong {
+  border-bottom-color: #e0556b;
+  background: #fdecef;
+  color: #b32b42;
+}
+
+.cloze-slot.cloze-revealed {
+  font-style: italic;
+}
+
+/* The four answer choices */
+.cloze-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cloze-option {
+  padding: 9px 18px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+
+.cloze-option:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.cloze-option.selected {
+  border-color: var(--brand);
+  background: #ece9ff;
+  color: var(--brand-dark);
+}
+
+.cloze-option.option-correct {
+  border-color: #1ca672;
+  background: #e6f7ef;
+  color: #0f7a52;
+}
+
+.cloze-option.option-wrong {
+  border-color: #e0556b;
+  background: #fdecef;
+  color: #b32b42;
+}
+
+.exercise-score {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  color: var(--text-soft);
+  font-weight: 900;
+  font-size: 0.95rem;
+}
+
+.exercise-score.all-correct {
+  background: #e6f7ef;
+  color: #0f7a52;
 }
 
 .home-back-btn {

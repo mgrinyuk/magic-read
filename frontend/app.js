@@ -1082,9 +1082,13 @@ const onboardingStepB = document.getElementById("onboarding-step-b");
 const onboardingSourceLangEl = document.getElementById("onboardingSourceLang");
 const onboardingTargetLangEl = document.getElementById("onboardingTargetLang");
 const skillCardWritingEl = document.getElementById("skillCardWriting");
-const routeChoicePronunciationEl = document.getElementById("routeChoicePronunciation");
-const routeChoiceVocabularyEl = document.getElementById("routeChoiceVocabulary");
+const routeChoiceTextEl = document.getElementById("routeChoiceText");
 const homeBackBtn = document.getElementById("homeBackBtn");
+
+// Which experience the reader is in: "pronunciation" (cards only) or "reading"
+// (full text + fill-the-gap exercise). Set when a mode is chosen in onboarding.
+let appMode = "pronunciation";
+let pendingMode = "pronunciation";
 
 function syncOnboardingToMain() {
   if (onboardingSourceLangEl && sourceLangSelect) {
@@ -1122,8 +1126,7 @@ function showOnboardingStepA() {
 function showOnboardingStepB() {
   if (onboardingStepA) onboardingStepA.hidden = true;
   if (onboardingStepB) onboardingStepB.hidden = false;
-  if (routeChoicePronunciationEl) routeChoicePronunciationEl.hidden = true;
-  if (routeChoiceVocabularyEl) routeChoiceVocabularyEl.hidden = true;
+  if (routeChoiceTextEl) routeChoiceTextEl.hidden = true;
   document.querySelectorAll(".skill-card").forEach(c => c.classList.remove("skill-card-active"));
   updateWritingSkillCard();
   showScreen(screenOnboarding);
@@ -1145,15 +1148,21 @@ document.querySelectorAll(".skill-card").forEach(card => {
     document.querySelectorAll(".skill-card").forEach(c => c.classList.remove("skill-card-active"));
     card.classList.add("skill-card-active");
 
-    const skill = card.dataset.skill;
-    if (routeChoicePronunciationEl) routeChoicePronunciationEl.hidden = true;
-    if (routeChoiceVocabularyEl) routeChoiceVocabularyEl.hidden = true;
+    const mode = card.dataset.mode;
+    if (routeChoiceTextEl) routeChoiceTextEl.hidden = true;
 
-    if (skill === "pronunciation") {
-      if (routeChoicePronunciationEl) routeChoicePronunciationEl.hidden = false;
-    } else if (skill === "vocabulary") {
-      if (routeChoiceVocabularyEl) routeChoiceVocabularyEl.hidden = false;
-    } else if (skill === "writing") {
+    if (mode === "pronunciation" || mode === "reading") {
+      // Both start from a text; remember which experience to open afterwards.
+      pendingMode = mode;
+      if (routeChoiceTextEl) {
+        routeChoiceTextEl.hidden = false;
+        routeChoiceTextEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    } else if (mode === "flashcards") {
+      showScreen(screenFlashcards);
+      renderDeckSelector();
+      renderFlashcards();
+    } else if (mode === "calligraphy") {
       showScreen(screenWriting);
     }
   });
@@ -1163,31 +1172,333 @@ document.querySelectorAll(".route-choice-card").forEach(card => {
   card.addEventListener("click", () => {
     const route = card.dataset.route;
 
+    // Lock in the experience chosen above (pronunciation vs reading).
+    appMode = pendingMode;
+
     if (route === "own-text") {
       showScreen(screenMain);
+      applyMode();
       if (startComposerArea) startComposerArea.hidden = false;
       if (textLibraryPanel) textLibraryPanel.hidden = true;
       if (savedTextsPanel) savedTextsPanel.hidden = true;
     } else if (route === "library") {
       showScreen(screenMain);
+      applyMode();
       if (savedTextsPanel) savedTextsPanel.hidden = true;
       if (textLibraryPanel) {
         textLibraryPanel.hidden = false;
         loadTextLibrary();
       }
-    } else if (route === "import-words") {
-      showScreen(screenFlashcards);
-      renderDeckSelector();
-      renderFlashcards();
-      setTimeout(() => importWords(), 400);
-    } else if (route === "builtin-deck") {
-      showScreen(screenFlashcards);
-      renderDeckSelector();
-      renderFlashcards();
-      showToast("Built-in decks coming soon!", "info");
     }
   });
 });
+
+/* -----------------------------
+   READER MODE (pronunciation vs reading)
+----------------------------- */
+
+// Toggle which parts of the reader are visible for the active mode.
+// Pronunciation: practice cards only, no full text, no exercise.
+// Reading: full text + fill-the-gap exercise, no pronunciation cards.
+function applyMode() {
+  const cardsSection = document.getElementById("cardsSection");
+  const readingExercise = document.getElementById("readingExercise");
+  const hasText = !!(currentSentences && currentSentences.length);
+
+  if (appMode === "reading") {
+    if (cardsSection) cardsSection.hidden = true;
+    if (fullTextPanel) fullTextPanel.hidden = !hasText;
+    if (readingExercise) readingExercise.hidden = !hasText;
+  } else {
+    if (cardsSection) cardsSection.hidden = false;
+    if (readingExercise) readingExercise.hidden = true;
+    if (fullTextPanel) fullTextPanel.hidden = true;
+  }
+}
+
+/* -----------------------------
+   READING EXERCISE (cloze / fill the gaps)
+----------------------------- */
+
+const SPACE_LANGS = ["en", "ru", "de", "es", "fr", "tr"];
+const MAX_CLOZE_SENTENCES = 10;
+const OPTIONS_PER_BLANK = 4;
+
+// Lowercase and strip surrounding punctuation so "Library," matches "library".
+function normalizeWord(w) {
+  return String(w || "").toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+}
+
+// Spaced-language options are shown lowercased so the answer's capitalisation
+// (e.g. at the start of a sentence) doesn't give it away.
+function displayWord(word, isSpaced) {
+  return isSpaced ? normalizeWord(word) : String(word || "").trim();
+}
+
+function clozeShuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Every word the learner has saved to any flashcard deck.
+function getSavedVocabWords() {
+  const words = new Set();
+  (flashcardDecks || []).forEach(deck => {
+    (deck.cards || []).forEach(card => {
+      if (card && card.word) words.add(String(card.word).trim());
+    });
+  });
+  return [...words].filter(Boolean);
+}
+
+// Choose one word to hide in a space-separated sentence and return the pieces
+// around it. If savedNorm is provided, only saved vocab is eligible; otherwise
+// (fallback) the longest content word is used.
+function pickSpacedBlank(sentence, savedNorm) {
+  const tokens = sentence.split(/(\s+)/);
+  const candidates = [];
+  tokens.forEach((tok, i) => {
+    if (/^\s*$/.test(tok)) return;
+    const norm = normalizeWord(tok);
+    if (!norm) return;
+    if (savedNorm) {
+      if (savedNorm.has(norm)) candidates.push({ i, len: norm.length });
+    } else if (norm.length >= 5) {
+      candidates.push({ i, len: norm.length });
+    }
+  });
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => b.len - a.len);
+
+  const idx = candidates[0].i;
+  const tok = tokens[idx];
+  // Keep punctuation around the word (e.g. "library," -> ____ ,)
+  const m = tok.match(/^([^\p{L}\p{N}]*)([\p{L}\p{N}].*?[\p{L}\p{N}]|[\p{L}\p{N}])([^\p{L}\p{N}]*)$/u);
+  const prefix = m ? m[1] : "";
+  const answer = m ? m[2] : tok;
+  const suffix = m ? m[3] : "";
+
+  return {
+    before: tokens.slice(0, idx).join("") + prefix,
+    answer,
+    after: suffix + tokens.slice(idx + 1).join("")
+  };
+}
+
+// Choose one word to hide in a non-spaced sentence (Chinese / Japanese). Saved
+// vocab is matched as a substring; the fallback uses cached segmentation.
+function pickUnspacedBlank(sentence, savedRaw) {
+  let word = null;
+
+  if (savedRaw && savedRaw.length) {
+    const matches = savedRaw
+      .filter(w => w && sentence.includes(w))
+      .sort((a, b) => b.length - a.length);
+    if (matches.length) word = matches[0];
+  } else {
+    const seg = segmentCache.get(sentence) || [];
+    const candidates = seg
+      .map(s => s.word)
+      .filter(w => w && w.length >= 2 && /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(w))
+      .sort((a, b) => b.length - a.length);
+    if (candidates.length) word = candidates[0];
+  }
+
+  if (!word) return null;
+  const idx = sentence.indexOf(word);
+  if (idx < 0) return null;
+
+  return {
+    before: sentence.slice(0, idx),
+    answer: word,
+    after: sentence.slice(idx + word.length)
+  };
+}
+
+// Pool of plausible wrong answers: saved vocab + the other blanks' answers +
+// other content words from the same text.
+function buildDistractorPool(items, savedRaw, isSpaced, sentences) {
+  const pool = [];
+  const add = w => { const d = displayWord(w, isSpaced); if (d) pool.push(d); };
+
+  savedRaw.forEach(add);
+  items.forEach(it => add(it.answer));
+
+  if (isSpaced) {
+    sentences.forEach(s => s.split(/\s+/).forEach(tok => {
+      const n = normalizeWord(tok);
+      if (n.length >= 4) pool.push(n);
+    }));
+  } else {
+    sentences.forEach(s => (segmentCache.get(s) || []).forEach(seg => {
+      if (seg.word && seg.word.length >= 2 &&
+          /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(seg.word)) {
+        pool.push(seg.word);
+      }
+    }));
+  }
+  return pool;
+}
+
+// Correct answer + up to 3 distinct distractors, shuffled.
+function buildOptions(answerDisp, pool, isSpaced) {
+  const seen = new Set([normalizeWord(answerDisp)]);
+  const distractors = [];
+  for (const w of clozeShuffle(pool)) {
+    const disp = displayWord(w, isSpaced);
+    const key = normalizeWord(disp);
+    if (!disp || seen.has(key)) continue;
+    seen.add(key);
+    distractors.push(disp);
+    if (distractors.length >= OPTIONS_PER_BLANK - 1) break;
+  }
+  return clozeShuffle([answerDisp, ...distractors]);
+}
+
+function renderClozeItem(item, i, isSpaced, pool) {
+  const answerDisp = displayWord(item.answer, isSpaced);
+  const options = buildOptions(answerDisp, pool, isSpaced);
+  const optionsHtml = options.map(opt =>
+    `<button type="button" class="cloze-option" data-blank="${i}" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`
+  ).join("");
+
+  return `<div class="cloze-item">
+    <p class="cloze-sentence">${escapeHtml(item.before)}<span class="cloze-slot" id="clozeSlot-${i}" data-blank="${i}" data-answer="${escapeHtml(answerDisp)}">____</span>${escapeHtml(item.after)}</p>
+    <div class="cloze-options">${optionsHtml}</div>
+  </div>`;
+}
+
+async function buildClozeExercise(sentences) {
+  const body = document.getElementById("exerciseBody");
+  const score = document.getElementById("exerciseScore");
+  if (!body) return;
+
+  body.innerHTML = "";
+  if (score) { score.hidden = true; score.textContent = ""; score.classList.remove("all-correct"); }
+
+  const isSpaced = SPACE_LANGS.includes(sourceLangSelect.value);
+  const savedRaw = getSavedVocabWords();
+  const savedNorm = new Set(savedRaw.map(normalizeWord).filter(Boolean));
+
+  const pickBlank = (sentence, useSaved) =>
+    isSpaced
+      ? pickSpacedBlank(sentence, useSaved ? savedNorm : null)
+      : pickUnspacedBlank(sentence, useSaved ? savedRaw : null);
+
+  // Pass 1: hide saved / key vocabulary.
+  const items = [];
+  let usedSavedVocab = false;
+  for (const sentence of sentences) {
+    if (items.length >= MAX_CLOZE_SENTENCES) break;
+    const it = pickBlank(sentence, true);
+    if (it) { items.push(it); usedSavedVocab = true; }
+  }
+
+  // Pass 2 (fallback): no saved-vocab matches — hide content words instead.
+  if (!items.length) {
+    for (const sentence of sentences) {
+      if (items.length >= MAX_CLOZE_SENTENCES) break;
+      const it = pickBlank(sentence, false);
+      if (it) items.push(it);
+    }
+  }
+
+  if (!items.length) {
+    body.innerHTML = `<p class="exercise-empty">${escapeHtml(getClozeEmptyMessage())}</p>`;
+    setExerciseControlsEnabled(false);
+    return;
+  }
+
+  const pool = buildDistractorPool(items, savedRaw, isSpaced, sentences);
+  setExerciseControlsEnabled(true);
+
+  const note = usedSavedVocab
+    ? `<p class="exercise-note" data-i18n="exerciseSavedNote">Gaps use words you've saved to flashcards.</p>`
+    : `<p class="exercise-note" data-i18n="exerciseKeyNote">Save words from this text to flashcards to make this quiz about your vocabulary.</p>`;
+  body.innerHTML = note + items.map((it, i) => renderClozeItem(it, i, isSpaced, pool)).join("");
+}
+
+function getClozeEmptyMessage() {
+  const t = getT();
+  return t.exerciseEmpty || "Save a few words from this text to flashcards, then reopen Reading — we'll quiz you on them.";
+}
+
+function setExerciseControlsEnabled(enabled) {
+  const check = document.getElementById("exerciseCheckBtn");
+  const reveal = document.getElementById("exerciseRevealBtn");
+  [check, reveal].forEach(btn => { if (btn) btn.disabled = !enabled; });
+}
+
+// Pick an option: fill its slot and highlight the chosen button.
+function onClozeOptionClick(e) {
+  const opt = e.target.closest(".cloze-option");
+  if (!opt) return;
+  const slot = document.getElementById(`clozeSlot-${opt.dataset.blank}`);
+  opt.parentElement.querySelectorAll(".cloze-option").forEach(b =>
+    b.classList.remove("selected", "option-correct", "option-wrong"));
+  opt.classList.add("selected");
+  if (slot) {
+    slot.textContent = opt.dataset.value;
+    slot.dataset.selected = opt.dataset.value;
+    slot.classList.remove("cloze-correct", "cloze-wrong");
+  }
+}
+
+function checkCloze() {
+  const slots = document.querySelectorAll("#exerciseBody .cloze-slot");
+  if (!slots.length) return;
+  let correct = 0;
+
+  slots.forEach(slot => {
+    const answer = slot.dataset.answer || "";
+    const selected = slot.dataset.selected;
+    const ok = selected != null && normalizeWord(selected) === normalizeWord(answer);
+    slot.classList.toggle("cloze-correct", ok);
+    slot.classList.toggle("cloze-wrong", !ok);
+    if (ok) correct++;
+
+    const item = slot.closest(".cloze-item");
+    item?.querySelectorAll(".cloze-option").forEach(b => {
+      const isAnswer = normalizeWord(b.dataset.value) === normalizeWord(answer);
+      b.classList.toggle("option-correct", isAnswer);
+      b.classList.toggle("option-wrong", b.classList.contains("selected") && !isAnswer);
+    });
+  });
+
+  const score = document.getElementById("exerciseScore");
+  if (score) {
+    score.hidden = false;
+    score.textContent = `${correct} / ${slots.length}`;
+    score.classList.toggle("all-correct", correct === slots.length);
+  }
+}
+
+function revealCloze() {
+  document.querySelectorAll("#exerciseBody .cloze-item").forEach(item => {
+    const slot = item.querySelector(".cloze-slot");
+    if (!slot) return;
+    const answer = slot.dataset.answer || "";
+    slot.textContent = answer;
+    slot.dataset.selected = answer;
+    slot.classList.remove("cloze-wrong");
+    slot.classList.add("cloze-correct", "cloze-revealed");
+
+    item.querySelectorAll(".cloze-option").forEach(b => {
+      b.classList.remove("option-wrong", "selected");
+      if (normalizeWord(b.dataset.value) === normalizeWord(answer)) {
+        b.classList.add("option-correct", "selected");
+      }
+    });
+  });
+}
+
+document.getElementById("exerciseBody")?.addEventListener("click", onClozeOptionClick);
+document.getElementById("exerciseCheckBtn")?.addEventListener("click", checkCloze);
+document.getElementById("exerciseRevealBtn")?.addEventListener("click", revealCloze);
 
 homeBackBtn?.addEventListener("click", goHome);
 
@@ -1307,15 +1618,23 @@ async function startReadingFromText(text) {
     inputText.value = cleanText;
     if (startComposerArea) startComposerArea.hidden = true;
 
-    await showImportedText(cleanText);
-    await renderCards(sentences);
+    if (appMode === "reading") {
+      // Read the whole text, then practise with a fill-the-gap exercise.
+      await showImportedText(cleanText);
+      await buildClozeExercise(sentences);
+    } else {
+      // Pronunciation: jump straight to sentence-by-sentence practice cards.
+      await renderCards(sentences);
+    }
+    applyMode();
     trackGuest("fullTextsGenerated");
 
     if (fullTextTranslation) fullTextTranslation.textContent = "";
       if (textLibraryPanel) textLibraryPanel.hidden = true;
     if (savedTextsPanel) savedTextsPanel.hidden = true;
 
-    fullTextPanel?.scrollIntoView({ behavior: "smooth" });
+    const scrollTarget = appMode === "reading" ? fullTextPanel : document.getElementById("cardsSection");
+    scrollTarget?.scrollIntoView({ behavior: "smooth" });
   } catch (error) {
     console.error("Start reading error:", error);
     showToast("Could not start reading.", "error");
@@ -1656,17 +1975,23 @@ async function showImportedText(text) {
   fullTextPinyin.hidden = true;
 
   const toggleBtn = document.getElementById("toggleFullTextPinyinBtn");
-  if (toggleBtn) toggleBtn.textContent = getT().showPinyin;
+  if (toggleBtn) {
+    toggleBtn.classList.remove("is-active");
+    toggleBtn.setAttribute("aria-pressed", "false");
+  }
 }
 
 document.getElementById("toggleFullTextPinyinBtn")?.addEventListener("click", () => {
   if (!fullTextPinyin) return;
 
   const btn = document.getElementById("toggleFullTextPinyinBtn");
-  const isHidden = fullTextPinyin.hidden;
+  const willShow = fullTextPinyin.hidden;
 
-  fullTextPinyin.hidden = !isHidden;
-  if (btn) btn.textContent = isHidden ? getT().hidePinyin : getT().showPinyin;
+  fullTextPinyin.hidden = !willShow;
+  if (btn) {
+    btn.classList.toggle("is-active", willShow); // label stays; switch shows on/off
+    btn.setAttribute("aria-pressed", willShow ? "true" : "false");
+  }
 });
 
 document.getElementById("readFullTextBtn")?.addEventListener("click", async () => {
@@ -1725,10 +2050,16 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
 
 function updateSlowLabels() {
   const t = getT();
-  const label = ttsSlowMode ? t.slowOn : t.slowOff;
+  const label = t.slow || "Slow";
 
-  document.getElementById("globalSlowBtn")?.replaceChildren(document.createTextNode(label));
-  document.getElementById("flashcardSlowBtn")?.replaceChildren(document.createTextNode(label));
+  ["globalSlowBtn", "flashcardSlowBtn"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const lbl = el.querySelector(".toggle-label");
+    if (lbl) lbl.textContent = label;
+    el.classList.toggle("is-active", ttsSlowMode);
+    el.setAttribute("aria-pressed", ttsSlowMode ? "true" : "false");
+  });
 }
 
 function toggleSlowMode() {
@@ -1738,6 +2069,42 @@ function toggleSlowMode() {
 }
 
 globalSlowBtn?.addEventListener("click", toggleSlowMode);
+
+/* -----------------------------
+   "MORE" OVERFLOW MENUS
+----------------------------- */
+
+function closeAllMoreMenus() {
+  document.querySelectorAll(".tb-more-menu").forEach(m => { m.hidden = true; });
+  document.querySelectorAll("[data-more-toggle]").forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+
+document.querySelectorAll("[data-more-toggle]").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const menu = btn.parentElement.querySelector(".tb-more-menu");
+    if (!menu) return;
+    const willOpen = menu.hidden;
+    closeAllMoreMenus();
+    menu.hidden = !willOpen;
+    btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  });
+});
+
+// Clicking any item closes its menu (the item's own handler still runs).
+document.querySelectorAll(".tb-more-menu").forEach(menu => {
+  menu.addEventListener("click", () => {
+    menu.hidden = true;
+    menu.closest(".tb-more")
+      ?.querySelector("[data-more-toggle]")
+      ?.setAttribute("aria-expanded", "false");
+  });
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".tb-more")) closeAllMoreMenus();
+});
+
 document.getElementById("voicePickerBtn")?.addEventListener("click", openVoicePicker);
 document.getElementById("voicePickerBtnComposer")?.addEventListener("click", openVoicePicker);
 document.addEventListener("click", (e) => {
