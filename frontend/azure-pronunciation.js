@@ -19,6 +19,10 @@ const SPEECH_SDK_URL =
   "https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.40.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js";
 
 let sdkPromise = null;
+// Mic permission persists once granted. Re-opening getUserMedia before every
+// check (especially several drill chunks in a row) churns the audio device and
+// can make a later capture come back silent. So we warm up once per session.
+let micWarmedUp = false;
 
 function loadSpeechSDK() {
   if (typeof window !== "undefined" && window.SpeechSDK) {
@@ -69,10 +73,11 @@ export async function assessPronunciation(referenceText, lang, { tokenUrl, fetch
   //    fetch below, it opens the mic but records silence ("didn't hear you").
   //    We release this warm-up stream immediately; the granted permission
   //    persists for the SDK's own capture a moment later.
-  if (navigator.mediaDevices?.getUserMedia) {
+  if (!micWarmedUp && navigator.mediaDevices?.getUserMedia) {
     let warmup = null;
     try {
       warmup = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micWarmedUp = true;
     } catch {
       throw makeErr("Microphone is blocked or unavailable", "MIC_DENIED");
     } finally {
@@ -101,6 +106,22 @@ export async function assessPronunciation(referenceText, lang, { tokenUrl, fetch
 
   const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
   speechConfig.speechRecognitionLanguage = lang;
+  // Be forgiving about start latency: there's a beat between tapping "Repeat"
+  // and the recognizer actually listening (token + SDK init). A longer initial
+  // silence window stops short drill clips from returning "no speech" when the
+  // user starts a moment late.
+  try {
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
+      "10000"
+    );
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+      "1200"
+    );
+  } catch {
+    /* property names vary across SDK builds; safe to skip */
+  }
 
   const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
   const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
@@ -170,6 +191,51 @@ export async function assessPronunciation(referenceText, lang, { tokenUrl, fetch
       }
     );
   });
+}
+
+// The per-word accuracy below which a word is treated as "not green" — must
+// match the green threshold used in scoreColor / renderAssessment (80).
+export const GREEN_THRESHOLD = 80;
+
+// Group the words that didn't get a green light into drillable chunks.
+// A word is "bad" if Azure flagged it (Mispronunciation / Omission) or its
+// accuracy is below `threshold`. Consecutive bad words are merged into one
+// chunk so the learner drills a natural phrase, not stray syllables.
+// Insertions (extra words not in the reference text) are skipped — there's
+// nothing to model or re-say for them — and they break the current run.
+export function collectFailedChunks(result, lang, threshold = GREEN_THRESHOLD) {
+  const words = result?.words || [];
+  const isCJK = /^(zh|ja)/i.test(String(lang));
+  const joiner = isCJK ? "" : " ";
+  const chunks = [];
+  let current = null;
+
+  const flush = () => {
+    if (current && current.length) {
+      chunks.push({
+        text: current.map((w) => w.word).join(joiner),
+        words: current
+      });
+    }
+    current = null;
+  };
+
+  for (const w of words) {
+    const errorType = w.errorType || "None";
+    if (errorType === "Insertion") {
+      flush();
+      continue;
+    }
+    const bad = errorType !== "None" || (w.accuracy != null && w.accuracy < threshold);
+    if (bad) {
+      if (!current) current = [];
+      current.push(w);
+    } else {
+      flush();
+    }
+  }
+  flush();
+  return chunks;
 }
 
 // Color a 0–100 score.

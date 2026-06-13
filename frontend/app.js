@@ -1,6 +1,11 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 import { UI_TEXT } from "./ui-text.js";
-import { assessPronunciation, renderAssessment } from "./azure-pronunciation.js";
+import {
+  assessPronunciation,
+  renderAssessment,
+  collectFailedChunks,
+  GREEN_THRESHOLD
+} from "./azure-pronunciation.js";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
@@ -15,6 +20,14 @@ const SPEECH_TOKEN_URL = `${API_BASE}/api/speech-token`;
 // Set once we learn Azure isn't usable for this session (guest / unconfigured /
 // SDK load failure) so we stop calling the endpoint and just use legacy scoring.
 let azurePronDisabled = false;
+
+// --- Tutor-style pronunciation drill ---
+// After the first full-sentence attempt, the app drills only the parts that
+// didn't get a green light, one chunk at a time, until each is said correctly.
+const DRILL_PASS_SCORE = GREEN_THRESHOLD; // a chunk passes at this accuracy
+const DRILL_MAX_ATTEMPTS = 3;             // then we encourage and move on
+// Guards re-entrancy so a second tap doesn't start a parallel drill.
+let drillActive = false;
 
 // Attempts Azure scoring. Returns { score } if it handled the attempt (success
 // or a user-facing message), or null if the caller should fall back to legacy
@@ -34,7 +47,7 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
       fetchWithAuth
     });
     if (renderTo) renderTo.innerHTML = renderAssessment(result, lang);
-    return { score: Math.round(result.pronunciation ?? result.accuracy ?? 0) };
+    return { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), result };
   } catch (err) {
     // Guest / not configured / SDK unavailable -> use legacy scoring instead.
     if (err.code === "NO_AUTH" || err.code === "NOT_CONFIGURED" || err.code === "SDK_LOAD_FAILED") {
@@ -56,6 +69,338 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
     return { score: 0 };
   } finally {
     if (recordBtn) recordBtn.disabled = false;
+  }
+}
+
+// Run a single Azure check against `referenceText`. Returns { score, result }
+// on success, or { error } with a typed code for the caller to handle. Unlike
+// tryAzurePronunciation this does its own rendering, so it returns raw data.
+async function assessChunk(referenceText, lang) {
+  try {
+    const result = await assessPronunciation(referenceText, lang, {
+      tokenUrl: SPEECH_TOKEN_URL,
+      fetchWithAuth
+    });
+    return { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), result };
+  } catch (err) {
+    return { error: err };
+  }
+}
+
+// Build the chunks to drill from a full assessment. For space-delimited
+// languages we just group consecutive non-green words. For Chinese/Japanese we
+// must respect *word* boundaries — Azure scores per character, so grouping on
+// its raw output splits real words (带着 → 带 + 着) and produces meaningless,
+// differently-pronounced fragments like 着这. We map per-character scores onto
+// the segmenter's word boundaries, then bridge single short good words between
+// bad ones so a coherent phrase (带着这两个人) stays intact.
+const MAX_CHUNK_CHARS = 6; // keep drill bites phrase-sized, not whole sentences
+
+async function buildDrillChunks(result, shortLang) {
+  const speechLang = mapToSpeechLang(shortLang);
+  const isCJK = shortLang === "zh" || shortLang === "ja";
+  if (!isCJK) return collectFailedChunks(result, speechLang);
+
+  // Per-character badness in reference order (skip insertions — not in the text).
+  const chars = [];
+  for (const w of result?.words || []) {
+    if ((w.errorType || "None") === "Insertion") continue;
+    const bad =
+      (w.errorType && w.errorType !== "None") ||
+      (w.accuracy != null && w.accuracy < GREEN_THRESHOLD);
+    for (const ch of w.word || "") {
+      if (/\s/.test(ch)) continue;
+      chars.push({ ch, bad });
+    }
+  }
+  if (!chars.length) return collectFailedChunks(result, speechLang);
+  const refText = chars.map((c) => c.ch).join("");
+
+  // Segment into real words.
+  let segWords = [];
+  try {
+    const resp = await fetchWithAuth(`${API_BASE}/api/segment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: refText })
+    });
+    const data = await resp.json();
+    if (resp.ok && Array.isArray(data.words)) {
+      segWords = data.words.map((x) => x.word).filter(Boolean);
+    }
+  } catch {
+    /* fall back below */
+  }
+  if (!segWords.length) return collectFailedChunks(result, speechLang);
+
+  // A segmented word is bad if any of its characters scored poorly.
+  const segs = [];
+  let pos = 0;
+  for (const sw of segWords) {
+    const swChars = [...sw].filter((c) => !/\s/.test(c));
+    let bad = false;
+    let text = "";
+    for (let k = 0; k < swChars.length && pos < chars.length; k++) {
+      if (chars[pos].bad) bad = true;
+      text += chars[pos].ch;
+      pos++;
+    }
+    if (text) segs.push({ text, bad });
+  }
+
+  // Group consecutive bad words into phrase-sized chunks. A single short good
+  // word is bridged between two bad words (带[ok]着 → keep 带着 together), and a
+  // chunk may start with one short good word of left-context so a syllable
+  // isn't drilled out of the context that determines its pronunciation/tone.
+  const len = (txt) => [...txt].length;
+  const isShort = (txt) => len(txt) <= 2;
+  const chunks = [];
+  let cur = null; // current chunk being built
+  let gap = null; // a short good word held as a potential bridge
+  let lead = null; // last short good word, usable as left-context for next chunk
+  const flush = () => {
+    if (cur) chunks.push(cur);
+    cur = null;
+    gap = null;
+  };
+  for (const s of segs) {
+    if (s.bad) {
+      if (!cur) {
+        cur = { text: lead ? lead.text : "" };
+      } else if (gap) {
+        const bridgeText = gap.text; // capture before flush() clears gap
+        const fits = len(cur.text) + len(bridgeText) + len(s.text) <= MAX_CHUNK_CHARS;
+        if (fits) {
+          cur.text += bridgeText;
+        } else {
+          flush();
+          cur = { text: bridgeText }; // the bridge word leads the new chunk
+        }
+      } else if (len(cur.text) + len(s.text) > MAX_CHUNK_CHARS) {
+        flush();
+        cur = { text: "" };
+      }
+      gap = null;
+      lead = null;
+      cur.text += s.text;
+    } else {
+      const short = isShort(s.text);
+      if (cur && gap == null && short) {
+        gap = s; // hold as a potential bridge
+      } else {
+        flush();
+        lead = short ? s : null;
+      }
+    }
+  }
+  flush();
+  return chunks;
+}
+
+// Pinyin syllables for a Chinese string, one per character (or null on failure).
+async function getPinyinSyllables(text) {
+  try {
+    const py = await getPinyinForText(text);
+    return py.split(/\s+/).filter(Boolean);
+  } catch {
+    return null;
+  }
+}
+
+// "Focus on: 差 chà 40% · 役 yì 55%" — names exactly which syllables fell short
+// so the learner knows what to fix, not just an opaque overall score.
+function renderWeakSpots(result, shortLang, pinyinSyllables, t) {
+  const isZh = shortLang === "zh";
+  const parts = [];
+  let ci = 0;
+  for (const w of result.words || []) {
+    if ((w.errorType || "None") === "Insertion") continue;
+    const charCount = isZh ? [...(w.word || "")].length || 1 : 1;
+    const acc = w.accuracy;
+    const isOmission = w.errorType === "Omission";
+    const bad = (w.errorType && w.errorType !== "None") || (acc != null && acc < GREEN_THRESHOLD);
+    if (bad) {
+      let label = escapeHtml(w.word || "");
+      if (isZh && pinyinSyllables) {
+        const py = pinyinSyllables.slice(ci, ci + charCount).join(" ");
+        if (py) label += ` <em>${escapeHtml(py)}</em>`;
+      }
+      const detail = isOmission
+        ? (t?.drillMissed || "missed")
+        : acc != null
+          ? `${Math.round(acc)}%`
+          : "";
+      parts.push(`<span class="pa-weak">${label}${detail ? ` ${detail}` : ""}</span>`);
+    }
+    ci += charCount;
+  }
+  if (!parts.length) return "";
+  return `<p class="pa-drill-breakdown"><span class="pa-weak-label">${escapeHtml(
+    t?.drillFocus || "Focus on"
+  )}:</span> ${parts.join(" · ")}</p>`;
+}
+
+// Tutor-style follow-up. Walks each failed chunk: models the native audio,
+// lets the learner repeat just that part, re-scores it on its own, and either
+// advances (>= DRILL_PASS_SCORE) or retries up to DRILL_MAX_ATTEMPTS before
+// encouraging them and moving on. Resolves when the sentence is mastered,
+// skipped, or interrupted. Mic/no-speech issues don't consume an attempt;
+// a quota wall stops the drill.
+async function runPronunciationDrill(chunks, shortLang, resultBox, t) {
+  if (!chunks.length || !resultBox) return;
+
+  const speechLang = mapToSpeechLang(shortLang);
+
+  // A dedicated container appended below the scored sentence.
+  const drill = document.createElement("div");
+  drill.className = "pa-drill";
+  resultBox.appendChild(drill);
+  drill.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  const tt = (key, fallback) => (t && t[key]) || fallback;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const passed = await drillOneChunk(chunk, i, chunks.length);
+    if (passed === "abort") {
+      return false; // quota / fatal — message already shown, don't advance
+    }
+  }
+
+  drill.insertAdjacentHTML(
+    "beforeend",
+    `<p class="pa-drill-done"><strong>${escapeHtml(
+      tt("drillMastered", "Nice — you nailed every part! 🎉")
+    )}</strong></p>`
+  );
+  return true;
+
+  // Drives one chunk to completion. Resolves true on pass, false when we give
+  // up after max attempts, or "abort" on a quota/fatal error.
+  function drillOneChunk(chunk, index, total) {
+    return new Promise((resolve) => {
+      let attempts = 0;
+
+      const panel = document.createElement("div");
+      panel.className = "pa-drill-chunk";
+      drill.appendChild(panel);
+
+      const header = tt("drillPracticeThis", "Let's practice this part")
+        .replace("{n}", String(index + 1))
+        .replace("{total}", String(total));
+
+      panel.innerHTML = `
+        <p class="pa-drill-label">${escapeHtml(header)} (${index + 1}/${total})</p>
+        <p class="pa-drill-target">${escapeHtml(chunk.text)}</p>
+        <div class="pa-drill-actions">
+          <button type="button" class="pa-drill-hear card-primary-btn">🔊 ${escapeHtml(
+            tt("drillHear", "Hear it")
+          )}</button>
+          <button type="button" class="pa-drill-say card-primary-btn">🎤 ${escapeHtml(
+            tt("drillRepeat", "Repeat it")
+          )}</button>
+          <button type="button" class="pa-drill-skip card-secondary-btn">${escapeHtml(
+            tt("drillSkip", "Skip")
+          )}</button>
+        </div>
+        <div class="pa-drill-feedback" aria-live="polite"></div>
+      `;
+      panel.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      const hearBtn = panel.querySelector(".pa-drill-hear");
+      const sayBtn = panel.querySelector(".pa-drill-say");
+      const skipBtn = panel.querySelector(".pa-drill-skip");
+      const feedback = panel.querySelector(".pa-drill-feedback");
+
+      const setBusy = (busy) => {
+        hearBtn.disabled = busy;
+        sayBtn.disabled = busy;
+        skipBtn.disabled = busy;
+      };
+
+      const finish = (outcome) => {
+        setBusy(true);
+        hearBtn.disabled = false; // can still replay after finishing
+        resolve(outcome);
+      };
+
+      hearBtn.addEventListener("click", async () => {
+        unlockAudioForMobile();
+        const ttsText = await prepareTTSInput(chunk.text, shortLang);
+        playGoogleTTS(ttsText, shortLang);
+      });
+
+      skipBtn.addEventListener("click", () => {
+        feedback.innerHTML = `<p>${escapeHtml(tt("drillSkipped", "Skipped — moving on."))}</p>`;
+        finish(false);
+      });
+
+      sayBtn.addEventListener("click", async () => {
+        setBusy(true);
+        stopAllTTS();
+        feedback.innerHTML = `<p>${escapeHtml(tt("listening", "Listening…"))}</p>`;
+
+        const outcome = await assessChunk(chunk.text, speechLang);
+
+        if (outcome.error) {
+          const code = outcome.error.code;
+          if (code === "QUOTA_EXCEEDED") {
+            feedback.innerHTML = `<p>${escapeHtml(
+              outcome.error.info?.error ||
+                tt("drillQuota", "You've used today's free pronunciation checks. Upgrade for unlimited.")
+            )}</p>`;
+            finish("abort");
+            return;
+          }
+          // Mic / no-speech / transient: let them try again, no attempt spent.
+          const retryMsgs = {
+            NO_SPEECH: tt("drillNoSpeech", "I didn't hear anything. Tap Repeat and speak."),
+            MIC_DENIED: tt("drillMicDenied", "Microphone is blocked. Allow mic access and try again."),
+            CANCELED: tt("drillTryAgain", "Recording stopped. Tap Repeat to try again."),
+            TOKEN_FAILED: tt("drillBusy", "Service is busy. Tap Repeat to try again."),
+            SDK_ERROR: tt("drillTryAgain", "Something went wrong. Tap Repeat to try again.")
+          };
+          feedback.innerHTML = `<p>${escapeHtml(retryMsgs[code] || tt("drillTryAgain", "Tap Repeat to try again."))}</p>`;
+          setBusy(false);
+          return;
+        }
+
+        attempts += 1;
+        const { score, result } = outcome;
+        const heard = result.transcript ? ` <span class="pa-drill-heard">${escapeHtml(result.transcript)}</span>` : "";
+
+        if (score >= DRILL_PASS_SCORE) {
+          feedback.innerHTML = `<p class="pa-drill-pass"><strong>✓ ${escapeHtml(
+            tt("drillGotIt", "Got it!")
+          )}</strong> ${score}%${heard}</p>`;
+          finish(true);
+          return;
+        }
+
+        // Name exactly which syllables fell short so "what did I do wrong" is clear.
+        const pinyinSyllables = shortLang === "zh" ? await getPinyinSyllables(chunk.text) : null;
+        const breakdown = renderWeakSpots(result, shortLang, pinyinSyllables, t);
+
+        if (attempts >= DRILL_MAX_ATTEMPTS) {
+          feedback.innerHTML = `<p class="pa-drill-moveon">${escapeHtml(
+            tt("drillKeepGoing", "Close — keep practicing this one. Let's move on for now.")
+          )} (${score}%)${heard}</p>${breakdown}`;
+          finish(false);
+          return;
+        }
+
+        const left = DRILL_MAX_ATTEMPTS - attempts;
+        feedback.innerHTML = `<p class="pa-drill-again">${escapeHtml(
+          tt("drillAlmost", "Almost — listen again and repeat.")
+        )} (${score}%)${heard} <span class="pa-drill-tries">${left} ${escapeHtml(
+          tt("drillTriesLeft", "tries left")
+        )}</span></p>${breakdown}`;
+        // Re-model the audio to scaffold the next attempt, then re-enable.
+        const ttsText = await prepareTTSInput(chunk.text, shortLang);
+        playGoogleTTS(ttsText, shortLang);
+        setBusy(false);
+      });
+    });
   }
 }
 
@@ -2476,6 +2821,7 @@ async function getPinyinForText(text) {
 }
 
 async function startFlashcardSpeakingPractice() {
+  if (drillActive) return; // a drill is already running for this card
   const cards = getCurrentCards();
   const card = cards[currentFlashcardIndex];
   if (!card) return;
@@ -2489,7 +2835,26 @@ async function startFlashcardSpeakingPractice() {
   // Azure pronunciation assessment (signed-in users, when enabled).
   const azure = await tryAzurePronunciation(expected, speechLang, resultEl, null, getT());
   if (azure) {
-    flashcardSpeakingUnlocked = azure.score >= FLASHCARD_PASS_SCORE;
+    // Passed outright — unlock and move on (flashcards stay lightweight).
+    if (azure.score >= FLASHCARD_PASS_SCORE) {
+      flashcardSpeakingUnlocked = true;
+      renderFlashcards();
+      return;
+    }
+    // Didn't pass — drill the parts that fell short, unlock only if mastered.
+    const chunks = azure.result ? await buildDrillChunks(azure.result, cardLang) : [];
+    if (chunks.length) {
+      drillActive = true;
+      let mastered = false;
+      try {
+        mastered = await runPronunciationDrill(chunks, cardLang, resultEl, getT());
+      } finally {
+        drillActive = false;
+      }
+      flashcardSpeakingUnlocked = !!mastered;
+    } else {
+      flashcardSpeakingUnlocked = false;
+    }
     renderFlashcards();
     return;
   }
@@ -2682,15 +3047,34 @@ async function record(sentence, card, recordBtn = null) {
 
   // Azure pronunciation assessment (signed-in users, when enabled).
   // Falls through to legacy browser scoring for guests / unconfigured.
-  const azureLang = mapToSpeechLang(sourceLangSelect.value);
+  const shortLang = sourceLangSelect.value;
+  const azureLang = mapToSpeechLang(shortLang);
   const azure = await tryAzurePronunciation(sentence, azureLang, resultBox, recordBtn, t);
   if (azure) {
-    if (azure.score >= 70) {
+    const advanceToNext = () => {
       const nextCard = card.nextElementSibling;
       setTimeout(() => {
         nextCard?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 600);
+    };
+
+    // Tutor loop: drill the parts that didn't get a green light, then advance.
+    const chunks = azure.result ? await buildDrillChunks(azure.result, shortLang) : [];
+    if (chunks.length && !drillActive) {
+      drillActive = true;
+      if (recordBtn) recordBtn.disabled = true; // block re-tap from wiping the drill
+      let mastered = false;
+      try {
+        mastered = await runPronunciationDrill(chunks, shortLang, resultBox, t);
+      } finally {
+        drillActive = false;
+        if (recordBtn) recordBtn.disabled = false;
+      }
+      if (mastered) advanceToNext();
+      return;
     }
+
+    if (azure.score >= 70) advanceToNext();
     return;
   }
 

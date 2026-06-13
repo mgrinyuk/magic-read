@@ -2657,3 +2657,86 @@ body.is-logged-in .top-ui-language {
 .pa-metrics { font-size: .85rem; color: #555; margin: .25rem 0; }
 .pa-metric { white-space: nowrap; }
 .pa-heard { font-size: .85rem; color: #777; margin: .25rem 0 0; }
+
+/* --- Tutor-style pronunciation drill --- */
+.pa-drill {
+  margin-top: .75rem;
+  padding-top: .75rem;
+  border-top: 1px dashed var(--border);
+}
+.pa-drill-chunk {
+  margin-top: .75rem;
+  padding: .85rem;
+  border-radius: 16px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+.pa-drill-label {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 0 0 .35rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.pa-drill-target {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--brand-dark);
+  margin: 0 0 .65rem;
+}
+.pa-drill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.card-secondary-btn {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  padding: 11px 18px;
+  font-weight: 700;
+}
+.card-secondary-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.pa-drill-actions button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+.pa-drill-feedback { margin-top: .55rem; font-size: .95rem; }
+.pa-drill-feedback p { margin: .25rem 0; }
+.pa-drill-pass { color: #1a8a3a; }
+.pa-drill-again { color: #c8860a; }
+.pa-drill-moveon { color: var(--text-muted); }
+.pa-drill-tries { font-size: .8rem; color: var(--text-muted); }
+.pa-drill-heard { font-style: italic; color: #777; }
+.pa-drill-done {
+  margin-top: .75rem;
+  font-size: 1.05rem;
+  color: #1a8a3a;
+}
+
+/* Drill: per-syllable "what was off" breakdown */
+.pa-drill-breakdown {
+  margin: .4rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+}
+.pa-weak-label {
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: .25rem;
+}
+.pa-weak {
+  display: inline-block;
+  color: #c0392b;
+  font-weight: 700;
+}
+.pa-weak em {
+  font-style: normal;
+  font-weight: 600;
+  opacity: .85;
+}
