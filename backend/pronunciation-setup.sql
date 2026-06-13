@@ -11,6 +11,11 @@ create table if not exists public.profiles (
   created_at timestamptz default now()
 );
 
+-- If a profiles table already existed (created by the app earlier), make sure
+-- the plan column is present. `create table if not exists` above will NOT add
+-- columns to a pre-existing table, so this ALTER backfills it.
+alter table public.profiles add column if not exists plan text not null default 'free';
+
 -- Auto-create a profile row whenever a new user signs up.
 create or replace function public.handle_new_user()
 returns trigger

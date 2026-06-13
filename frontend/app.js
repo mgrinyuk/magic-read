@@ -10,7 +10,7 @@ const API_BASE = "https://magic-read.onrender.com";
 // Flip to true AFTER the backend AZURE_SPEECH_* env vars are set and
 // pronunciation-setup.sql has been run in Supabase. While false, the app
 // keeps the original browser-based scoring with zero behavior change.
-const AZURE_PRONUNCIATION = false;
+const AZURE_PRONUNCIATION = true;
 const SPEECH_TOKEN_URL = `${API_BASE}/api/speech-token`;
 // Set once we learn Azure isn't usable for this session (guest / unconfigured /
 // SDK load failure) so we stop calling the endpoint and just use legacy scoring.
