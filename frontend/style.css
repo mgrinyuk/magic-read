@@ -5,7 +5,7 @@
   --brand-dark: #1c0770;
   --brand: #261cc1;
   --blue: #3a9aff;
-  --yellow: #f1ff5e;
+  --yellow: #ff6a2b;
   --text: #111318;
   --text-soft: #5b6472;
   --text-muted: #7b8494;
@@ -192,6 +192,118 @@ h1 {
 
 .profile-dropdown button:hover {
   background: var(--surface-soft);
+}
+
+/* --- Plan badges & upgrade UI --- */
+.pro-badge,
+.trial-badge {
+  display: block;
+  margin: 2px 0 6px;
+  padding: 7px 12px;
+  border-radius: 11px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.trial-badge {
+  color: var(--text-muted);
+}
+
+/* 3-plan picker inside the profile dropdown */
+.plan-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.plan-picker .plan-option {
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft, #f5f3ff);
+  color: var(--text);
+  text-align: left;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.plan-picker .plan-option:hover {
+  border-color: var(--accent, #6d28d9);
+}
+
+.plan-picker .plan-option:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Welcome-week banner below the header */
+.welcome-week-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--surface-soft, #f5f3ff);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.welcome-week-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* Soft "X of N texts used today" counter near Start */
+.text-quota-counter {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Contextual inline upgrade prompt */
+.upgrade-inline {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-soft, #f5f3ff);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.upgrade-inline--floating {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: 420px;
+  box-shadow: var(--shadow-soft);
+}
+
+.upgrade-inline .upgrade-link {
+  font-weight: 800;
+  color: var(--accent, #6d28d9);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.upgrade-inline .upgrade-link:hover {
+  text-decoration: underline;
 }
 
 .menu-label {
@@ -1068,7 +1180,7 @@ textarea:focus,
 }
 
 .word:hover {
-  background: rgba(241, 255, 94, 0.55);
+  background: rgba(255, 106, 43, 0.55);
   border-radius: 5px;
   border-color: var(--yellow);
 }
@@ -1102,7 +1214,7 @@ textarea:focus,
 }
 
 .grammar-box {
-  background: rgba(241, 255, 94, 0.13);
+  background: rgba(255, 106, 43, 0.13);
   color: var(--yellow);
 }
 
@@ -1174,7 +1286,7 @@ textarea:focus,
 }
 
 .grammar-highlight {
-  background: rgba(241, 255, 94, 0.35);
+  background: rgba(255, 106, 43, 0.35);
   border-radius: 5px;
 }
 
@@ -1183,7 +1295,7 @@ textarea:focus,
   color: var(--brand-dark) !important;
   border-radius: 6px;
   padding: 1px 3px;
-  box-shadow: 0 0 0 3px rgba(241, 255, 94, 0.28);
+  box-shadow: 0 0 0 3px rgba(255, 106, 43, 0.28);
   transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -2481,7 +2593,7 @@ body.is-logged-in .top-ui-language {
   color: var(--brand-dark) !important;
   border-radius: 7px;
   padding: 1px 4px;
-  box-shadow: 0 0 0 2px rgba(241, 255, 94, 0.45);
+  box-shadow: 0 0 0 2px rgba(255, 106, 43, 0.45);
 }
 
 /* ─── FOOTER ─────────────────────────────────── */
