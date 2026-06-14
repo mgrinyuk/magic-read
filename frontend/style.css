@@ -1334,7 +1334,13 @@ textarea:focus,
   line-height: 1.35;
 }
 
-.popup-pinyin,
+.popup-pinyin {
+  margin-top: 4px;
+  color: var(--brand-dark);
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
 .example-pinyin {
   margin-top: 4px;
   color: var(--brand);
