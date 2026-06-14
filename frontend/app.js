@@ -1119,6 +1119,7 @@ function updateWritingSkillCard() {
 function showOnboardingStepA() {
   if (onboardingStepA) onboardingStepA.hidden = false;
   if (onboardingStepB) onboardingStepB.hidden = true;
+  sessionStorage.setItem("onboardingStep", "a");
   syncMainToOnboarding();
   showScreen(screenOnboarding);
 }
@@ -1128,8 +1129,26 @@ function showOnboardingStepB() {
   if (onboardingStepB) onboardingStepB.hidden = false;
   if (routeChoiceTextEl) routeChoiceTextEl.hidden = true;
   document.querySelectorAll(".skill-card").forEach(c => c.classList.remove("skill-card-active"));
+  sessionStorage.setItem("onboardingStep", "b");
   updateWritingSkillCard();
   showScreen(screenOnboarding);
+}
+
+// On reload, stay on the screen the user was last viewing instead of jumping home.
+function restoreActiveScreen() {
+  const savedId = sessionStorage.getItem("activeScreenId");
+  const target = savedId ? document.getElementById(savedId) : null;
+
+  if (!target || savedId === "screen-onboarding") {
+    if (sessionStorage.getItem("onboardingStep") === "b") {
+      showOnboardingStepB();
+    } else {
+      showOnboardingStepA();
+    }
+    return;
+  }
+
+  showScreen(target);
 }
 
 function goHome() {
@@ -4328,7 +4347,7 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
 window.addEventListener("DOMContentLoaded", async () => {
   syncMainToOnboarding();
   updateWritingSkillCard();
-  showOnboardingStepA();
+  restoreActiveScreen();
   updateLanguageBasedUI();
   updateSlowLabels();
 

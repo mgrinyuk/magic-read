@@ -711,7 +711,7 @@ h1 {
 
 .start-copy h1 {
   margin-bottom: 12px;
-  font-size: clamp(2.25rem, 4vw, 3.65rem);
+  font-size: clamp(1.15rem, 2vw, 1.85rem);
   font-weight: 750;
 }
 
@@ -728,6 +728,11 @@ textarea {
   outline: none;
   font-size: 1.05rem;
   line-height: 1.7;
+}
+
+/* Paste-your-text field: ~30% narrower than the panel on wide screens */
+#inputText {
+  max-width: 740px;
 }
 
 textarea::placeholder {
@@ -1917,7 +1922,7 @@ body.is-logged-in .top-ui-language {
   }
 
   .start-copy h1 {
-    font-size: 2.2rem;
+    font-size: 1.5rem;
   }
 
   textarea {
