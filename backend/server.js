@@ -12,9 +12,48 @@ import { pinyin } from "pinyin-pro";
 import { google } from "googleapis";
 import PDFDocument from "pdfkit";
 import Papa from "papaparse";
+import Stripe from "stripe";
 
 
 dotenv.config();
+
+// --- Stripe (billing) config ---
+// STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and the three plan prices
+// (STRIPE_PRICE_MONTHLY / STRIPE_PRICE_ANNUAL / STRIPE_PRICE_LIFETIME) live in
+// .env (and must also be set in the Render dashboard). The webhook secret is
+// only used to verify incoming webhook signatures.
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+/* ============================================================
+   STRIPE BILLING — summary of what was added
+   ------------------------------------------------------------
+   Backend (this file):
+     • `stripe` npm dependency + client init (above).
+     • POST /api/stripe-webhook   — raw-body Stripe webhook, registered
+       BEFORE express.json(); flips profiles.plan between 'pro'/'free'.
+     • POST /api/create-checkout-session — auth-gated; takes a priceType
+       ('monthly' | 'annual' | 'lifetime') and creates a Stripe Checkout
+       session (subscription for monthly/annual, payment for lifetime) and
+       stores stripe_customer_id.
+   Frontend: "Upgrade to Pro ✨" button opens a 3-plan picker in the profile
+     dropdown; plan lookup + checkout redirect in app.js.
+   SQL: see the "Stripe setup — run separately" block at the bottom of
+     pronunciation-setup.sql (adds profiles.stripe_customer_id).
+
+   WHAT YOU NEED TO DO IN THE STRIPE DASHBOARD:
+     1. Create your plan Prices (Dashboard → Products): a recurring monthly
+        price, a recurring annual price, and a one-time lifetime price. Copy
+        each id into STRIPE_PRICE_MONTHLY / STRIPE_PRICE_ANNUAL /
+        STRIPE_PRICE_LIFETIME (.env locally + Render env vars).
+     2. Add STRIPE_SECRET_KEY (Developers → API keys).
+     3. Create a webhook endpoint pointing to
+        https://magic-read.onrender.com/api/stripe-webhook
+        listening for: checkout.session.completed,
+        customer.subscription.updated, customer.subscription.deleted.
+        Copy its signing secret into STRIPE_WEBHOOK_SECRET.
+   ============================================================ */
 
 const supabase = createSupabaseClient(
   process.env.SUPABASE_URL,
@@ -31,8 +70,33 @@ const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
 // --- Azure Speech (pronunciation assessment) config ---
 const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY;
 const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION;
-// Free signed-in users get this many Azure-scored checks per day. Pro users are unlimited.
-const FREE_DAILY_PRONUNCIATION_LIMIT = Number(process.env.FREE_DAILY_PRONUNCIATION_LIMIT || 20);
+// --- Free-plan limits (Pro & welcome-week trial users are unlimited) ---
+// All overridable via env vars; defaults match the plan definition.
+const FREE_DAILY_PRONUNCIATION_LIMIT = Number(process.env.FREE_DAILY_PRONUNCIATION_LIMIT || 10);
+const FREE_DAILY_TEXT_LIMIT = Number(process.env.FREE_DAILY_TEXT_LIMIT || 3);
+const FREE_MAX_SAVED_TEXTS = Number(process.env.FREE_MAX_SAVED_TEXTS || 5);
+const FREE_MAX_DECKS = Number(process.env.FREE_MAX_DECKS || 2);
+const FREE_MAX_CARDS = Number(process.env.FREE_MAX_CARDS || 100);
+
+// Centralized plan resolver. Returns the user's *effective* plan, honoring the
+// 7-day welcome-week trial: a user is treated as 'pro' if they're a paid pro OR
+// still inside their trial window. Use this everywhere instead of reading
+// profiles.plan directly.
+async function getUserPlan(userId) {
+  const { data: profile, error } = await supabaseAdmin
+    .from("profiles")
+    .select("plan, trial_ends_at")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) console.error("[Plan] profile lookup error:", error.message);
+
+  const plan = profile?.plan || "free";
+  const trialEndsAt = profile?.trial_ends_at || null;
+  const trialActive =
+    plan !== "pro" && !!trialEndsAt && new Date(trialEndsAt) > new Date();
+  const effectivePlan = plan === "pro" || trialActive ? "pro" : "free";
+  return { plan, trialEndsAt, trialActive, effectivePlan };
+}
 
 // Attaches req.user from a Bearer JWT; silently treats invalid tokens as guests.
 async function extractUser(req, _res, next) {
@@ -194,6 +258,80 @@ const ttsClient = new textToSpeech.TextToSpeechClient({
 
 
 app.use(cors());
+
+/* -----------------------------
+   STRIPE WEBHOOK
+   MUST be registered with the raw body parser and BEFORE the global
+   express.json() middleware below — Stripe signature verification needs
+   the exact raw request bytes. Uses supabaseAdmin (service role) to flip
+   the user's plan based on subscription lifecycle events.
+----------------------------- */
+async function setPlanByCustomer(customerId, plan) {
+  if (!customerId) return;
+  const { error } = await supabaseAdmin
+    .from("profiles")
+    .update({ plan })
+    .eq("stripe_customer_id", customerId);
+  if (error) console.error(`[Stripe] failed to set plan=${plan} for customer ${customerId}:`, error.message);
+}
+
+app.post("/api/stripe-webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return res.status(503).send("Billing not configured");
+  }
+
+  const sig = req.headers["stripe-signature"];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error("[Stripe] webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        // Fires for both subscriptions and one-time lifetime payments. Flip to
+        // pro. Prefer the customer id; fall back to client_reference_id (the
+        // Supabase user id we set when creating the session) — important for
+        // the lifetime case (mode === 'payment').
+        const session = event.data.object;
+        if (session.customer) {
+          await setPlanByCustomer(session.customer, "pro");
+        } else if (session.client_reference_id) {
+          const { error } = await supabaseAdmin
+            .from("profiles")
+            .update({ plan: "pro" })
+            .eq("id", session.client_reference_id);
+          if (error) console.error("[Stripe] failed to set pro by user id:", error.message);
+        }
+        break;
+      }
+      case "customer.subscription.updated": {
+        const sub = event.data.object;
+        const plan = sub.status === "active" || sub.status === "trialing" ? "pro" : "free";
+        // active → pro; canceled / past_due / unpaid / incomplete → free
+        await setPlanByCustomer(sub.customer, plan);
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const sub = event.data.object;
+        await setPlanByCustomer(sub.customer, "free");
+        break;
+      }
+      default:
+        // ignore other event types
+        break;
+    }
+  } catch (err) {
+    console.error("[Stripe] webhook handler error:", err.message);
+    // Still 200 so Stripe doesn't retry on our internal bug; we logged it.
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json());
 app.use(globalLimiter);
 
@@ -592,6 +730,244 @@ app.post("/api/translate", extractUser, translateLimiter, async (req, res) => {
 
 
 /* -----------------------------
+   STRIPE CHECKOUT
+   Auth-gated. Ensures the user has a Stripe customer (stored on their
+   profile), then creates a Checkout session for the requested plan.
+   Body: { priceType: 'monthly' | 'annual' | 'lifetime' }.
+   Monthly/annual are subscriptions; lifetime is a one-time payment.
+   Returns { url } for the browser to redirect to.
+----------------------------- */
+app.post("/api/create-checkout-session", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ error: "Billing is not configured.", code: "NOT_CONFIGURED" });
+    }
+
+    // Map the requested plan to its Stripe price + checkout mode.
+    const PRICE_MAP = {
+      monthly:  { price: process.env.STRIPE_PRICE_MONTHLY,  mode: "subscription" },
+      annual:   { price: process.env.STRIPE_PRICE_ANNUAL,   mode: "subscription" },
+      lifetime: { price: process.env.STRIPE_PRICE_LIFETIME, mode: "payment" }
+    };
+
+    const { priceType } = req.body || {};
+    const selected = PRICE_MAP[priceType];
+    if (!selected) {
+      return res.status(400).json({ error: "Invalid or missing priceType.", code: "INVALID_PRICE_TYPE" });
+    }
+    if (!selected.price) {
+      return res.status(503).json({ error: "Billing is not configured.", code: "NOT_CONFIGURED" });
+    }
+
+    const userId = req.user.id;
+    const email = req.user.email;
+
+    // Reuse the user's Stripe customer if we already have one; otherwise create
+    // it and persist the id on the profile.
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (profileErr) console.error("[Stripe] profile lookup error:", profileErr.message);
+
+    let customerId = profile?.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email,
+        metadata: { supabase_user_id: userId }
+      });
+      customerId = customer.id;
+      const { error: updErr } = await supabaseAdmin
+        .from("profiles")
+        .update({ stripe_customer_id: customerId })
+        .eq("id", userId);
+      if (updErr) console.error("[Stripe] failed to store customer id:", updErr.message);
+    }
+
+    // Send the user back to the frontend they came from (fall back to prod).
+    const origin = req.headers.origin || "https://magic-read.onrender.com";
+
+    const session = await stripe.checkout.sessions.create({
+      mode: selected.mode,
+      customer: customerId,
+      client_reference_id: userId,
+      line_items: [{ price: selected.price, quantity: 1 }],
+      success_url: `${origin}/?checkout=success`,
+      cancel_url: `${origin}/?checkout=cancel`
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error("[Stripe] create-checkout-session error:", error.message);
+    res.status(500).json({ error: "Could not start checkout." });
+  }
+});
+
+
+/* -----------------------------
+   PLAN & QUOTAS
+   All quota endpoints use getUserPlan() so welcome-week trial users get
+   pro-level (unlimited) access. Guests never reach these (requireUser).
+----------------------------- */
+
+// Read-only snapshot the frontend uses to render limits/counters in one call.
+app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { plan, trialEndsAt, trialActive, effectivePlan } = await getUserPlan(userId);
+    const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+
+    const [textRes, pronRes] = await Promise.all([
+      supabaseAdmin.from("text_processing_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle(),
+      supabaseAdmin.from("pronunciation_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle()
+    ]);
+
+    res.json({
+      plan,
+      effectivePlan,
+      trialEndsAt,
+      trialActive,
+      textUsedToday: textRes.data?.count || 0,
+      pronouncedToday: pronRes.data?.count || 0,
+      limits: {
+        textPerDay: FREE_DAILY_TEXT_LIMIT,
+        pronunciationPerDay: FREE_DAILY_PRONUNCIATION_LIMIT,
+        savedTexts: FREE_MAX_SAVED_TEXTS,
+        decks: FREE_MAX_DECKS,
+        cards: FREE_MAX_CARDS
+      }
+    });
+  } catch (error) {
+    console.error("[Plan] my-plan error:", error.message);
+    res.status(500).json({ error: "Could not load plan." });
+  }
+});
+
+// Metered: increments the per-day text counter for free users.
+app.post("/api/check-text-quota", extractUser, requireUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { effectivePlan } = await getUserPlan(userId);
+    if (effectivePlan === "pro") return res.json({ allowed: true });
+
+    const day = new Date().toISOString().slice(0, 10);
+    const { data: usageRow, error: usageErr } = await supabaseAdmin
+      .from("text_processing_usage")
+      .select("count")
+      .eq("user_id", userId)
+      .eq("day", day)
+      .maybeSingle();
+    if (usageErr) console.error("[Quota] text usage lookup error:", usageErr.message);
+
+    const used = usageRow?.count || 0;
+    if (used >= FREE_DAILY_TEXT_LIMIT) {
+      return res.status(429).json({
+        error: `You've used your ${FREE_DAILY_TEXT_LIMIT} free texts today. Upgrade to Pro for unlimited.`,
+        code: "TEXT_QUOTA_EXCEEDED",
+        used,
+        limit: FREE_DAILY_TEXT_LIMIT
+      });
+    }
+
+    const { error: incErr } = await supabaseAdmin.rpc("increment_text_usage", {
+      p_user_id: userId,
+      p_day: day
+    });
+    if (incErr) console.error("[Quota] text usage increment error:", incErr.message);
+
+    res.json({ allowed: true, used: used + 1, limit: FREE_DAILY_TEXT_LIMIT });
+  } catch (error) {
+    console.error("[Quota] text quota error:", error.message);
+    res.status(500).json({ error: "Quota check failed." });
+  }
+});
+
+// Checked before inserting into saved_texts. Does not mutate anything.
+app.post("/api/check-save-text-quota", extractUser, requireUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { effectivePlan } = await getUserPlan(userId);
+    if (effectivePlan === "pro") return res.json({ allowed: true });
+
+    const { count, error } = await supabaseAdmin
+      .from("saved_texts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if (error) console.error("[Quota] saved_texts count error:", error.message);
+
+    const used = count || 0;
+    if (used >= FREE_MAX_SAVED_TEXTS) {
+      return res.status(429).json({
+        error: `You've saved ${FREE_MAX_SAVED_TEXTS} texts (free limit). Upgrade to Pro to save unlimited texts.`,
+        code: "SAVE_TEXT_QUOTA_EXCEEDED",
+        used,
+        limit: FREE_MAX_SAVED_TEXTS
+      });
+    }
+    res.json({ allowed: true, used, limit: FREE_MAX_SAVED_TEXTS });
+  } catch (error) {
+    console.error("[Quota] save-text quota error:", error.message);
+    res.status(500).json({ error: "Quota check failed." });
+  }
+});
+
+// Checked before creating a deck (intent: 'new-deck') or adding a card
+// (intent: 'add-card'). With no intent it checks both. Does not mutate.
+app.post("/api/check-deck-quota", extractUser, requireUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { effectivePlan } = await getUserPlan(userId);
+    if (effectivePlan === "pro") return res.json({ allowed: true });
+
+    const intent = req.body?.intent; // 'new-deck' | 'add-card' | undefined
+
+    const { count: deckCount, error: deckErr } = await supabaseAdmin
+      .from("flashcard_decks")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if (deckErr) console.error("[Quota] decks count error:", deckErr.message);
+
+    if (intent !== "add-card" && (deckCount || 0) >= FREE_MAX_DECKS) {
+      return res.status(429).json({
+        error: `You have ${FREE_MAX_DECKS} decks (free limit). Upgrade to Pro for unlimited decks.`,
+        code: "DECK_QUOTA_EXCEEDED",
+        used: deckCount || 0,
+        limit: FREE_MAX_DECKS
+      });
+    }
+
+    if (intent !== "new-deck") {
+      const { count: cardCount, error: cardErr } = await supabaseAdmin
+        .from("flashcards")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+      if (cardErr) console.error("[Quota] cards count error:", cardErr.message);
+
+      if ((cardCount || 0) >= FREE_MAX_CARDS) {
+        return res.status(429).json({
+          error: `You've reached ${FREE_MAX_CARDS} cards (free limit). Upgrade to Pro for unlimited cards.`,
+          code: "CARD_QUOTA_EXCEEDED",
+          used: cardCount || 0,
+          limit: FREE_MAX_CARDS
+        });
+      }
+    }
+
+    res.json({
+      allowed: true,
+      decks: deckCount || 0,
+      deckLimit: FREE_MAX_DECKS,
+      cardLimit: FREE_MAX_CARDS
+    });
+  } catch (error) {
+    console.error("[Quota] deck quota error:", error.message);
+    res.status(500).json({ error: "Quota check failed." });
+  }
+});
+
+
+/* -----------------------------
    PRONUNCIATION ASSESSMENT (Azure)
    Mints a short-lived Azure token. This endpoint is the metering point:
    one token = one pronunciation check. Free signed-in users are quota-limited
@@ -608,15 +984,9 @@ app.post("/api/speech-token", extractUser, requireUser, async (req, res) => {
 
     const userId = req.user.id;
 
-    // Entitlement: read the user's plan ('free' | 'pro').
-    const { data: profile, error: profileErr } = await supabaseAdmin
-      .from("profiles")
-      .select("plan")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (profileErr) console.error("[Speech] profile lookup error:", profileErr.message);
-    const isPro = profile?.plan === "pro";
+    // Entitlement via the centralized resolver: paid pro OR active trial → pro.
+    const { effectivePlan } = await getUserPlan(userId);
+    const isPro = effectivePlan === "pro";
 
     // Quota: free users are capped per UTC day. Metered at token issuance.
     if (!isPro) {

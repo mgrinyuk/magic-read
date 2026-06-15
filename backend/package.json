@@ -18,6 +18,7 @@
     "googleapis": "^171.4.0",
     "papaparse": "^5.5.3",
     "pdfkit": "^0.18.0",
-    "pinyin-pro": "^3.28.0"
+    "pinyin-pro": "^3.28.0",
+    "stripe": "^22.0.0"
   }
 }

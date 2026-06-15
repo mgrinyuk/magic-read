@@ -39,6 +39,19 @@
 
         <div id="profileDropdown" class="profile-dropdown" hidden>
 
+          <span id="proBadge" class="pro-badge" hidden>Pro ✨</span>
+          <span id="trialBadge" class="trial-badge" hidden></span>
+
+          <button id="upgradeBtn" type="button" hidden>
+            Upgrade to Pro ✨
+          </button>
+
+          <div id="planPicker" class="plan-picker" hidden>
+            <button type="button" class="plan-option" data-price-type="monthly">Monthly — $6.99/mo</button>
+            <button type="button" class="plan-option" data-price-type="annual">Annual — $49/yr (save 41%)</button>
+            <button type="button" class="plan-option" data-price-type="lifetime">Lifetime — $89 one-time</button>
+          </div>
+
           <button id="logoutBtn" type="button" data-i18n="logout" hidden>
             Log out
           </button>
@@ -46,6 +59,11 @@
       </div>
     </div>
   </header>
+
+  <div id="welcomeWeekBanner" class="welcome-week-banner" hidden>
+    <span class="welcome-week-text"></span>
+    <button id="welcomeWeekDismiss" type="button" class="welcome-week-dismiss" aria-label="Dismiss">×</button>
+  </div>
 
   <section class="landing-page">
 
@@ -270,6 +288,8 @@
               </button>
               <button id="voicePickerBtnComposer" type="button" class="voice-composer-btn" data-i18n="voice" title="Voice">🎙</button>
             </div>
+
+            <span id="textQuotaCounter" class="text-quota-counter" hidden></span>
 
             <button id="saveTextBtn" data-i18n="saveText" class="text-link-btn" type="button">
               Save text

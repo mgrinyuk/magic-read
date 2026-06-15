@@ -47,6 +47,7 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
       fetchWithAuth
     });
     if (renderTo) renderTo.innerHTML = renderAssessment(result, lang);
+    fetchMyPlan(); // refresh today's pronunciation count / plan state
     return { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), result };
   } catch (err) {
     // Guest / not configured / SDK unavailable -> use legacy scoring instead.
@@ -54,8 +55,13 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
       azurePronDisabled = true;
       return null;
     }
+    // Out of free checks: show a contextual upgrade prompt at the result area.
+    if (err.code === "QUOTA_EXCEEDED") {
+      if (renderTo) renderTo.hidden = false;
+      showUpgradePrompt("QUOTA_EXCEEDED", renderTo);
+      return { score: 0 };
+    }
     const messages = {
-      QUOTA_EXCEEDED: err.info?.error || "You've used today's free pronunciation checks. Upgrade for unlimited.",
       MIC_DENIED: "Microphone is blocked. Please allow mic access in your browser.",
       NO_SPEECH: "I didn't hear anything. Tap and speak again.",
       TOKEN_FAILED: "Pronunciation service is busy. Please try again.",
@@ -748,6 +754,193 @@ document.getElementById("closeAuthOverlayBtn")?.addEventListener("click", () => 
   document.body.style.overflow = "";
 });
 
+/* -----------------------------
+   PLAN STATE (free / pro / welcome-week trial)
+----------------------------- */
+
+// Single source of truth for the signed-in user's plan + today's usage.
+// Populated from GET /api/my-plan; defaults assume guest/free.
+let userPlan = {
+  plan: "free",
+  effectivePlan: "free",
+  trialActive: false,
+  trialEndsAt: null,
+  textUsedToday: 0,
+  pronouncedToday: 0,
+  limits: { textPerDay: 3, pronunciationPerDay: 10, savedTexts: 5, decks: 2, cards: 100 }
+};
+
+const GUEST_PLAN = { ...userPlan };
+
+// Pull the plan + usage snapshot from the backend and re-render plan UI.
+async function fetchMyPlan() {
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/my-plan`);
+    if (!res.ok) return;
+    const data = await res.json();
+    userPlan = { ...userPlan, ...data, limits: { ...userPlan.limits, ...(data.limits || {}) } };
+    renderPlanUI();
+  } catch {
+    // Keep last-known plan on a network hiccup.
+  }
+}
+
+function trialDaysLeft() {
+  if (!userPlan.trialEndsAt) return 0;
+  const ms = new Date(userPlan.trialEndsAt) - new Date();
+  return Math.max(0, Math.ceil(ms / 86400000));
+}
+
+// Drives the profile dropdown (upgrade button / Pro badge / trial badge),
+// the welcome-week banner, and the soft text counter.
+function renderPlanUI() {
+  const upgradeBtn = document.getElementById("upgradeBtn");
+  const proBadge = document.getElementById("proBadge");
+  const trialBadge = document.getElementById("trialBadge");
+
+  const loggedIn = document.body.classList.contains("is-logged-in");
+  const paidPro = userPlan.plan === "pro";
+
+  if (!loggedIn) {
+    if (upgradeBtn) upgradeBtn.hidden = true;
+    if (proBadge) proBadge.hidden = true;
+    if (trialBadge) trialBadge.hidden = true;
+  } else if (paidPro) {
+    if (proBadge) proBadge.hidden = false;
+    if (trialBadge) trialBadge.hidden = true;
+    if (upgradeBtn) upgradeBtn.hidden = true;
+  } else if (userPlan.trialActive) {
+    const days = trialDaysLeft();
+    if (trialBadge) {
+      trialBadge.textContent = `✨ Pro Trial — ${days} day${days === 1 ? "" : "s"} left`;
+      trialBadge.hidden = false;
+    }
+    if (proBadge) proBadge.hidden = true;
+    // Let trial users convert early.
+    if (upgradeBtn) upgradeBtn.hidden = false;
+  } else {
+    if (upgradeBtn) upgradeBtn.hidden = false;
+    if (proBadge) proBadge.hidden = true;
+    if (trialBadge) trialBadge.hidden = true;
+  }
+
+  renderWelcomeBanner();
+  renderTextCounter();
+}
+
+function renderWelcomeBanner() {
+  const banner = document.getElementById("welcomeWeekBanner");
+  if (!banner) return;
+
+  const dismissed = sessionStorage.getItem("welcomeWeekDismissed") === "1";
+  if (userPlan.trialActive && !dismissed) {
+    const end = userPlan.trialEndsAt ? new Date(userPlan.trialEndsAt) : null;
+    const dateStr = end ? end.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+    const textEl = banner.querySelector(".welcome-week-text");
+    if (textEl) {
+      textEl.textContent =
+        `✨ Welcome week — you have Pro access free until ${dateStr}. ` +
+        `After that: ${userPlan.limits.textPerDay} texts/day, ${userPlan.limits.pronunciationPerDay} pronunciation checks/day.`;
+    }
+    banner.hidden = false;
+  } else {
+    banner.hidden = true;
+  }
+}
+
+function renderTextCounter() {
+  const counter = document.getElementById("textQuotaCounter");
+  if (!counter) return;
+
+  const loggedIn = document.body.classList.contains("is-logged-in");
+  if (loggedIn && userPlan.effectivePlan === "free") {
+    counter.textContent = `${userPlan.textUsedToday || 0} of ${userPlan.limits.textPerDay} texts used today`;
+    counter.hidden = false;
+  } else {
+    counter.hidden = true;
+  }
+}
+
+document.getElementById("welcomeWeekDismiss")?.addEventListener("click", () => {
+  sessionStorage.setItem("welcomeWeekDismissed", "1");
+  const banner = document.getElementById("welcomeWeekBanner");
+  if (banner) banner.hidden = true;
+});
+
+/* -----------------------------
+   CONTEXTUAL UPGRADE PROMPTS
+----------------------------- */
+
+const UPGRADE_MESSAGES = {
+  TEXT_QUOTA_EXCEEDED:
+    'You\'ve used your 3 free texts today. <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited texts + pronunciation checks.',
+  QUOTA_EXCEEDED:
+    'You\'ve used your 10 free pronunciation checks today. <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited checks.',
+  SAVE_TEXT_QUOTA_EXCEEDED:
+    'You\'ve saved 5 texts (free limit). <a href="#" class="upgrade-link">Upgrade to Pro →</a> to save unlimited texts.',
+  DECK_QUOTA_EXCEEDED:
+    'You have 2 decks (free limit). <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited decks.',
+  CARD_QUOTA_EXCEEDED:
+    'Your deck has 100 cards (free limit). <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited cards.'
+};
+
+// Open the profile dropdown directly to the 3-plan picker, so contextual
+// prompts surface all options rather than jumping straight to one checkout.
+function startCheckout() {
+  const dropdown = document.getElementById("profileDropdown");
+  const picker = document.getElementById("planPicker");
+  if (dropdown) dropdown.hidden = false;
+  if (picker) picker.hidden = false;
+  dropdown?.scrollIntoView?.({ block: "nearest" });
+}
+
+// Show a contextual inline upgrade message at the point of friction. If the
+// anchor element isn't in the DOM, fall back to a floating prompt.
+function showUpgradePrompt(code, targetEl) {
+  document.querySelectorAll(".upgrade-inline").forEach(el => el.remove());
+
+  const box = document.createElement("div");
+  box.className = "upgrade-inline";
+  box.innerHTML = UPGRADE_MESSAGES[code] || 'Upgrade to Pro for more. <a href="#" class="upgrade-link">Upgrade to Pro →</a>';
+  box.querySelector(".upgrade-link")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    startCheckout();
+  });
+
+  if (targetEl && document.body.contains(targetEl) && targetEl.parentNode) {
+    targetEl.parentNode.insertBefore(box, targetEl.nextSibling);
+  } else {
+    box.classList.add("upgrade-inline--floating");
+    document.body.appendChild(box);
+  }
+
+  setTimeout(() => box.remove(), 12000);
+}
+
+// Gate deck/card creation. intent: 'new-deck' | 'add-card'. Returns true if
+// allowed; shows an inline upgrade prompt and returns false if blocked.
+async function checkDeckQuota(intent, targetEl) {
+  const { data: sess } = await supabase.auth.getSession();
+  if (!sess.session) return true; // decks require login elsewhere
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/check-deck-quota`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.code) showUpgradePrompt(data.code, targetEl);
+      else showToast(data.error || "Limit reached.", "error");
+      return false;
+    }
+    return true;
+  } catch {
+    return true; // fail open on network error
+  }
+}
+
 async function checkAuth() {
   const { data } = await supabase.auth.getSession();
 
@@ -759,6 +952,8 @@ async function checkAuth() {
     if (landingHow) landingHow.hidden = false;
     if (mainApp) mainApp.hidden = false;
     if (logoutBtn) logoutBtn.hidden = false;
+
+    fetchMyPlan();
   } else {
     document.body.classList.add("is-logged-out");
     document.body.classList.remove("is-logged-in");
@@ -767,6 +962,9 @@ async function checkAuth() {
     if (landingHow) landingHow.hidden = false;
     if (mainApp) mainApp.hidden = false;
     if (logoutBtn) logoutBtn.hidden = true;
+
+    userPlan = { ...GUEST_PLAN };
+    renderPlanUI();
   }
 }
 
@@ -918,6 +1116,48 @@ logoutBtn?.addEventListener("click", async () => {
   await checkAuth();
 });
 
+// "Upgrade to Pro ✨" reveals the 3-plan picker inside the dropdown.
+document.getElementById("upgradeBtn")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const picker = document.getElementById("planPicker");
+  if (picker) picker.hidden = !picker.hidden;
+});
+
+// Start Stripe Checkout for a specific plan: ask the backend for a session URL,
+// then redirect. Disables all options and shows "Redirecting…" while in flight.
+async function startPlanCheckout(priceType, clickedBtn) {
+  const options = Array.from(document.querySelectorAll("#planPicker .plan-option"));
+  const labels = options.map(b => b.textContent);
+  options.forEach(b => { b.disabled = true; });
+  if (clickedBtn) clickedBtn.textContent = "Redirecting…";
+
+  try {
+    const response = await fetchWithAuth(`${API_BASE}/api/create-checkout-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priceType })
+    });
+    const data = await response.json();
+    if (data?.url) {
+      window.location.href = data.url;
+      return;
+    }
+    console.error("Checkout session error:", data?.error);
+  } catch (err) {
+    console.error("Checkout request failed:", err);
+  }
+
+  // Restore the picker on failure so the user can retry.
+  options.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
+}
+
+document.querySelectorAll("#planPicker .plan-option").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    startPlanCheckout(btn.dataset.priceType, btn);
+  });
+});
+
 checkAuth();
 
 /* -----------------------------
@@ -1033,11 +1273,16 @@ function showScreen(screen) {
 
 profileMenuBtn?.addEventListener("click", () => {
   if (profileDropdown) profileDropdown.hidden = !profileDropdown.hidden;
+  // Always reset the plan picker to collapsed when toggling the menu.
+  const picker = document.getElementById("planPicker");
+  if (picker) picker.hidden = true;
 });
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".profile-menu") && profileDropdown) {
     profileDropdown.hidden = true;
+    const picker = document.getElementById("planPicker");
+    if (picker) picker.hidden = true;
   }
 });
 
@@ -1667,6 +1912,31 @@ async function startReadingFromText(text) {
 }
 
 createBtn?.addEventListener("click", async () => {
+  // Gate text processing for signed-in users (guests are unlimited). Free users
+  // get FREE_DAILY_TEXT_LIMIT/day; this call also meters the count.
+  const { data: sess } = await supabase.auth.getSession();
+  if (sess.session) {
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/check-text-quota`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (typeof data.used === "number") userPlan.textUsedToday = data.used;
+        renderTextCounter();
+        if (data.code) showUpgradePrompt(data.code, createBtn);
+        else showToast(data.error || "Could not start.", "error");
+        return;
+      }
+      if (typeof data.used === "number") {
+        userPlan.textUsedToday = data.used;
+        renderTextCounter();
+      }
+    } catch {
+      // Fail open on network error — don't block a legitimate user.
+    }
+  }
   await startReadingFromText(inputText.value);
 });
 
@@ -1943,6 +2213,22 @@ document.querySelectorAll("#saveTextBtn, #saveTextBtnReading").forEach(btn => {
   if (!user) {
     showToast("Please log in first.", "error");
     return;
+  }
+
+  // Gate: free users can save up to FREE_MAX_SAVED_TEXTS texts.
+  try {
+    const q = await fetchWithAuth(`${API_BASE}/api/check-save-text-quota`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    const qd = await q.json();
+    if (!q.ok) {
+      if (qd.code) showUpgradePrompt(qd.code, btn);
+      else showToast(qd.error || "Could not save text.", "error");
+      return;
+    }
+  } catch {
+    // Fail open on network error.
   }
 
   const title = (await showPrompt("Text title:", "Untitled text")) || "Untitled text";
@@ -3677,6 +3963,10 @@ async function addFlashcard(cardData) {
 
   if (exists) return false;
 
+  // Gate: free users can have up to FREE_MAX_CARDS cards total.
+  const allowed = await checkDeckQuota("add-card", null);
+  if (!allowed) return false;
+
   const { data, error } = await supabase
     .from("flashcards")
     .insert({
@@ -3909,6 +4199,10 @@ async function clearFlashcards() {
 }
 
 async function createDeck() {
+  // Gate: free users can have up to FREE_MAX_DECKS decks.
+  const allowed = await checkDeckQuota("new-deck", document.getElementById("flashcardNewDeckBtn"));
+  if (!allowed) return;
+
   const name = await showPrompt("Deck name:");
   if (!name) return;
 
