@@ -445,6 +445,7 @@ const screenMain = document.getElementById("screen-main");
 const screenFlashcards = document.getElementById("screen-flashcards");
 const screenWriting = document.getElementById("screen-writing");
 const screenOnboarding = document.getElementById("screen-onboarding");
+const screenAccount = document.getElementById("screen-account");
 
 const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
@@ -1149,7 +1150,7 @@ document.getElementById("upgradeBtn")?.addEventListener("click", (e) => {
 // Start Stripe Checkout for a specific plan: ask the backend for a session URL,
 // then redirect. Disables all options and shows "Redirecting…" while in flight.
 async function startPlanCheckout(priceType, clickedBtn) {
-  const options = Array.from(document.querySelectorAll("#planPicker .plan-option"));
+  const options = Array.from(document.querySelectorAll("#planPicker .plan-option, #acctPlanPicker .plan-option"));
   const labels = options.map(b => b.textContent);
   options.forEach(b => { b.disabled = true; });
   if (clickedBtn) clickedBtn.textContent = "Redirecting…";
@@ -1174,7 +1175,7 @@ async function startPlanCheckout(priceType, clickedBtn) {
   options.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
 }
 
-document.querySelectorAll("#planPicker .plan-option").forEach(btn => {
+document.querySelectorAll("#planPicker .plan-option, #acctPlanPicker .plan-option").forEach(btn => {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     startPlanCheckout(btn.dataset.priceType, btn);
@@ -1288,6 +1289,7 @@ const TAB_BY_SCREEN = {
   "screen-flashcards": "cards",
   "screen-writing":    null,
   "screen-onboarding": null,
+  "screen-account":    null,
 };
 
 function showScreen(screen) {
@@ -1311,10 +1313,93 @@ function showScreen(screen) {
 }
 
 profileMenuBtn?.addEventListener("click", () => {
-  if (profileDropdown) profileDropdown.hidden = !profileDropdown.hidden;
-  // Always reset the plan picker to collapsed when toggling the menu.
-  const picker = document.getElementById("planPicker");
-  if (picker) picker.hidden = true;
+  renderAccountScreen();
+  showScreen(screenAccount);
+});
+
+function renderAccountScreen() {
+  supabase.auth.getUser().then(({ data }) => {
+    const user = data?.user;
+    const nameEl  = document.getElementById("acctName");
+    const emailEl = document.getElementById("acctEmail");
+    const avatarEl = document.getElementById("acctAvatar");
+    const pillEl  = document.getElementById("acctPlanPill");
+    const upgradeRow = document.getElementById("acctUpgradeRow");
+
+    const name  = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "You";
+    const email = user?.email || "";
+    const initial = (name[0] || "?").toUpperCase();
+
+    if (nameEl)   nameEl.textContent   = name;
+    if (emailEl)  emailEl.textContent  = email;
+    if (avatarEl) avatarEl.textContent = initial;
+
+    if (pillEl) {
+      const paidPro = userPlan.plan === "pro";
+      if (paidPro) {
+        pillEl.textContent = "Pro";
+      } else if (userPlan.trialActive) {
+        const days = trialDaysLeft();
+        pillEl.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
+      } else {
+        pillEl.textContent = "Free plan";
+      }
+    }
+
+    if (upgradeRow) {
+      const isPro = userPlan.plan === "pro" && !userPlan.trialActive;
+      upgradeRow.hidden = isPro;
+    }
+
+    const langLabel = document.getElementById("acctAppLangLabel");
+    if (langLabel) {
+      const uiLangEl = document.getElementById("uiLang");
+      const langNames = { en: "English", ru: "Русский", zh: "中文", tr: "Türkçe", de: "Deutsch", es: "Español", fr: "Français", ja: "日本語" };
+      langLabel.textContent = langNames[uiLangEl?.value] || "English";
+    }
+  });
+}
+
+document.getElementById("acctBackBtn")?.addEventListener("click", () => {
+  showScreen(screenMain);
+});
+
+document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
+  const picker = document.getElementById("acctPlanPicker");
+  if (picker) picker.hidden = !picker.hidden;
+});
+
+document.getElementById("acctManageSubBtn")?.addEventListener("click", () => {
+  // TODO §7: replace with real Stripe billing portal URL from backend
+  window.open("https://billing.stripe.com/p/login/test_stub", "_blank");
+});
+
+document.getElementById("acctPersonalDataBtn")?.addEventListener("click", () => {
+  showToast("Personal data settings coming soon.", "info");
+});
+
+document.getElementById("acctSavedWordsBtn")?.addEventListener("click", () => {
+  showScreen(screenFlashcards);
+  renderDeckSelector();
+  renderFlashcards();
+});
+
+document.getElementById("acctAppLanguageBtn")?.addEventListener("click", () => {
+  showToast("App language switch coming soon.", "info");
+});
+
+document.getElementById("acctAboutBtn")?.addEventListener("click", () => {
+  showToast("Magic Read — Phase 1.", "info");
+});
+
+document.getElementById("acctHelpBtn")?.addEventListener("click", () => {
+  showToast("Email us at help@magicread.app for support.", "info");
+});
+
+document.getElementById("acctLogoutBtn")?.addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  showScreen(screenMain);
+  await checkAuth();
 });
 
 document.addEventListener("click", (e) => {

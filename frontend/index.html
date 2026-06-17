@@ -14,12 +14,21 @@
 
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="sonic-i-spark" viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></symbol>
-  <symbol id="sonic-i-home"  viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
-  <symbol id="sonic-i-book"  viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
-  <symbol id="sonic-i-mic"   viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
-  <symbol id="sonic-i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
-  <symbol id="sonic-i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="sonic-i-spark"    viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></symbol>
+  <symbol id="sonic-i-home"     viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="sonic-i-book"     viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
+  <symbol id="sonic-i-mic"      viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+  <symbol id="sonic-i-cards"    viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+  <symbol id="sonic-i-video"    viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="sonic-i-left"     viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="sonic-i-chevr"    viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="sonic-i-user"     viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="sonic-i-bookmark" viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></symbol>
+  <symbol id="sonic-i-globe"    viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+  <symbol id="sonic-i-info"     viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5v.5"/></symbol>
+  <symbol id="sonic-i-help"     viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.8.4-1.4.9-1.4 1.7v.5"/><path d="M12 17v.5"/></symbol>
+  <symbol id="sonic-i-logout"   viewBox="0 0 24 24"><path d="M14 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8"/><path d="M11 12h9M17 9l3 3-3 3"/></symbol>
+  <symbol id="sonic-i-card"     viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></symbol>
 </svg>
   <header class="app-header">
     <a class="brand" href="#">
@@ -480,6 +489,82 @@
 
           <div id="writingResult" class="translation-box panel-box"></div>
         </section>
+      </section>
+
+      <section id="screen-account" class="app-screen">
+        <div class="acct-appbar">
+          <button id="acctBackBtn" type="button" class="acct-iconbtn" aria-label="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+          </button>
+          <span class="acct-appbar-title">Account</span>
+          <span style="width:40px"></span>
+        </div>
+
+        <div class="acct-profile">
+          <div class="acct-avatar" id="acctAvatar">M</div>
+          <div>
+            <div class="acct-name" id="acctName"></div>
+            <div class="acct-email" id="acctEmail"></div>
+            <span class="acct-plan-pill" id="acctPlanPill"></span>
+          </div>
+        </div>
+
+        <div class="acct-upgrade-row" id="acctUpgradeRow" role="button" tabindex="0">
+          <div class="acct-upgrade-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-spark"/></svg>
+          </div>
+          <div style="flex:1">
+            <div class="acct-upgrade-t">Upgrade to Pro</div>
+            <div class="acct-upgrade-s">Keep unlimited access after your trial</div>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg>
+        </div>
+
+        <div id="acctPlanPicker" class="acct-plan-picker" hidden>
+          <button class="plan-option" type="button" data-price-type="monthly">Monthly — $6.99/mo</button>
+          <button class="plan-option" type="button" data-price-type="annual">Annual — $49/yr (save 41%)</button>
+          <button class="plan-option" type="button" data-price-type="lifetime">Lifetime — $89 one-time</button>
+        </div>
+
+        <div class="acct-menu">
+          <button class="acct-mrow" id="acctManageSubBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-card"/></svg></span>
+            <span class="acct-ml">Manage subscription</span>
+            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+          </button>
+          <button class="acct-mrow" id="acctPersonalDataBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-user"/></svg></span>
+            <span class="acct-ml">Personal data</span>
+            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+          </button>
+          <button class="acct-mrow" id="acctSavedWordsBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-bookmark"/></svg></span>
+            <span class="acct-ml">Saved words</span>
+            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+          </button>
+          <button class="acct-mrow" id="acctAppLanguageBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-globe"/></svg></span>
+            <span class="acct-ml">App language</span>
+            <span class="acct-mv"><span id="acctAppLangLabel">English</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+          </button>
+          <button class="acct-mrow" id="acctAboutBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-info"/></svg></span>
+            <span class="acct-ml">About</span>
+            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+          </button>
+          <button class="acct-mrow" id="acctHelpBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-help"/></svg></span>
+            <span class="acct-ml">Help &amp; support</span>
+            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+          </button>
+        </div>
+
+        <div class="acct-menu">
+          <button class="acct-mrow acct-mrow-danger" id="acctLogoutBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-logout"/></svg></span>
+            <span class="acct-ml">Log out</span>
+          </button>
+        </div>
       </section>
     </div>
   </main>
