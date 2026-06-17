@@ -4007,3 +4007,118 @@ body.is-logged-in .top-ui-language {
   background: linear-gradient(95deg, var(--primary), var(--primary-soft));
   color: #fff;
 }
+
+/* ── Upgrade modal ──────────────────────────────────────── */
+.upgrade-modal {
+  max-width: 420px;
+  padding: 28px 26px 22px;
+}
+.upgrade-modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.upgrade-modal-sub {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-soft);
+  margin: 0 0 16px !important;
+}
+.upgrade-modal-unlocks {
+  list-style: none;
+  padding: 13px 14px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.upgrade-modal-unlocks li::before {
+  content: "✓ ";
+  color: var(--primary);
+  font-weight: 700;
+}
+.upgrade-modal-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.upgrade-plan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(229, 38, 126, .45);
+  background: rgba(229, 38, 126, .06);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.upgrade-plan-btn:hover {
+  background: rgba(229, 38, 126, .12);
+}
+.upgrade-plan-secondary {
+  border-color: var(--border);
+  background: var(--surface);
+}
+.upgrade-plan-secondary:hover {
+  background: var(--surface-2);
+}
+.upgrade-plan-save {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  padding: 2px 7px;
+  border-radius: 6px;
+  flex: none;
+}
+.upgrade-modal-cta {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 13px;
+  background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+  box-shadow: 0 12px 26px -12px rgba(229, 38, 126, .55);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+.upgrade-modal-cta:hover {
+  transform: translateY(-1px);
+}
+.upgrade-modal-reset {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0 0 10px !important;
+}
+.upgrade-modal-dismiss {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+}
+.upgrade-modal-dismiss:hover {
+  color: var(--text);
+}

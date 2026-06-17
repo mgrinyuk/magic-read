@@ -895,51 +895,80 @@ document.getElementById("welcomeWeekDismiss")?.addEventListener("click", () => {
    CONTEXTUAL UPGRADE PROMPTS
 ----------------------------- */
 
-const UPGRADE_MESSAGES = {
-  TEXT_QUOTA_EXCEEDED:
-    'You\'ve used your 3 free texts today. <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited texts + pronunciation checks.',
-  QUOTA_EXCEEDED:
-    'You\'ve used your 10 free pronunciation checks today. <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited checks.',
-  SAVE_TEXT_QUOTA_EXCEEDED:
-    'You\'ve saved 5 texts (free limit). <a href="#" class="upgrade-link">Upgrade to Pro →</a> to save unlimited texts.',
-  DECK_QUOTA_EXCEEDED:
-    'You have 2 decks (free limit). <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited decks.',
-  CARD_QUOTA_EXCEEDED:
-    'Your deck has 100 cards (free limit). <a href="#" class="upgrade-link">Upgrade to Pro →</a> for unlimited cards.'
-};
-
-// Open the profile dropdown directly to the 3-plan picker, so contextual
-// prompts surface all options rather than jumping straight to one checkout.
-function startCheckout() {
-  const dropdown = document.getElementById("profileDropdown");
-  const picker = document.getElementById("planPicker");
-  if (dropdown) dropdown.hidden = false;
-  if (picker) picker.hidden = false;
-  dropdown?.scrollIntoView?.({ block: "nearest" });
+function getUpgradeMessage(code) {
+  const lim = userPlan.limits;
+  const msgs = {
+    QUOTA_EXCEEDED: {
+      title: "You're out of today's free checks",
+      sub: `You've used all ${lim.pronunciationPerDay} pronunciation checks for today. Go Pro for unlimited practice — no daily cap.`,
+      reassurance: "Your free checks reset tomorrow."
+    },
+    TEXT_QUOTA_EXCEEDED: {
+      title: "That's your free texts for today",
+      sub: `You've added ${lim.textPerDay} texts today. Go Pro to add as many as you like.`,
+      reassurance: null
+    },
+    SAVE_TEXT_QUOTA_EXCEEDED: {
+      title: "That's your free texts for today",
+      sub: `You've saved ${lim.savedTexts} texts (free limit). Go Pro to save as many as you like.`,
+      reassurance: null
+    },
+    DECK_QUOTA_EXCEEDED: {
+      title: "You've reached the free limit",
+      sub: `Free decks are capped at ${lim.decks}. Go Pro for unlimited decks and cards.`,
+      reassurance: null
+    },
+    CARD_QUOTA_EXCEEDED: {
+      title: "You've reached the free limit",
+      sub: `Your deck has ${lim.cards} cards (free limit). Go Pro for unlimited cards.`,
+      reassurance: null
+    }
+  };
+  return msgs[code] || { title: "Upgrade to Pro", sub: "Go Pro for unlimited access.", reassurance: null };
 }
 
-// Show a contextual inline upgrade message at the point of friction. If the
-// anchor element isn't in the DOM, fall back to a floating prompt.
-function showUpgradePrompt(code, targetEl) {
-  document.querySelectorAll(".upgrade-inline").forEach(el => el.remove());
+// Show a dismissible upgrade modal at hard limits. The inline usage meter
+// (renderSpeakMeter) stays visible independently — this modal is additive.
+function showUpgradePrompt(code) {
+  document.querySelectorAll(".upgrade-modal-overlay, .upgrade-inline").forEach(el => el.remove());
+  const msg = getUpgradeMessage(code);
 
-  const box = document.createElement("div");
-  box.className = "upgrade-inline";
-  box.innerHTML = UPGRADE_MESSAGES[code] || 'Upgrade to Pro for more. <a href="#" class="upgrade-link">Upgrade to Pro →</a>';
-  box.querySelector(".upgrade-link")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    startCheckout();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay upgrade-modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-box upgrade-modal">
+      <h3 class="upgrade-modal-title">${escapeHtml(msg.title)}</h3>
+      <p class="upgrade-modal-sub">${escapeHtml(msg.sub)}</p>
+      <ul class="upgrade-modal-unlocks">
+        <li>Unlimited pronunciation checks</li>
+        <li>Videos with smart captions</li>
+        <li>Calligraphy worksheet export</li>
+      </ul>
+      <div class="upgrade-modal-plans">
+        <button class="upgrade-plan-btn" data-price-type="annual" type="button">
+          Annual — $49/yr <span class="upgrade-plan-save">Save 41%</span>
+        </button>
+        <button class="upgrade-plan-btn upgrade-plan-secondary" data-price-type="monthly" type="button">
+          Monthly — $6.99/mo
+        </button>
+      </div>
+      <button class="upgrade-modal-cta" data-price-type="annual" type="button">Upgrade to Pro</button>
+      ${msg.reassurance ? `<p class="upgrade-modal-reset">${escapeHtml(msg.reassurance)}</p>` : ""}
+      <button class="upgrade-modal-dismiss" type="button">Maybe later</button>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".upgrade-modal-dismiss").addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  overlay.querySelectorAll("[data-price-type]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      close();
+      startPlanCheckout(btn.dataset.priceType, null);
+    });
   });
 
-  if (targetEl && document.body.contains(targetEl) && targetEl.parentNode) {
-    targetEl.parentNode.insertBefore(box, targetEl.nextSibling);
-  } else {
-    box.classList.add("upgrade-inline--floating");
-    document.body.appendChild(box);
-  }
-
-  setTimeout(() => box.remove(), 12000);
+  document.body.appendChild(overlay);
 }
 
 // Gate deck/card creation. intent: 'new-deck' | 'add-card'. Returns true if
