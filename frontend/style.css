@@ -121,7 +121,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(246, 248, 251, 0.94);
+  background: rgba(244, 245, 249, 0.92);
   border-bottom: 1px solid var(--border);
 }
 
@@ -138,14 +138,24 @@ h1 {
   height: 38px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
+  background: var(--primary);
+  flex: none;
 }
 
 .brand-name {
   font-size: 1.25rem;
   font-weight: 950;
   letter-spacing: -0.045em;
+}
+
+.brand-lite {
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--cyan-ink);
+  margin-left: 1px;
 }
 
 .header-right {
@@ -1965,12 +1975,7 @@ body.is-logged-in .top-ui-language {
   }
 }
 
-.brand-mark img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 14px;
-}
+/* .brand-mark img removed — logo is now inline SVG spark */
 
 @media (min-width: 1200px) {
   .site-container {
@@ -3132,4 +3137,85 @@ body.is-logged-in .top-ui-language {
   font-style: normal;
   font-weight: 600;
   opacity: .85;
+}
+
+/* ── §3 App shell ───────────────────────────────── */
+
+.app-shell {
+  max-width: 700px;
+  margin: 0 auto;
+  background: var(--shell);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 720px) {
+  .app-shell {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    box-shadow: 0 0 80px rgba(28, 18, 51, .07);
+  }
+}
+
+/* Let the main grow to push the tab bar to the bottom */
+.app-shell .main {
+  flex: 1;
+  padding-top: 20px;
+  padding-bottom: 16px;
+}
+
+/* Kill the inner width constraint — the shell is the constraint */
+.app-shell .site-container,
+.app-shell .main .site-container {
+  width: 100%;
+}
+
+/* ── §3 Bottom tab bar ──────────────────────────── */
+
+.sonic-tabbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 8px max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: rgba(244, 245, 249, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.sonic-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color var(--transition);
+  line-height: 1;
+}
+
+.sonic-tab svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+}
+
+.sonic-tab.active {
+  color: var(--primary);
 }

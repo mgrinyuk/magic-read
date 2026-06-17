@@ -1260,6 +1260,13 @@ updatePasswordBtn?.addEventListener("click", async () => {
    SCREEN / PROFILE
 ----------------------------- */
 
+const TAB_BY_SCREEN = {
+  "screen-main":       "read",
+  "screen-flashcards": "cards",
+  "screen-writing":    null,
+  "screen-onboarding": null,
+};
+
 function showScreen(screen) {
   if (!screen) return;
 
@@ -1269,6 +1276,15 @@ function showScreen(screen) {
 
   screen.classList.add("active");
   sessionStorage.setItem("activeScreenId", screen.id);
+
+  const appTabBar = document.getElementById("appTabBar");
+  if (appTabBar) {
+    appTabBar.hidden = screen.id === "screen-onboarding";
+    const activeTab = TAB_BY_SCREEN[screen.id] ?? null;
+    appTabBar.querySelectorAll(".sonic-tab").forEach(t =>
+      t.classList.toggle("active", t.dataset.tab === activeTab)
+    );
+  }
 }
 
 profileMenuBtn?.addEventListener("click", () => {
@@ -1300,6 +1316,22 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
 
     if (screen === "calligraphy") {
       showScreen(screenWriting);
+    }
+  });
+});
+
+// Bottom tab bar navigation
+document.querySelectorAll(".sonic-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    const t = tab.dataset.tab;
+    if (t === "home" || t === "read" || t === "speak") {
+      showScreen(screenMain);
+    } else if (t === "cards") {
+      showScreen(screenFlashcards);
+      renderDeckSelector();
+      renderFlashcards();
+    } else if (t === "video") {
+      showToast("Video is coming in Phase 2.", "info");
     }
   });
 });
