@@ -3401,3 +3401,125 @@ body.is-logged-in .top-ui-language {
   font-weight: 700;
   color: var(--good);
 }
+
+/* ── Speaking: usage meter ─────────────────────────── */
+.speak-usage-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.speak-meter-lite {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cyan-ink);
+  background: rgba(10, 180, 214, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+  flex: none;
+}
+.speak-meter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  flex: none;
+}
+.speak-meter-track {
+  flex: 1;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.speak-meter-bar {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-soft));
+  transition: width 0.3s ease;
+}
+.speak-meter-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+/* ── Speaking: tone feedback block ─────────────────────────── */
+.tone-feedback {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.tone-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+.tone-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.tone-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.tone-hz {
+  font-family: 'Noto Sans SC', sans-serif;
+  font-weight: 700;
+}
+.tone-py {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+.tone-msg {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── Speaking: repeat-this-word card ─────────────────────────── */
+.pa-repeat {
+  background: var(--surface-2);
+  border: 1.5px dashed var(--border);
+  border-radius: 18px;
+  padding: 18px 20px;
+  text-align: center;
+  margin-top: 14px;
+}
+.pa-repeat-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+.pa-repeat-word {
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: clamp(36px, 8vw, 48px);
+  font-weight: 700;
+  color: var(--close);
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+}
+.pa-repeat-py {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-top: 4px;
+}

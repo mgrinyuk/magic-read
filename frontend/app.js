@@ -766,7 +766,7 @@ let userPlan = {
   trialEndsAt: null,
   textUsedToday: 0,
   pronouncedToday: 0,
-  limits: { textPerDay: 3, pronunciationPerDay: 10, savedTexts: 5, decks: 2, cards: 100 }
+  limits: { textPerDay: 3, pronunciationPerDay: 20, savedTexts: 5, decks: 2, cards: 100 }
 };
 
 const GUEST_PLAN = { ...userPlan };
@@ -825,6 +825,7 @@ function renderPlanUI() {
 
   renderWelcomeBanner();
   renderTextCounter();
+  renderSpeakMeter();
 }
 
 function renderWelcomeBanner() {
@@ -858,6 +859,29 @@ function renderTextCounter() {
   } else {
     counter.hidden = true;
   }
+}
+
+function renderSpeakMeter() {
+  const meter = document.getElementById("speakUsageMeter");
+  if (!meter) return;
+
+  const loggedIn = document.body.classList.contains("is-logged-in");
+  const isFree = loggedIn && userPlan.effectivePlan === "free";
+
+  if (!isFree) {
+    meter.hidden = true;
+    return;
+  }
+
+  const limit = userPlan.limits.pronunciationPerDay;
+  const used = userPlan.pronouncedToday || 0;
+  const left = Math.max(0, limit - used);
+  const pct = Math.round((left / limit) * 100);
+
+  meter.querySelector(".speak-meter-left").textContent = left;
+  meter.querySelector(".speak-meter-total").textContent = limit;
+  meter.querySelector(".speak-meter-bar").style.width = `${pct}%`;
+  meter.hidden = false;
 }
 
 document.getElementById("welcomeWeekDismiss")?.addEventListener("click", () => {
@@ -2850,6 +2874,94 @@ async function translateSentence(sentence, card) {
 }
 
 /* -----------------------------
+   TONE FEEDBACK / REPEAT CARD
+----------------------------- */
+
+function renderToneFeedback(result, lang, sentence) {
+  const words = result.words || [];
+  const isZh = /^zh/i.test(lang);
+
+  // Build pinyin map from segmentCache for Chinese
+  const pinyinMap = {};
+  if (isZh) {
+    const segs = segmentCache.get(sentence) || [];
+    segs.forEach(s => { if (s.word) pinyinMap[s.word] = s.pinyin || ""; });
+  }
+
+  const interesting = words.filter(w => {
+    if ((w.errorType || "None") === "Insertion") return false;
+    const hasMiscue = w.errorType && w.errorType !== "None";
+    return hasMiscue || (w.accuracy != null && w.accuracy < 80);
+  }).slice(0, 5);
+
+  const fluencyRow = (result.fluency != null && result.fluency < 65)
+    ? `<div class="tone-row">
+        <span class="tone-dot" style="background:var(--close)"></span>
+        <span class="tone-hz">—</span>
+        <span class="tone-msg" style="color:var(--close)">Work on fluency!</span>
+       </div>`
+    : "";
+
+  if (!interesting.length && !fluencyRow) return "";
+
+  const rowsHtml = interesting.map(w => {
+    const acc = w.accuracy ?? 0;
+    const hasMiscue = w.errorType && w.errorType !== "None";
+    let color, msg;
+    if (hasMiscue || acc < 60) {
+      color = "var(--retry)"; msg = "Check the sound!";
+    } else {
+      color = "var(--close)"; msg = "Check the tone!";
+    }
+    const py = pinyinMap[w.word] || "";
+    return `<div class="tone-row">
+      <span class="tone-dot" style="background:${color}"></span>
+      <span class="tone-hz">${escapeHtml(w.word)}</span>
+      ${py ? `<span class="tone-py">${escapeHtml(py)}</span>` : ""}
+      <span class="tone-msg" style="color:${color}">${msg}</span>
+    </div>`;
+  }).join("");
+
+  return `<div class="tone-feedback">
+    <div class="tone-lbl">Tone feedback</div>
+    ${rowsHtml}${fluencyRow}
+  </div>`;
+}
+
+function renderRepeatCard(result, lang, sentence) {
+  const words = result.words || [];
+  const isZh = /^zh/i.test(lang);
+
+  const pinyinMap = {};
+  if (isZh) {
+    const segs = segmentCache.get(sentence) || [];
+    segs.forEach(s => { if (s.word) pinyinMap[s.word] = s.pinyin || ""; });
+  }
+
+  // Find the worst-scoring non-insertion word
+  const candidates = words
+    .filter(w => (w.errorType || "None") !== "Insertion")
+    .filter(w => {
+      const hasMiscue = w.errorType && w.errorType !== "None";
+      return hasMiscue || (w.accuracy != null && w.accuracy < 80);
+    });
+  if (!candidates.length) return "";
+
+  const worst = candidates.reduce((a, b) => {
+    const aScore = a.accuracy ?? (a.errorType !== "None" ? 0 : 100);
+    const bScore = b.accuracy ?? (b.errorType !== "None" ? 0 : 100);
+    return bScore < aScore ? b : a;
+  });
+
+  const py = pinyinMap[worst.word] || "";
+  return `<div class="pa-repeat">
+    <div class="pa-repeat-lbl">Repeat this word</div>
+    <div class="pa-repeat-word">${escapeHtml(worst.word)}</div>
+    ${py ? `<div class="pa-repeat-py">${escapeHtml(py)}</div>` : ""}
+  </div>`;
+}
+
+/* -----------------------------
    WORD POPUP / FLASHCARD SAVE
 ----------------------------- */
 
@@ -3669,6 +3781,13 @@ async function record(sentence, card, recordBtn = null) {
   const azureLang = mapToSpeechLang(shortLang);
   const azure = await tryAzurePronunciation(sentence, azureLang, resultBox, recordBtn, t);
   if (azure) {
+    if (azure.result && resultBox) {
+      resultBox.insertAdjacentHTML("beforeend",
+        renderToneFeedback(azure.result, shortLang, sentence) +
+        renderRepeatCard(azure.result, shortLang, sentence)
+      );
+    }
+
     const advanceToNext = () => {
       const nextCard = card.nextElementSibling;
       setTimeout(() => {
