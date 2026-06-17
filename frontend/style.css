@@ -176,6 +176,7 @@ h1 {
 }
 
 .profile-btn {
+  position: relative;
   width: 42px;
   height: 42px;
   border: none;
@@ -4121,4 +4122,31 @@ body.is-logged-in .top-ui-language {
 }
 .upgrade-modal-dismiss:hover {
   color: var(--text);
+}
+
+/* Fix: .landing-actions a rule overrides ghost link color */
+.landing-actions .hero-ghost-link {
+  color: var(--text);
+}
+.landing-actions .hero-ghost-link:hover {
+  color: var(--cyan-ink);
+  border-color: var(--cyan);
+}
+
+/* Plan-state dot on the profile avatar button */
+#profileMenuBtn[data-plan-badge]::after {
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--shell, var(--surface));
+}
+#profileMenuBtn[data-plan-badge="trial"]::after {
+  background: var(--primary);
+}
+#profileMenuBtn[data-plan-badge="pro"]::after {
+  background: var(--cyan);
 }

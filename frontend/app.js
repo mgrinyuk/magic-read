@@ -353,7 +353,7 @@ async function runPronunciationDrill(chunks, shortLang, resultBox, t) {
           if (code === "QUOTA_EXCEEDED") {
             feedback.innerHTML = `<p>${escapeHtml(
               outcome.error.info?.error ||
-                tt("drillQuota", "You've used today's free pronunciation checks. Upgrade for unlimited.")
+                tt("drillQuota", "You're out of today's free checks.")
             )}</p>`;
             finish("abort");
             return;
@@ -812,7 +812,7 @@ function renderPlanUI() {
   } else if (userPlan.trialActive) {
     const days = trialDaysLeft();
     if (trialBadge) {
-      trialBadge.textContent = `✨ Pro Trial — ${days} day${days === 1 ? "" : "s"} left`;
+      trialBadge.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
       trialBadge.hidden = false;
     }
     if (proBadge) proBadge.hidden = true;
@@ -822,6 +822,19 @@ function renderPlanUI() {
     if (upgradeBtn) upgradeBtn.hidden = false;
     if (proBadge) proBadge.hidden = true;
     if (trialBadge) trialBadge.hidden = true;
+  }
+
+  // Show a small plan dot on the profile button so plan state is visible
+  // during regular app use (dropdown is replaced by the full account screen).
+  const profileBtn = document.getElementById("profileMenuBtn");
+  if (profileBtn) {
+    if (paidPro) {
+      profileBtn.dataset.planBadge = "pro";
+    } else if (userPlan.trialActive) {
+      profileBtn.dataset.planBadge = "trial";
+    } else {
+      delete profileBtn.dataset.planBadge;
+    }
   }
 
   renderWelcomeBanner();
@@ -3016,7 +3029,14 @@ function renderToneFeedback(result, lang, sentence) {
        </div>`
     : "";
 
-  if (!interesting.length && !fluencyRow) return "";
+  if (!interesting.length && !fluencyRow) {
+    return `<div class="tone-feedback">
+      <div class="tone-row">
+        <span class="tone-dot" style="background:var(--good)"></span>
+        <span class="tone-msg" style="color:var(--good)">Sounds clean!</span>
+      </div>
+    </div>`;
+  }
 
   const rowsHtml = interesting.map(w => {
     const acc = w.accuracy ?? 0;
@@ -3192,6 +3212,10 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
       if (saved) {
         saveBtn.textContent = getT().saved;
         wordEl.classList.add("word-saved");
+
+        const deckId = popup.querySelector(".popup-deck-select")?.value;
+        const deckName = flashcardDecks.find(d => String(d.id) === String(deckId))?.name;
+        showToast(deckName ? `Saved to ${deckName}.` : getT().saved + ".", "success");
 
         popup.style.transform = "scale(0.95)";
         popup.style.opacity = "0.6";
