@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magic Read — Reader (Sonic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#E5E7EE; --shell:#F4F5F9; --surface:#FFFFFF; --surface-2:#F1F2F8;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490; --yellow:#F5B400; --amber-ink:#B98300;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E5E3EE; --good:#16A34A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);}
+
+  .app{max-width:700px;margin:0 auto;background:var(--shell);min-height:100vh;display:flex;flex-direction:column;}
+  @media (min-width:720px){ .app{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 80px rgba(28,18,51,.07);} }
+  .body{flex:1;display:flex;flex-direction:column;padding:clamp(14px,3.5vw,24px) clamp(16px,4vw,30px) 0;}
+  .ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .ic.sm{width:18px;height:18px;} .ic.lg{width:28px;height:28px;}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 14px;gap:10px;}
+  .iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none;}
+  .appbar .ttl{text-align:center;} .appbar .ttl b{font-weight:800;font-size:16px;} .appbar .ttl span{display:block;font-size:11px;color:var(--text-soft);}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:11px;border:1px solid var(--border);background:var(--surface);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;}
+  .pill.on{background:rgba(10,180,214,.12);border-color:rgba(10,180,214,.5);color:var(--cyan-ink);}
+  .pill.lvl{margin-left:auto;background:rgba(10,180,214,.12);border-color:rgba(10,180,214,.5);color:var(--cyan-ink);}
+
+  .reader{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:clamp(18px,3vw,26px);}
+  .han{font-family:'Noto Sans SC',sans-serif;line-height:2.2;font-size:clamp(20px,4.4vw,23px);font-weight:500;}
+  .sent{cursor:pointer;}
+  .sent.active{background:rgba(229,38,126,.07);border-radius:6px;box-shadow:0 0 0 4px rgba(229,38,126,.07);}
+  .ruby{display:inline-flex;flex-direction:column;align-items:center;vertical-align:bottom;margin:0 1px;cursor:pointer;border-radius:5px;}
+  .ruby small{font-family:'Inter';font-size:10px;color:var(--text-dim);font-weight:600;line-height:1;margin-bottom:2px;}
+  .ruby.sel{background:rgba(10,180,214,.16);} .ruby.sel .zh{color:var(--cyan-ink);}
+  .popover{margin-top:16px;background:var(--surface-2);border:1px solid rgba(10,180,214,.4);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .popover .w{font-family:'Noto Sans SC';font-size:21px;font-weight:700;color:var(--cyan-ink);}
+  .popover .py{font-size:12px;color:var(--text-soft);}
+  .savebtn{flex:none;width:42px;height:42px;border-radius:12px;border:1px solid rgba(245,180,0,.5);background:rgba(245,180,0,.14);color:var(--amber-ink);display:grid;place-items:center;cursor:pointer;}
+
+  .progress{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;}
+  .progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--primary-soft));}
+  .btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:700;font-size:16px;cursor:pointer;}
+  .btn-primary{color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));box-shadow:0 12px 26px -12px rgba(229,38,126,.7);}
+
+  /* exercise */
+  .exercise{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:clamp(18px,3vw,24px);margin-top:16px;}
+  .ex-head{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  .ex-head .tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--primary);background:rgba(229,38,126,.10);padding:3px 9px;border-radius:6px;}
+  .ex-head h3{font-size:16px;font-weight:800;}
+  .ex-prompt{font-size:14px;color:var(--text-soft);margin:6px 0 16px;}
+  .ex-prompt b{color:var(--text);font-weight:700;}
+  .slots{display:flex;flex-wrap:wrap;gap:8px;padding:14px;border:1px dashed var(--border);border-radius:14px;background:var(--surface-2);min-height:64px;margin-bottom:16px;}
+  .slot{font-family:'Noto Sans SC';font-size:19px;font-weight:700;padding:8px 14px;border-radius:11px;background:#fff;border:1px solid var(--border);color:var(--text);}
+  .slot.empty{background:transparent;border:1px dashed var(--text-dim);min-width:54px;}
+  .bank{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+  .chip{font-family:'Noto Sans SC';font-size:19px;font-weight:700;padding:8px 14px;border-radius:11px;background:#fff;border:1px solid var(--border);color:var(--primary);cursor:pointer;}
+  .chip.used{opacity:.35;pointer-events:none;}
+  .ex-foot{display:flex;align-items:center;gap:12px;}
+  .ex-foot .skip{font-size:14px;font-weight:600;color:var(--text-soft);background:none;border:none;cursor:pointer;font-family:inherit;}
+
+  .tabbar{position:sticky;bottom:0;display:flex;justify-content:space-around;align-items:center;padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(244,245,249,.92);backdrop-filter:blur(8px);margin-top:18px;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim);}
+  .tab.active{color:var(--primary);} .tab.active .ic{stroke:var(--primary);}
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
+    <symbol id="i-slow" viewBox="0 0 24 24"><path d="M3.5 15a8.5 5 0 0 1 17 0"/><path d="M3.5 15h17"/><path d="M7 15v3M16 15v3"/><path d="M20.5 15c2 0 3.2-1 3.2-2.2 0-1-1-1.6-2.1-1.3"/><path d="M3.5 15l-1.4 1"/><path d="M8.6 15l1.5-3M12 15v-3.6M15.4 15l-1.5-3"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></symbol>
+  </svg>
+
+  <div class="app">
+    <div class="body">
+      <div class="appbar">
+        <button class="iconbtn"><svg class="ic"><use href="#i-left"/></svg></button>
+        <div class="ttl"><b>Reading</b><span>老舍 · 茶馆</span></div>
+        <button class="iconbtn"><svg class="ic"><use href="#i-bookmark"/></svg></button>
+      </div>
+
+      <div class="toolbar">
+        <button class="pill on"><svg class="ic sm"><use href="#i-play"/></svg> Listen</button>
+        <button class="pill"><span style="font-size:16px;line-height:1;vertical-align:-2px;">🐢</span> Slow</button>
+        <button class="pill">Pinyin</button>
+        <button class="pill">Translate</button>
+        <button class="pill"><svg class="ic sm"><use href="#i-bookmark"/></svg> Saved texts</button>
+        <span class="pill lvl">A2</span>
+      </div>
+
+      <div class="reader">
+        <div class="han">
+          <span class="sent active"><span class="ruby"><small>Lǎoshě</small><span class="zh">老舍</span></span>不但在<span class="ruby sel"><small>zhōngguó</small><span class="zh">中国</span></span>人人知道，而且在我们国家也很有名。</span>
+          <span class="sent">他的小说《<span class="ruby"><small>luòtuó</small><span class="zh">骆驼</span></span>祥子》已经被翻译成俄文，我来中国以前就看过。</span>
+        </div>
+
+        <div class="popover">
+          <div><div class="w">中国</div><div class="py">zhōngguó</div></div>
+          <div style="text-align:right;flex:1;font-size:15px;font-weight:700;">China<div class="py" style="font-weight:500;">noun · place</div></div>
+          <button class="savebtn"><svg class="ic sm"><use href="#i-plus"/></svg></button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-top:18px;">
+          <span style="font-size:12px;color:var(--text-soft);">Sentence 1 / 8</span>
+          <div class="progress" style="flex:1;"><i style="width:13%"></i></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px;"><svg class="ic"><use href="#i-mic"/></svg> Practice speaking this</button>
+      </div>
+
+      <div class="exercise">
+        <div class="ex-head"><span class="tag">Exercise</span><h3>Put the words in order</h3></div>
+        <p class="ex-prompt">Build the sentence that means: <b>"I like learning Chinese."</b></p>
+
+        <div class="slots">
+          <span class="slot">我</span>
+          <span class="slot">喜欢</span>
+          <span class="slot empty"></span>
+          <span class="slot empty"></span>
+        </div>
+
+        <div class="bank">
+          <span class="chip used">我</span>
+          <span class="chip used">喜欢</span>
+          <span class="chip">中文</span>
+          <span class="chip">学习</span>
+        </div>
+
+        <div class="ex-foot">
+          <button class="btn btn-primary" style="flex:1;"><svg class="ic sm"><use href="#i-check"/></svg> Check</button>
+          <button class="skip">Skip</button>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab"><svg class="ic sm"><use href="#i-home"/></svg>Home</button>
+      <button class="tab active"><svg class="ic sm"><use href="#i-book"/></svg>Read</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-mic"/></svg>Speak</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-cards"/></svg>Cards</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-video"/></svg>Video</button>
+    </nav>
+  </div>
+</body>
+</html>

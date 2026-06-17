@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magic Read — Flashcards (Sonic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#E5E7EE; --shell:#F4F5F9; --surface:#FFFFFF; --surface-2:#F1F2F8;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490; --yellow:#F5B400; --amber-ink:#B98300;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E5E3EE;
+    --good:#16A34A; --close:#D97706; --retry:#E11D48;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);}
+
+  .app{max-width:700px;margin:0 auto;background:var(--shell);min-height:100vh;display:flex;flex-direction:column;}
+  @media (min-width:720px){ .app{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 80px rgba(28,18,51,.07);} }
+  .body{flex:1;display:flex;flex-direction:column;padding:clamp(14px,3.5vw,24px) clamp(16px,4vw,30px) 0;}
+  .ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .ic.sm{width:18px;height:18px;} .ic.lg{width:28px;height:28px;}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 12px;gap:10px;}
+  .iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none;}
+  .appbar .ttl b{font-weight:800;font-size:16px;}
+  .counter{font-size:12px;font-weight:700;color:var(--text);background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:999px;}
+
+  .deckbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .deck{flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;}
+  .deck .nm{font-weight:700;font-size:14px;}
+  .deck .ct{font-size:12px;color:var(--text-soft);margin-left:auto;}
+  .deckbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none;}
+
+  .progress{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-bottom:18px;}
+  .progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--primary-soft));}
+
+  .card{background:linear-gradient(160deg,#fff,var(--surface-2));border:1px solid var(--border);border-radius:24px;
+    padding:clamp(28px,6vw,44px) 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;flex:1;justify-content:center;}
+  .card .word{font-family:'Noto Sans SC';font-size:clamp(58px,15vw,84px);font-weight:700;letter-spacing:.04em;line-height:1;}
+  .card .py{font-size:20px;color:var(--cyan-ink);font-weight:700;}
+  .audio-row{display:flex;gap:10px;}
+  .abtn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:11px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;}
+  .divider{width:60px;height:1px;background:var(--border);margin:4px 0;}
+  .trans{font-size:22px;font-weight:700;}
+  .speak{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:12px;border:none;color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;background:linear-gradient(95deg,var(--primary),var(--primary-soft));}
+
+  .review{padding:18px 0 8px;}
+  .review .q{font-size:12px;color:var(--text-soft);text-align:center;margin-bottom:12px;}
+  .reviewbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .rb{padding:15px 8px;border-radius:14px;border:1px solid var(--border);background:var(--surface);font-weight:700;font-size:15px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;}
+  .rb small{font-size:10px;font-weight:600;color:var(--text-dim);}
+  .rb.again{color:var(--retry);border-color:rgba(225,29,72,.35);}
+  .rb.good{color:var(--close);border-color:rgba(217,119,6,.35);}
+  .rb.easy{color:var(--good);border-color:rgba(22,163,74,.35);}
+
+  .tabbar{position:sticky;bottom:0;display:flex;justify-content:space-around;align-items:center;padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(244,245,249,.92);backdrop-filter:blur(8px);margin-top:14px;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim);}
+  .tab.active{color:var(--primary);} .tab.active .ic{stroke:var(--primary);}
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
+    <symbol id="i-slow" viewBox="0 0 24 24"><path d="M3.5 15a8.5 5 0 0 1 17 0"/><path d="M3.5 15h17"/><path d="M7 15v3M16 15v3"/><path d="M20.5 15c2 0 3.2-1 3.2-2.2 0-1-1-1.6-2.1-1.3"/><path d="M3.5 15l-1.4 1"/><path d="M8.6 15l1.5-3M12 15v-3.6M15.4 15l-1.5-3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  </svg>
+
+  <div class="app">
+    <div class="body">
+      <div class="appbar">
+        <button class="iconbtn"><svg class="ic"><use href="#i-left"/></svg></button>
+        <div class="ttl"><b>Flashcards</b></div>
+        <span class="counter">7 / 20</span>
+      </div>
+
+      <div class="deckbar">
+        <div class="deck"><svg class="ic sm" style="color:var(--cyan-ink)"><use href="#i-cards"/></svg><span class="nm">My words</span><span class="ct">20 cards</span><svg class="ic sm" style="color:var(--text-dim)"><use href="#i-chev"/></svg></div>
+        <button class="deckbtn" title="New deck"><svg class="ic"><use href="#i-plus"/></svg></button>
+        <button class="deckbtn" title="More"><svg class="ic"><use href="#i-more"/></svg></button>
+      </div>
+
+      <div class="progress"><i style="width:35%"></i></div>
+
+      <div class="card">
+        <div class="word">中国</div>
+        <div class="py">zhōngguó</div>
+        <div class="audio-row">
+          <button class="abtn"><svg class="ic sm"><use href="#i-vol"/></svg> Play</button>
+          <button class="abtn"><span style="font-size:16px;line-height:1;vertical-align:-2px;">🐢</span> Slow</button>
+        </div>
+        <div class="divider"></div>
+        <div class="trans">China</div>
+        <button class="speak"><svg class="ic sm" style="stroke:#fff"><use href="#i-mic"/></svg> Say it</button>
+      </div>
+
+      <div class="review">
+        <div class="q">How well do you know it?</div>
+        <div class="reviewbtns">
+          <button class="rb again">Again<small>&lt; 1 min</small></button>
+          <button class="rb good">Good<small>2 days</small></button>
+          <button class="rb easy">Easy<small>6 days</small></button>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab"><svg class="ic sm"><use href="#i-home"/></svg>Home</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-book"/></svg>Read</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-mic"/></svg>Speak</button>
+      <button class="tab active"><svg class="ic sm"><use href="#i-cards"/></svg>Cards</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-video"/></svg>Video</button>
+    </nav>
+  </div>
+</body>
+</html>

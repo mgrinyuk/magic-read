@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magic Read — Speaking + paywall (Sonic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#E5E7EE; --shell:#F4F5F9; --surface:#FFFFFF; --surface-2:#F1F2F8;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490; --yellow:#F5B400;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E5E3EE;
+    --good:#16A34A; --close:#D97706; --retry:#E11D48;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);}
+
+  .app{max-width:700px;margin:0 auto;background:var(--shell);min-height:100vh;display:flex;flex-direction:column;position:relative;}
+  @media (min-width:720px){ .app{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 80px rgba(28,18,51,.07);} }
+  .body{flex:1;display:flex;flex-direction:column;padding:clamp(16px,4vw,28px) clamp(16px,4vw,32px) 0;}
+  .ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .ic.sm{width:18px;height:18px;} .ic.lg{width:28px;height:28px;}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 14px;gap:10px;}
+  .iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none;}
+  .appbar .ttl{text-align:center;}
+  .appbar .ttl b{font-weight:800;font-size:16px;} .appbar .ttl span{display:block;font-size:11px;color:var(--text-soft);}
+
+  /* usage meter (lite only) */
+  .meter{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:10px 14px;margin-bottom:16px;}
+  .meter .lite{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--cyan-ink);background:rgba(10,180,214,.12);padding:3px 8px;border-radius:6px;}
+  .meter .track{flex:1;height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden;}
+  .meter .track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--primary-soft));}
+  .meter .count{font-size:12px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+
+  .progress{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-bottom:16px;}
+  .progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--primary-soft));}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:11px;border:1px solid var(--border);background:var(--surface);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;}
+  .pill.on{background:rgba(10,180,214,.12);border-color:rgba(10,180,214,.5);color:var(--cyan-ink);}
+
+  .scorecard{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:clamp(18px,3vw,24px);}
+  .han-score{font-family:'Noto Sans SC';font-size:clamp(28px,6.5vw,36px);font-weight:700;line-height:1.85;}
+  .han-score .w{cursor:pointer;}
+  .han-score .good{color:var(--good);}
+  .han-score .close{color:var(--close);border-bottom:2px solid rgba(217,119,6,.5);}
+  .han-score .retry{color:var(--retry);border-bottom:2px solid rgba(225,29,72,.55);}
+  .ring{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;flex:none;background:conic-gradient(var(--cyan) 0 75%, var(--surface-2) 75% 100%);}
+  .ring span{width:48px;height:48px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:16px;font-weight:800;color:var(--cyan-ink);}
+
+  .tones{margin-top:16px;border-top:1px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:9px;}
+  .tones .lbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-soft);}
+  .tone{display:flex;align-items:center;gap:10px;font-size:14px;}
+  .tone .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .tone .hz{font-family:'Noto Sans SC';font-weight:700;}
+  .tone .py{color:var(--text-soft);font-size:13px;}
+  .tone .msg{margin-left:auto;font-size:12px;font-weight:600;}
+
+  .repeat{background:var(--surface-2);border:1px dashed var(--border);border-radius:18px;padding:20px;text-align:center;margin-top:18px;}
+  .repeat .lbl{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft);}
+  .repeat .big{font-family:'Noto Sans SC';font-size:clamp(40px,9vw,52px);font-weight:700;color:var(--close);margin-top:6px;letter-spacing:.05em;}
+
+  .controls{display:flex;align-items:center;justify-content:center;gap:clamp(18px,5vw,30px);margin-top:auto;padding:24px 0 12px;}
+  .mic{width:84px;height:84px;border-radius:50%;flex:none;display:grid;place-items:center;border:none;cursor:pointer;color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));box-shadow:0 0 0 9px rgba(229,38,126,.12),0 16px 30px -10px rgba(229,38,126,.7);transition:transform .1s;}
+  .mic:active{transform:scale(.95);}
+
+  .tabbar{position:sticky;bottom:0;display:flex;justify-content:space-around;align-items:center;padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(244,245,249,.92);backdrop-filter:blur(8px);}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim);}
+  .tab.active{color:var(--primary);} .tab.active .ic{stroke:var(--primary);}
+
+  /* upgrade modal */
+  .overlay{position:fixed;inset:0;background:rgba(28,18,51,.5);backdrop-filter:blur(3px);display:none;align-items:flex-end;justify-content:center;z-index:100;}
+  .overlay.show{display:flex;}
+  @media (min-width:600px){ .overlay{align-items:center;} }
+  .modal{background:var(--surface);width:100%;max-width:460px;border-radius:24px 24px 0 0;padding:26px 24px calc(26px + env(safe-area-inset-bottom));position:relative;}
+  @media (min-width:600px){ .modal{border-radius:24px;} }
+  .modal .close{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:10px;border:none;background:var(--surface-2);color:var(--text-soft);display:grid;place-items:center;cursor:pointer;}
+  .modal .spark{width:52px;height:52px;border-radius:15px;background:linear-gradient(95deg,var(--primary),var(--primary-soft));display:grid;place-items:center;margin-bottom:16px;}
+  .modal h2{font-size:22px;font-weight:800;letter-spacing:-.01em;}
+  .modal .sub{font-size:14px;color:var(--text-soft);margin-top:6px;line-height:1.5;}
+  .unlocks{margin:18px 0;display:flex;flex-direction:column;gap:11px;}
+  .unlock{display:flex;align-items:center;gap:11px;font-size:14px;font-weight:500;}
+  .unlock .ck{width:22px;height:22px;border-radius:7px;background:rgba(22,163,74,.12);color:var(--good);display:grid;place-items:center;flex:none;}
+  .plans{display:flex;flex-direction:column;gap:9px;margin-bottom:8px;}
+  .plan{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:14px;padding:13px 16px;cursor:pointer;background:var(--surface);}
+  .plan.best{border:2px solid var(--primary);}
+  .plan .nm{font-weight:700;font-size:15px;}
+  .plan .tag{font-size:11px;font-weight:700;color:var(--primary);background:rgba(229,38,126,.10);padding:2px 8px;border-radius:6px;margin-left:8px;}
+  .plan .pr{font-weight:800;font-size:15px;}
+  .plan .pr small{font-weight:500;color:var(--text-soft);font-size:12px;}
+  .lifetime-note{font-size:12px;color:var(--cyan-ink);font-weight:600;text-align:center;margin:2px 0 14px;}
+  .btn-primary{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:16px;border:none;border-radius:15px;font-family:inherit;font-weight:700;font-size:16px;cursor:pointer;color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));box-shadow:0 12px 26px -12px rgba(229,38,126,.7);}
+  .maybe{display:block;width:100%;text-align:center;padding:14px;margin-top:8px;background:none;border:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text-soft);cursor:pointer;}
+  .reset-note{font-size:12px;color:var(--text-dim);text-align:center;margin-top:4px;}
+
+  .demohint{text-align:center;font-size:12px;color:var(--text-dim);padding:10px;}
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
+    <symbol id="i-slow" viewBox="0 0 24 24"><path d="M3.5 15a8.5 5 0 0 1 17 0"/><path d="M3.5 15h17"/><path d="M7 15v3M16 15v3"/><path d="M20.5 15c2 0 3.2-1 3.2-2.2 0-1-1-1.6-2.1-1.3"/><path d="M3.5 15l-1.4 1"/><path d="M8.6 15l1.5-3M12 15v-3.6M15.4 15l-1.5-3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></symbol>
+  </svg>
+
+  <div class="app">
+    <div class="body">
+      <div class="appbar">
+        <button class="iconbtn"><svg class="ic"><use href="#i-left"/></svg></button>
+        <div class="ttl"><b>Speaking</b><span>Sentence 3 of 12</span></div>
+        <button class="iconbtn"><svg class="ic"><use href="#i-right"/></svg></button>
+      </div>
+
+      <div class="meter">
+        <span class="lite">lite</span>
+        <span style="font-size:12px;color:var(--text-soft);font-weight:600;">Today's checks</span>
+        <div class="track"><i id="meterBar" style="width:10%"></i></div>
+        <span class="count"><span id="meterLeft">2</span>/20 left</span>
+      </div>
+
+      <div class="progress"><i style="width:42%"></i></div>
+
+      <div class="toolbar">
+        <button class="pill"><span style="font-size:16px;line-height:1;vertical-align:-2px;">🐢</span> Slow</button>
+        <button class="pill">Pinyin</button>
+        <button class="pill">Translate</button>
+      </div>
+
+      <div class="scorecard">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">
+          <div class="han-score" style="flex:1;"><span class="w good">我</span><span class="w good">喜欢</span><span class="w close">学习</span><span class="w retry">中文</span></div>
+          <div class="ring"><span>75</span></div>
+        </div>
+        <div style="font-size:13px;color:var(--text-soft);margin-top:8px;">wǒ xǐhuān xuéxí zhōngwén — "I like learning Chinese"</div>
+
+        <div class="tones">
+          <div class="lbl">Tone feedback</div>
+          <div class="tone"><span class="dot" style="background:var(--good)"></span><span class="hz">喜欢</span><span class="py">xǐhuān</span><span class="msg" style="color:var(--good)">Sounds clean!</span></div>
+          <div class="tone"><span class="dot" style="background:var(--close)"></span><span class="hz">学习</span><span class="py">xuéxí</span><span class="msg" style="color:var(--close)">Check the tone!</span></div>
+          <div class="tone"><span class="dot" style="background:var(--retry)"></span><span class="hz">中文</span><span class="py">zhōngwén</span><span class="msg" style="color:var(--retry)">Check the sound!</span></div>
+        </div>
+      </div>
+
+      <div class="repeat">
+        <div class="lbl">Repeat this word</div>
+        <div class="big">中文</div>
+        <div style="font-size:14px;color:var(--text-soft);margin-top:4px;">zhōngwén · keep tone 1 high and level</div>
+      </div>
+
+      <div class="controls">
+        <button class="pill" style="padding:15px 20px;"><svg class="ic"><use href="#i-vol"/></svg> Listen</button>
+        <button class="mic" id="micBtn"><svg class="ic lg"><use href="#i-mic"/></svg></button>
+        <button class="pill" style="padding:15px 20px;">Skip <svg class="ic sm"><use href="#i-right"/></svg></button>
+      </div>
+      <div class="demohint">Demo: tap the mic to use a check — at 0 the upgrade popup appears.</div>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab"><svg class="ic sm"><use href="#i-home"/></svg>Home</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-book"/></svg>Read</button>
+      <button class="tab active"><svg class="ic sm"><use href="#i-mic"/></svg>Speak</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-cards"/></svg>Cards</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-video"/></svg>Video</button>
+    </nav>
+  </div>
+
+  <!-- UPGRADE MODAL -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <button class="close" id="closeBtn"><svg class="ic sm"><use href="#i-x"/></svg></button>
+      <div class="spark"><svg class="ic lg" style="stroke:#fff"><use href="#i-spark"/></svg></div>
+      <h2>You're out of today's free checks</h2>
+      <p class="sub">You've used all 20 pronunciation checks for today. Go Pro for unlimited practice — no daily cap.</p>
+
+      <div class="unlocks">
+        <div class="unlock"><span class="ck"><svg class="ic sm"><use href="#i-check"/></svg></span> Unlimited pronunciation checks</div>
+        <div class="unlock"><span class="ck"><svg class="ic sm"><use href="#i-check"/></svg></span> Videos with smart captions</div>
+        <div class="unlock"><span class="ck"><svg class="ic sm"><use href="#i-check"/></svg></span> Calligraphy worksheet export</div>
+      </div>
+
+      <div class="plans">
+        <div class="plan best">
+          <div><span class="nm">Annual</span><span class="tag">Save 41%</span></div>
+          <div class="pr">$49<small>/yr</small></div>
+        </div>
+        <div class="plan">
+          <div><span class="nm">Monthly</span></div>
+          <div class="pr">$6.99<small>/mo</small></div>
+        </div>
+      </div>
+      <div class="lifetime-note">★ Lifetime $89 — available this week only</div>
+
+      <button class="btn-primary">Upgrade to Pro</button>
+      <button class="maybe" id="maybeBtn">Maybe later</button>
+      <div class="reset-note">Your free checks reset tomorrow.</div>
+    </div>
+  </div>
+
+  <script>
+    let left = 2;
+    const bar = document.getElementById('meterBar');
+    const leftEl = document.getElementById('meterLeft');
+    const overlay = document.getElementById('overlay');
+    function render(){ leftEl.textContent = left; bar.style.width = (left/20*100)+'%'; }
+    document.getElementById('micBtn').addEventListener('click', ()=>{
+      if(left>0){ left--; render(); }
+      if(left===0){ setTimeout(()=>overlay.classList.add('show'), 350); }
+    });
+    document.getElementById('closeBtn').addEventListener('click', ()=>overlay.classList.remove('show'));
+    document.getElementById('maybeBtn').addEventListener('click', ()=>overlay.classList.remove('show'));
+    overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.classList.remove('show'); });
+    render();
+  </script>
+</body>
+</html>

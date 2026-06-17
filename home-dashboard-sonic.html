@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magic Read — Home dashboard (Sonic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#E5E7EE; --shell:#F4F5F9; --surface:#FFFFFF; --surface-2:#F1F2F8;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490; --yellow:#F5B400; --amber-ink:#B98300;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E5E3EE;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);}
+
+  .app{max-width:700px;margin:0 auto;background:var(--shell);min-height:100vh;display:flex;flex-direction:column;}
+  @media (min-width:720px){ .app{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 80px rgba(28,18,51,.07);} }
+  .body{flex:1;display:flex;flex-direction:column;padding:clamp(18px,4vw,28px) clamp(16px,4vw,32px) 0;}
+  .ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .ic.sm{width:18px;height:18px;} .ic.lg{width:28px;height:28px;}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 18px;}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;}
+  .brand .mark{width:28px;height:28px;border-radius:9px;background:var(--primary);display:grid;place-items:center;color:#fff;}
+  .brand .lite{color:var(--cyan-ink);font-style:italic;font-weight:600;font-size:13px;}
+  .iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;}
+
+  .greet{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .avatar{width:54px;height:54px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--cyan-ink);flex:none;}
+  .greet h1{font-size:22px;font-weight:800;letter-spacing:-.02em;}
+  .trial{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--primary);background:rgba(229,38,126,.10);border:1px solid rgba(229,38,126,.25);padding:3px 10px;border-radius:999px;margin-top:4px;}
+
+  .streak{background:linear-gradient(100deg,rgba(245,180,0,.14),rgba(229,38,126,.06));border:1px solid rgba(245,180,0,.35);border-radius:18px;padding:16px 18px;display:flex;align-items:center;gap:16px;margin-bottom:14px;}
+  .flame{width:46px;height:46px;border-radius:13px;background:rgba(245,180,0,.18);color:var(--amber-ink);display:grid;place-items:center;flex:none;}
+  .streak .n{font-size:20px;font-weight:800;}
+  .streak .s{font-size:12px;color:var(--text-soft);}
+  .days{display:flex;gap:5px;margin-left:auto;}
+  .day{width:13px;height:13px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);}
+  .day.on{background:var(--amber-ink);border-color:var(--amber-ink);}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px 14px;}
+  .stat .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .stat .icc{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;}
+  .stat .n{font-size:23px;font-weight:800;letter-spacing:-.02em;}
+  .stat .l{font-size:11px;color:var(--text-soft);font-weight:600;margin-top:1px;}
+
+  .resume{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:22px;cursor:pointer;}
+  .resume .thumb{width:44px;height:44px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;color:var(--cyan-ink);flex:none;}
+  .resume .meta{flex:1;min-width:0;}
+  .resume .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-soft);}
+  .resume .t{font-size:15px;font-weight:700;margin:2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .resume .track{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;}
+  .resume .track i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-soft));}
+
+  .sec{font-size:14px;font-weight:700;color:var(--text-soft);margin:2px 2px 12px;}
+  .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  .action{border:1px solid var(--border);background:var(--surface);border-radius:18px;padding:20px 18px;display:flex;flex-direction:column;gap:14px;cursor:pointer;position:relative;}
+  .action .ico{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:var(--surface-2);color:var(--cyan-ink);}
+  .action .nm{font-weight:700;font-size:16px;}
+  .action .ds{font-size:12px;color:var(--text-soft);}
+  .action .badge{position:absolute;top:14px;right:14px;font-size:11px;font-weight:700;color:var(--cyan-ink);background:rgba(10,180,214,.12);padding:2px 9px;border-radius:999px;}
+  .action.feat{grid-column:1/-1;background:linear-gradient(100deg,rgba(229,38,126,.10),rgba(10,180,214,.10));border-color:rgba(229,38,126,.35);flex-direction:row;align-items:center;}
+  .action.feat .ico{background:linear-gradient(95deg,var(--primary),var(--primary-soft));color:#fff;}
+
+  .tabbar{position:sticky;bottom:0;display:flex;justify-content:space-around;align-items:center;padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(244,245,249,.92);backdrop-filter:blur(8px);margin-top:26px;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim);}
+  .tab.active{color:var(--primary);} .tab.active .ic{stroke:var(--primary);}
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19l-4 1z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c3 4 .5 5.5 1.5 8 .8-1 .5-2.5.5-2.5C17 11 18 13 18 15a6 6 0 0 1-12 0c0-3 2.5-4.5 3-7 .4 1.8 1.5 2 3 3 .5-2-1-4 0-8z"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></symbol>
+  </svg>
+
+  <div class="app">
+    <div class="body">
+      <div class="appbar">
+        <div class="brand"><span class="mark"><svg class="ic sm" style="stroke:#fff"><use href="#i-spark"/></svg></span> Magic Read <span class="lite">lite</span></div>
+        <button class="iconbtn"><svg class="ic"><use href="#i-menu"/></svg></button>
+      </div>
+
+      <div class="greet">
+        <div class="avatar"><svg class="ic"><use href="#i-user"/></svg></div>
+        <div>
+          <h1>Hello, Maria</h1>
+          <span class="trial"><svg class="ic sm" style="width:14px;height:14px;stroke:var(--primary)"><use href="#i-spark"/></svg> Pro trial · 5 days left</span>
+        </div>
+      </div>
+
+      <div class="streak">
+        <div class="flame"><svg class="ic lg" style="stroke:var(--amber-ink)"><use href="#i-flame"/></svg></div>
+        <div>
+          <div class="n">5-day streak</div>
+          <div class="s">Practice today to keep it going</div>
+        </div>
+        <div class="days">
+          <span class="day on"></span><span class="day on"></span><span class="day on"></span><span class="day on"></span><span class="day on"></span><span class="day"></span><span class="day"></span>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="top"><span class="icc" style="background:rgba(10,180,214,.12);color:var(--cyan-ink)"><svg class="ic sm"><use href="#i-book"/></svg></span></div>
+          <div class="n">1,240</div><div class="l">Words read</div>
+        </div>
+        <div class="stat">
+          <div class="top"><span class="icc" style="background:rgba(229,38,126,.10);color:var(--primary)"><svg class="ic sm"><use href="#i-mic"/></svg></span></div>
+          <div class="n">482</div><div class="l">Words spoken</div>
+        </div>
+        <div class="stat">
+          <div class="top"><span class="icc" style="background:rgba(245,180,0,.16);color:var(--amber-ink)"><svg class="ic sm"><use href="#i-cards"/></svg></span></div>
+          <div class="n">96</div><div class="l">Words practiced</div>
+        </div>
+      </div>
+
+      <div class="resume">
+        <div class="thumb"><svg class="ic"><use href="#i-book"/></svg></div>
+        <div class="meta">
+          <div class="k">Continue reading</div>
+          <div class="t">老舍 · 茶馆</div>
+          <div class="track"><i style="width:50%"></i></div>
+        </div>
+        <svg class="ic" style="color:var(--text-dim)"><use href="#i-right"/></svg>
+      </div>
+
+      <div class="sec">What do you want to do?</div>
+      <div class="actions">
+        <div class="action feat">
+          <div class="ico"><svg class="ic lg"><use href="#i-mic"/></svg></div>
+          <div><div class="nm">Speak</div><div class="ds">Score your pronunciation on any text</div></div>
+        </div>
+        <div class="action"><div class="ico"><svg class="ic lg"><use href="#i-book"/></svg></div><div class="nm">Read</div></div>
+        <div class="action"><div class="badge">12 due</div><div class="ico"><svg class="ic lg"><use href="#i-cards"/></svg></div><div class="nm">Cards</div></div>
+        <div class="action"><div class="ico"><svg class="ic lg"><use href="#i-video"/></svg></div><div class="nm">Videos</div></div>
+        <div class="action"><div class="ico"><svg class="ic lg"><use href="#i-pencil"/></svg></div><div class="nm">Write</div></div>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab active"><svg class="ic sm"><use href="#i-home"/></svg>Home</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-book"/></svg>Read</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-mic"/></svg>Speak</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-cards"/></svg>Cards</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-video"/></svg>Video</button>
+    </nav>
+  </div>
+</body>
+</html>

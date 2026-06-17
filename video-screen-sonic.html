@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magic Read — Video (Sonic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#E5E7EE; --shell:#F4F5F9; --surface:#FFFFFF; --surface-2:#F1F2F8;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490; --yellow:#F5B400; --amber-ink:#B98300;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E5E3EE; --good:#16A34A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);}
+
+  .app{max-width:700px;margin:0 auto;background:var(--shell);min-height:100vh;display:flex;flex-direction:column;}
+  @media (min-width:720px){ .app{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 80px rgba(28,18,51,.07);} }
+  .body{flex:1;display:flex;flex-direction:column;padding:clamp(14px,3.5vw,24px) clamp(14px,3.5vw,28px) 0;}
+  .ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .ic.sm{width:18px;height:18px;} .ic.lg{width:28px;height:28px;}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 12px;gap:10px;}
+  .iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none;}
+  .appbar .ttl b{font-weight:800;font-size:16px;}
+  .freechip{font-size:11px;font-weight:700;color:var(--cyan-ink);background:rgba(10,180,214,.12);border:1px solid rgba(10,180,214,.3);padding:5px 11px;border-radius:999px;}
+
+  /* url bar */
+  .urlbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:10px 12px;margin-bottom:14px;}
+  .urlbar .yt{width:30px;height:30px;border-radius:8px;background:#FF0000;display:grid;place-items:center;color:#fff;flex:none;}
+  .urlbar input{flex:1;border:none;background:none;font-family:inherit;font-size:13px;color:var(--text);outline:none;min-width:0;}
+  .urlbar input::placeholder{color:var(--text-dim);}
+  .urlbar .go{font-size:13px;font-weight:700;color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));border:none;border-radius:9px;padding:8px 14px;cursor:pointer;font-family:inherit;}
+
+  /* player */
+  .player{position:relative;border-radius:18px;overflow:hidden;background:#160B2C;aspect-ratio:16/9;display:grid;place-items:center;}
+  .player .meta{position:absolute;left:14px;bottom:12px;right:14px;}
+  .player .meta .t{color:#fff;font-weight:700;font-size:14px;text-shadow:0 1px 6px rgba(0,0,0,.5);}
+  .player .meta .c{color:rgba(255,255,255,.75);font-size:12px;}
+  .playbtn{width:64px;height:64px;border-radius:50%;background:rgba(229,38,126,.95);display:grid;place-items:center;color:#fff;box-shadow:0 10px 30px -8px rgba(229,38,126,.7);cursor:pointer;}
+
+  /* transport controls */
+  .transport{display:flex;align-items:center;gap:12px;padding:14px 4px 6px;}
+  .tbtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none;position:relative;}
+  .tbtn.play{width:50px;height:50px;border:none;color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));}
+  .tbtn.on{background:rgba(10,180,214,.12);border-color:rgba(10,180,214,.5);color:var(--cyan-ink);}
+  .tbtn .num{position:absolute;font-size:9px;font-weight:800;bottom:6px;}
+  .scrub{flex:1;display:flex;align-items:center;gap:9px;}
+  .scrub .track{flex:1;height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;}
+  .scrub .track i{display:block;height:100%;width:34%;background:linear-gradient(90deg,var(--primary),var(--primary-soft));}
+  .scrub .time{font-size:11px;color:var(--text-soft);font-variant-numeric:tabular-nums;}
+
+  /* captions */
+  .capwrap{margin-top:8px;display:flex;flex-direction:column;gap:10px;padding-bottom:8px;}
+  .line{border:1px solid var(--border);background:var(--surface);border-radius:16px;padding:14px 16px;}
+  .line.past{opacity:.5;}
+  .line.current{border-color:rgba(229,38,126,.4);box-shadow:0 0 0 3px rgba(229,38,126,.07);}
+  .han{font-family:'Noto Sans SC',sans-serif;line-height:2;font-size:21px;font-weight:600;}
+  .ruby{display:inline-flex;flex-direction:column;align-items:center;vertical-align:bottom;margin:0 1px;cursor:pointer;border-radius:5px;}
+  .ruby small{font-family:'Inter';font-size:10px;color:var(--text-dim);font-weight:600;line-height:1;margin-bottom:2px;}
+  .ruby.sel{background:rgba(10,180,214,.16);}
+  .ruby.sel .zh{color:var(--cyan-ink);}
+  .tr{font-size:14px;color:var(--text-soft);margin-top:6px;line-height:1.5;}
+  .lineacts{display:flex;gap:8px;margin-top:12px;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:11px;border:1px solid var(--border);background:var(--surface);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;}
+  .pill.speak{border:none;color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));}
+
+  .popover{margin-top:12px;background:var(--surface-2);border:1px solid rgba(10,180,214,.4);border-radius:14px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .popover .w{font-family:'Noto Sans SC';font-size:20px;font-weight:700;color:var(--cyan-ink);}
+  .popover .py{font-size:12px;color:var(--text-soft);}
+  .savebtn{flex:none;width:40px;height:40px;border-radius:12px;border:1px solid rgba(245,180,0,.5);background:rgba(245,180,0,.14);color:var(--amber-ink);display:grid;place-items:center;cursor:pointer;}
+
+  .tabbar{position:sticky;bottom:0;display:flex;justify-content:space-around;align-items:center;padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(244,245,249,.92);backdrop-filter:blur(8px);margin-top:14px;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim);}
+  .tab.active{color:var(--primary);} .tab.active .ic{stroke:var(--primary);}
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M11 7L6 12l5 5"/><path d="M6 12h8a4 4 0 0 1 0 8h-1"/></symbol>
+    <symbol id="i-slow" viewBox="0 0 24 24"><path d="M3.5 15a8.5 5 0 0 1 17 0"/><path d="M3.5 15h17"/><path d="M7 15v3M16 15v3"/><path d="M20.5 15c2 0 3.2-1 3.2-2.2 0-1-1-1.6-2.1-1.3"/><path d="M3.5 15l-1.4 1"/><path d="M8.6 15l1.5-3M12 15v-3.6M15.4 15l-1.5-3"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  </svg>
+
+  <div class="app">
+    <div class="body">
+      <div class="appbar">
+        <button class="iconbtn"><svg class="ic"><use href="#i-left"/></svg></button>
+        <div class="ttl"><b>Video</b></div>
+        <span class="freechip">1 free video left</span>
+      </div>
+
+      <div class="urlbar">
+        <span class="yt"><svg class="ic sm" style="stroke:#fff"><use href="#i-play"/></svg></span>
+        <input value="youtube.com/watch?v=… (老舍 interview)" />
+        <button class="go">Load</button>
+      </div>
+
+      <div class="player">
+        <div class="playbtn"><svg class="ic lg" style="stroke:#fff"><use href="#i-play"/></svg></div>
+        <div class="meta">
+          <div class="t">老舍：人民艺术家 · 纪录片节选</div>
+          <div class="c">Chinese Culture Channel</div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button class="tbtn"><svg class="ic"><use href="#i-back"/></svg><span class="num">5</span></button>
+        <button class="tbtn play"><svg class="ic"><use href="#i-pause"/></svg></button>
+        <button class="tbtn on"><span style="font-size:17px;line-height:1;">🐢</span></button>
+        <div class="scrub"><div class="track"><i></i></div><span class="time">1:08 / 3:14</span></div>
+      </div>
+
+      <div class="capwrap">
+        <div class="line past">
+          <div class="han">他<span>从小</span>家里很穷。</div>
+          <div class="tr">He grew up in a poor family.</div>
+        </div>
+
+        <div class="line current">
+          <div class="han">
+            <span class="ruby"><small>Lǎoshě</small><span class="zh">老舍</span></span><span class="ruby"><small>shì</small><span class="zh">是</span></span><span class="ruby sel"><small>zhōngguó</small><span class="zh">中国</span></span><span class="ruby"><small>zuì</small><span class="zh">最</span></span><span class="ruby"><small>wěidà</small><span class="zh">伟大</span></span><span class="ruby"><small>de</small><span class="zh">的</span></span><span class="ruby"><small>zuòjiā</small><span class="zh">作家</span></span>。
+          </div>
+          <div class="tr">Lao She is one of China's greatest writers.</div>
+
+          <div class="popover">
+            <div><div class="w">中国</div><div class="py">zhōngguó</div></div>
+            <div style="text-align:right;flex:1;font-size:15px;font-weight:700;">China<div class="py" style="font-weight:500;">noun · place</div></div>
+            <button class="savebtn"><svg class="ic sm"><use href="#i-plus"/></svg></button>
+          </div>
+
+          <div class="lineacts">
+            <button class="pill"><svg class="ic sm"><use href="#i-vol"/></svg> Listen</button>
+            <button class="pill speak"><svg class="ic sm" style="stroke:#fff"><use href="#i-mic"/></svg> Speak this line</button>
+          </div>
+        </div>
+
+        <div class="line past">
+          <div class="han">他的<span>小说</span>被翻译成很多语言。</div>
+          <div class="tr">His novels have been translated into many languages.</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab"><svg class="ic sm"><use href="#i-home"/></svg>Home</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-book"/></svg>Read</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-mic"/></svg>Speak</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-cards"/></svg>Cards</button>
+      <button class="tab active"><svg class="ic sm"><use href="#i-video"/></svg>Video</button>
+    </nav>
+  </div>
+</body>
+</html>

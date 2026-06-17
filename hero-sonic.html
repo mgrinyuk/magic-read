@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magic Read — landing hero (Sonic, light)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#EEF0F5; --surface:#FFFFFF; --surface-2:#F1F2F8;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490; --yellow:#F5B400;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E4E2EC;
+    --good:#16A34A; --close:#D97706; --retry:#E11D48;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;
+    background:
+      radial-gradient(900px 480px at 82% 10%, rgba(10,180,214,.10), transparent 60%),
+      radial-gradient(820px 540px at 8% 92%, rgba(229,38,126,.10), transparent 60%),
+      var(--bg);
+  }
+  .wrap{max-width:1140px;margin:0 auto;padding:26px 32px 80px;}
+
+  nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:70px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px;letter-spacing:-.01em;}
+  .brand .mark{width:30px;height:30px;border-radius:9px;background:var(--primary);display:grid;place-items:center;}
+  .brand .mark span{width:13px;height:13px;border-radius:50%;border:2.5px solid #fff;border-right-color:transparent;border-bottom-color:transparent;transform:rotate(45deg);}
+  .brand .lite{color:var(--cyan-ink);font-style:italic;font-weight:600;font-size:14px;}
+  .nav-links{display:flex;align-items:center;gap:28px;font-size:14px;color:var(--text-soft);}
+  .nav-links a{color:inherit;text-decoration:none;}
+  .nav-links a:hover{color:var(--text);}
+  .nav-cta{padding:9px 18px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;}
+
+  .hero{display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center;}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--cyan-ink);
+    background:rgba(10,180,214,.10);border:1px solid rgba(10,180,214,.30);padding:6px 13px;border-radius:999px;margin-bottom:22px;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);}
+
+  h1{font-size:54px;line-height:1.04;font-weight:800;letter-spacing:-.025em;margin-bottom:20px;}
+  h1 .grad{background:linear-gradient(90deg,var(--primary),var(--cyan-ink));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{font-size:18px;line-height:1.6;color:var(--text-soft);max-width:480px;margin-bottom:32px;}
+
+  .cta-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:26px;}
+  .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border:none;border-radius:13px;cursor:pointer;
+    font-family:inherit;font-weight:700;font-size:16px;color:#fff;
+    background:linear-gradient(95deg,var(--primary),var(--primary-soft));box-shadow:0 12px 30px -10px rgba(229,38,126,.55);}
+  .btn-primary:hover{transform:translateY(-1px);}
+  .btn-ghost{display:inline-flex;align-items:center;gap:9px;padding:15px 22px;border:1px solid var(--border);border-radius:13px;
+    background:var(--surface);color:var(--text);font-family:inherit;font-weight:600;font-size:16px;cursor:pointer;}
+  .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan-ink);}
+  .play-tri{width:0;height:0;border-style:solid;border-width:6px 0 6px 10px;border-color:transparent transparent transparent currentColor;}
+
+  .langs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text-soft);}
+  .langs .chip{padding:5px 11px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-weight:500;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:24px;
+    box-shadow:0 40px 80px -34px rgba(28,18,51,.28);position:relative;}
+  .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  .card-top .label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-soft);}
+  .ring{display:flex;align-items:center;gap:10px;}
+  .ring .score{font-size:15px;font-weight:700;color:var(--cyan-ink);}
+  .ring .circle{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--cyan) 0 79%, var(--surface-2) 79% 100%);}
+  .ring .circle span{width:32px;height:32px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--cyan-ink);}
+
+  .sentence{font-family:'Noto Sans SC',sans-serif;font-size:40px;font-weight:700;line-height:1.5;letter-spacing:.02em;margin-bottom:6px;}
+  .sentence .w{border-bottom:3px solid transparent;padding-bottom:1px;}
+  .sentence .good{color:var(--good);border-color:rgba(22,163,74,.4);}
+  .sentence .close{color:var(--close);border-color:rgba(217,119,6,.45);}
+  .sentence .retry{color:var(--retry);border-color:rgba(225,29,72,.5);}
+  .pinyin{font-size:14px;color:var(--text-soft);margin-bottom:20px;}
+
+  .player{display:flex;align-items:center;gap:14px;background:var(--surface-2);border-radius:14px;padding:13px 16px;margin-bottom:18px;}
+  .mic{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;border:none;cursor:pointer;
+    background:linear-gradient(95deg,var(--primary),var(--primary-soft));box-shadow:0 0 0 6px rgba(229,38,126,.14);}
+  .mic::after{content:"";width:13px;height:19px;border-radius:7px;background:#fff;box-shadow:0 11px 0 -6px #fff;}
+  .wave{flex:1;display:flex;align-items:center;gap:3px;height:34px;}
+  .wave i{flex:1;border-radius:3px;background:var(--cyan);opacity:.9;}
+  .player .time{font-size:12px;color:var(--text-soft);font-variant-numeric:tabular-nums;}
+
+  .breakdown{display:flex;flex-direction:column;gap:9px;}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface-2);border-radius:11px;padding:11px 14px;}
+  .row .ww{font-family:'Noto Sans SC',sans-serif;font-size:18px;font-weight:700;}
+  .row .py{font-size:13px;color:var(--text-soft);margin-left:8px;font-family:'Inter';font-weight:500;}
+  .pill{font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;}
+  .pill.good{color:var(--good);background:rgba(22,163,74,.12);}
+  .pill.close{color:var(--close);background:rgba(217,119,6,.12);}
+  .pill.retry{color:var(--retry);background:rgba(225,29,72,.12);}
+
+  @media (max-width:880px){
+    .hero{grid-template-columns:1fr;gap:40px;}
+    h1{font-size:40px;}
+    .nav-links{display:none;}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand"><span class="mark"><span></span></span> Magic Read <span class="lite">lite</span></div>
+      <div class="nav-links">
+        <a href="#">How it works</a>
+        <a href="#">Languages</a>
+        <a href="#">For teachers</a>
+        <a href="#">Pricing</a>
+      </div>
+      <button class="nav-cta">Sign in</button>
+    </nav>
+
+    <section class="hero">
+      <div class="copy">
+        <span class="eyebrow"><span class="dot"></span> Pronunciation scoring powered by Azure AI</span>
+        <h1>Laser-focus on<br/>your <span class="grad">pronunciation.</span></h1>
+        <p class="sub">Paste any foreign text, listen sentence by sentence, then speak it aloud. Get instant word-by-word pronunciation scores on the texts you actually want to read.</p>
+        <div class="cta-row">
+          <button class="btn-primary">Start speaking — it's free</button>
+          <button class="btn-ghost"><span class="play-tri"></span> Hear a demo</button>
+        </div>
+        <div class="langs">
+          <span>8 languages:</span>
+          <span class="chip">中文</span><span class="chip">Русский</span><span class="chip">日本語</span>
+          <span class="chip">English</span><span class="chip">+4</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <span class="label">Your reading · sentence 3 of 12</span>
+          <div class="ring">
+            <span class="score">Overall 79</span>
+            <div class="circle"><span>79</span></div>
+          </div>
+        </div>
+
+        <div class="sentence">
+          <span class="w good">我</span><span class="w good">喜欢</span><span class="w close">学习</span><span class="w retry">中文</span>
+        </div>
+        <div class="pinyin">wǒ&nbsp;&nbsp;xǐhuān&nbsp;&nbsp;xuéxí&nbsp;&nbsp;zhōngwén — "I like learning Chinese"</div>
+
+        <div class="player">
+          <button class="mic" aria-label="Record"></button>
+          <div class="wave">
+            <i style="height:30%"></i><i style="height:55%"></i><i style="height:80%"></i><i style="height:45%"></i>
+            <i style="height:95%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:70%"></i>
+            <i style="height:90%"></i><i style="height:50%"></i><i style="height:25%"></i><i style="height:65%"></i>
+            <i style="height:85%"></i><i style="height:40%"></i><i style="height:55%"></i><i style="height:30%"></i>
+            <i style="height:75%"></i><i style="height:45%"></i>
+          </div>
+          <span class="time">0:04</span>
+        </div>
+
+        <div class="breakdown">
+          <div class="row"><div><span class="ww" style="color:var(--good)">我</span><span class="py">wǒ</span></div><span class="pill good">96 · great</span></div>
+          <div class="row"><div><span class="ww" style="color:var(--good)">喜欢</span><span class="py">xǐhuān</span></div><span class="pill good">91 · great</span></div>
+          <div class="row"><div><span class="ww" style="color:var(--close)">学习</span><span class="py">xuéxí</span></div><span class="pill close">74 · tone 2 flat</span></div>
+          <div class="row"><div><span class="ww" style="color:var(--retry)">中文</span><span class="py">zhōngwén</span></div><span class="pill retry">52 · retry</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

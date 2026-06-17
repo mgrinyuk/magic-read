@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magic Read — app (Sonic, responsive)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#E5E7EE; --shell:#F4F5F9; --surface:#FFFFFF; --surface-2:#F1F2F8;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490; --yellow:#F5B400;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E5E3EE;
+    --good:#16A34A; --close:#D97706; --retry:#E11D48;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);}
+
+  /* demo screen picker (not part of the app) */
+  .picker{position:sticky;top:0;z-index:50;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
+    padding:12px;background:rgba(229,231,238,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);}
+  .picker button{font-family:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px;border:1px solid var(--border);
+    background:#fff;color:var(--text-soft);cursor:pointer;}
+  .picker button.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+  /* responsive app shell: max 700, centered on desktop, full-bleed on mobile */
+  .app{max-width:700px;margin:0 auto;background:var(--shell);min-height:calc(100vh - 49px);
+    display:flex;flex-direction:column;}
+  @media (min-width:720px){ .app{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 80px rgba(28,18,51,.07);} }
+
+  .body{flex:1;display:flex;flex-direction:column;padding:clamp(18px,4vw,30px) clamp(16px,4vw,32px) 0;}
+  .screen{display:none;flex:1;flex-direction:column;}
+  .screen.show{display:flex;}
+  .ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .ic.sm{width:18px;height:18px;} .ic.lg{width:28px;height:28px;}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 18px;}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;}
+  .brand .mark{width:28px;height:28px;border-radius:9px;background:var(--primary);display:grid;place-items:center;}
+  .brand .mark span{width:11px;height:11px;border-radius:50%;border:2.5px solid #fff;border-right-color:transparent;border-bottom-color:transparent;transform:rotate(45deg);}
+  .brand .lite{color:var(--cyan-ink);font-style:italic;font-weight:600;font-size:13px;}
+  .iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none;}
+
+  /* bottom tab bar — also constrained to shell width */
+  .tabbar{position:sticky;bottom:0;display:flex;justify-content:space-around;align-items:center;
+    padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(244,245,249,.92);backdrop-filter:blur(8px);}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim);cursor:pointer;background:none;border:none;font-family:inherit;}
+  .tab.active{color:var(--primary);} .tab.active .ic{stroke:var(--primary);}
+
+  .title{font-size:clamp(22px,5vw,26px);font-weight:800;letter-spacing:-.02em;}
+  .muted{color:var(--text-soft);}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:11px;border:1px solid var(--border);
+    background:var(--surface);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;}
+  .pill.on{background:rgba(10,180,214,.12);border-color:rgba(10,180,214,.5);color:var(--cyan-ink);}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:16px;border:none;border-radius:15px;
+    font-family:inherit;font-weight:700;font-size:16px;cursor:pointer;}
+  .btn-primary{color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));box-shadow:0 12px 26px -12px rgba(229,38,126,.7);}
+  .btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text);}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 14px;}
+  .stat .n{font-size:24px;font-weight:800;letter-spacing:-.02em;}
+  .stat .l{font-size:11px;color:var(--text-soft);font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.03em;}
+  .stat .d{width:8px;height:8px;border-radius:50%;display:inline-block;margin-bottom:9px;}
+
+  .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  .action{border:1px solid var(--border);background:var(--surface);border-radius:18px;padding:20px 18px;display:flex;flex-direction:column;gap:14px;cursor:pointer;}
+  .action .ico{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:var(--surface-2);color:var(--cyan-ink);}
+  .action .nm{font-weight:700;font-size:16px;}
+  .action .ds{font-size:12px;color:var(--text-soft);}
+  .action.feat{grid-column:1/-1;background:linear-gradient(100deg,rgba(229,38,126,.10),rgba(10,180,214,.10));border-color:rgba(229,38,126,.35);flex-direction:row;align-items:center;}
+  .action.feat .ico{background:linear-gradient(95deg,var(--primary),var(--primary-soft));color:#fff;}
+
+  .reader{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:clamp(18px,3vw,26px);}
+  .han{font-family:'Noto Sans SC',sans-serif;line-height:2.15;font-size:clamp(20px,4.4vw,24px);font-weight:500;}
+  .ruby{display:inline-flex;flex-direction:column;align-items:center;vertical-align:bottom;margin:0 1px;}
+  .ruby small{font-family:'Inter';font-size:10px;color:var(--text-dim);font-weight:600;line-height:1;margin-bottom:2px;}
+  .hl{background:rgba(10,180,214,.16);border-radius:5px;padding:1px 2px;color:var(--cyan-ink);}
+  .popover{margin-top:16px;background:var(--surface-2);border:1px solid rgba(10,180,214,.4);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .popover .w{font-family:'Noto Sans SC';font-size:21px;font-weight:700;color:var(--cyan-ink);}
+  .popover .py{font-size:12px;color:var(--text-soft);}
+  .savebtn{flex:none;width:42px;height:42px;border-radius:12px;border:1px solid rgba(245,180,0,.5);background:rgba(245,180,0,.14);color:#B98300;display:grid;place-items:center;cursor:pointer;}
+
+  .scorecard{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:clamp(18px,3vw,24px);}
+  .han-score{font-family:'Noto Sans SC';font-size:clamp(26px,6vw,34px);font-weight:700;line-height:1.85;}
+  .han-score .good{color:var(--good);}
+  .han-score .close{color:var(--close);border-bottom:2px solid rgba(217,119,6,.5);}
+  .han-score .retry{color:var(--retry);border-bottom:2px solid rgba(225,29,72,.55);}
+  .ring{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;flex:none;background:conic-gradient(var(--cyan) 0 75%, var(--surface-2) 75% 100%);}
+  .ring span{width:46px;height:46px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:16px;font-weight:800;color:var(--cyan-ink);}
+  .progress{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;}
+  .progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--primary-soft));}
+  .repeat{background:var(--surface-2);border:1px dashed var(--border);border-radius:18px;padding:22px;text-align:center;}
+  .repeat .lbl{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft);}
+  .repeat .big{font-family:'Noto Sans SC';font-size:clamp(44px,10vw,56px);font-weight:700;color:var(--close);margin-top:8px;letter-spacing:.05em;}
+  .mic{width:80px;height:80px;border-radius:50%;flex:none;display:grid;place-items:center;border:none;cursor:pointer;color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));box-shadow:0 0 0 9px rgba(229,38,126,.12),0 16px 30px -10px rgba(229,38,126,.7);}
+
+  .flash{background:linear-gradient(160deg,#fff,var(--surface-2));border:1px solid var(--border);border-radius:24px;padding:clamp(34px,7vw,52px) 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;flex:1;justify-content:center;}
+  .flash .word{font-family:'Noto Sans SC';font-size:clamp(64px,16vw,88px);font-weight:700;letter-spacing:.04em;}
+  .flash .py{font-size:20px;color:var(--cyan-ink);font-weight:700;}
+  .flash .ex{font-family:'Noto Sans SC';font-size:16px;color:var(--text-soft);line-height:1.7;max-width:280px;}
+  .flash .flip{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px;}
+  .reviewbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .rb{padding:15px 8px;border-radius:14px;border:1px solid var(--border);background:var(--surface);font-weight:700;font-size:15px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;}
+  .rb small{font-size:10px;font-weight:600;color:var(--text-dim);}
+  .rb.again{color:var(--retry);border-color:rgba(225,29,72,.35);}
+  .rb.good{color:var(--close);border-color:rgba(217,119,6,.35);}
+  .rb.easy{color:var(--good);border-color:rgba(22,163,74,.35);}
+
+  .selrow{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:16px 18px;cursor:pointer;}
+  .selrow .k{font-size:13px;color:var(--text-soft);font-weight:600;}
+  .selrow .v{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;}
+  .demo-chip{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;text-align:center;}
+  .onb-wrap{max-width:440px;margin:0 auto;width:100%;}
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v14"/><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19l-4 1z"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c3 4 .5 5.5 1.5 8 .8-1 .5-2.5.5-2.5C17 11 18 13 18 15a6 6 0 0 1-12 0c0-3 2.5-4.5 3-7 .4 1.8 1.5 2 3 3 .5-2-1-4 0-8z"/></symbol>
+    <symbol id="i-slow" viewBox="0 0 24 24"><path d="M3.5 15a8.5 5 0 0 1 17 0"/><path d="M3.5 15h17"/><path d="M7 15v3M16 15v3"/><path d="M20.5 15c2 0 3.2-1 3.2-2.2 0-1-1-1.6-2.1-1.3"/><path d="M3.5 15l-1.4 1"/><path d="M8.6 15l1.5-3M12 15v-3.6M15.4 15l-1.5-3"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  </svg>
+
+  <div class="picker">
+    <button data-go="onboarding" class="active">Onboarding</button>
+    <button data-go="home">Home</button>
+    <button data-go="read">Reading</button>
+    <button data-go="speak">Speaking</button>
+    <button data-go="cards">Flashcards</button>
+  </div>
+
+  <div class="app">
+    <div class="body">
+
+      <!-- ONBOARDING -->
+      <section class="screen show" id="onboarding">
+        <div class="onb-wrap">
+          <div style="display:flex;justify-content:center;margin:14px 0 26px;">
+            <div class="brand" style="font-size:20px;"><span class="mark"><span></span></span> Magic Read <span class="lite">lite</span></div>
+          </div>
+          <div style="text-align:center;margin-bottom:26px;">
+            <h1 class="title" style="font-size:30px;line-height:1.18;">Speak the texts<br/>that matter to you</h1>
+            <p class="muted" style="font-size:15px;margin-top:12px;line-height:1.55;">Paste anything. Listen, repeat, and get word-by-word pronunciation scores.</p>
+          </div>
+          <div class="demo-chip" style="margin-bottom:28px;">
+            <div class="han" style="font-size:26px;font-weight:700;"><span style="color:var(--good)">我</span><span style="color:var(--good)">喜欢</span><span style="color:var(--close)">学习</span><span style="color:var(--retry)">中文</span></div>
+            <div style="font-size:12px;color:var(--text-soft);margin-top:8px;">tap a word to hear it scored</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+            <div class="selrow"><span class="k">I speak</span><span class="v"><svg class="ic sm"><use href="#i-globe"/></svg> English <svg class="ic sm"><use href="#i-chev"/></svg></span></div>
+            <div class="selrow"><span class="k">I learn</span><span class="v">中文 Chinese <svg class="ic sm"><use href="#i-chev"/></svg></span></div>
+          </div>
+          <p class="muted" style="font-size:12px;text-align:center;margin-bottom:20px;">You can change these later in settings.</p>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn btn-primary" data-go="home">Get started</button>
+            <button class="btn btn-ghost" style="font-weight:600;font-size:14px;" data-go="home">I already have an account</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOME -->
+      <section class="screen" id="home">
+        <div class="appbar">
+          <div class="brand"><span class="mark"><span></span></span> Magic Read <span class="lite">lite</span></div>
+          <button class="iconbtn"><svg class="ic"><use href="#i-menu"/></svg></button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+          <div style="width:54px;height:54px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--cyan-ink);"><svg class="ic"><use href="#i-user"/></svg></div>
+          <div>
+            <div style="font-size:21px;font-weight:800;">Hello, Maria</div>
+            <div style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#B98300;margin-top:2px;"><svg class="ic sm" style="stroke:#B98300"><use href="#i-flame"/></svg> 5-day streak</div>
+          </div>
+        </div>
+        <div class="stats" style="margin-bottom:20px;">
+          <div class="stat"><span class="d" style="background:var(--cyan)"></span><div class="n">482</div><div class="l">Spoken</div></div>
+          <div class="stat"><span class="d" style="background:var(--primary)"></span><div class="n">1.2k</div><div class="l">Read</div></div>
+          <div class="stat"><span class="d" style="background:var(--yellow)"></span><div class="n">96</div><div class="l">Saved</div></div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-soft);margin:4px 2px 14px;">What do you want to do?</div>
+        <div class="actions">
+          <div class="action feat" data-go="speak">
+            <div class="ico"><svg class="ic lg"><use href="#i-mic"/></svg></div>
+            <div><div class="nm">Speak</div><div class="ds">Score your pronunciation on any text</div></div>
+          </div>
+          <div class="action" data-go="read"><div class="ico"><svg class="ic lg"><use href="#i-book"/></svg></div><div class="nm">Read</div></div>
+          <div class="action" data-go="cards"><div class="ico"><svg class="ic lg"><use href="#i-cards"/></svg></div><div class="nm">Cards</div></div>
+          <div class="action"><div class="ico"><svg class="ic lg"><use href="#i-video"/></svg></div><div class="nm">Videos</div></div>
+          <div class="action"><div class="ico"><svg class="ic lg"><use href="#i-pencil"/></svg></div><div class="nm">Write</div></div>
+        </div>
+      </section>
+
+      <!-- READING -->
+      <section class="screen" id="read">
+        <div class="appbar">
+          <button class="iconbtn" data-go="home"><svg class="ic"><use href="#i-left"/></svg></button>
+          <div style="text-align:center;"><div style="font-weight:800;font-size:16px;">Reading</div><div style="font-size:11px;color:var(--text-soft);">老舍 · 茶馆</div></div>
+          <div class="pill on" style="padding:7px 12px;">A2</div>
+        </div>
+        <div class="toolbar" style="margin-bottom:16px;">
+          <button class="pill on"><svg class="ic sm"><use href="#i-play"/></svg> Listen</button>
+          <button class="pill"><span style="font-size:16px;line-height:1;vertical-align:-2px;">🐢</span> Slow</button>
+          <button class="pill">Pinyin</button>
+          <button class="pill">Translate</button>
+        </div>
+        <div class="reader">
+          <div class="han">
+            <span class="ruby"><small>Lǎoshě</small>老舍</span>不但在<span class="hl">中国</span>人人知道，而且在我们国家也很有名。他的小说《<span class="ruby"><small>luòtuó</small>骆驼</span>祥子》已经被翻译成俄文，我来中国以前就看过。
+          </div>
+          <div class="popover">
+            <div><div class="w">中国</div><div class="py">zhōngguó</div></div>
+            <div style="text-align:right;flex:1;font-size:15px;font-weight:700;">China<div class="py" style="font-weight:500;">noun · place</div></div>
+            <button class="savebtn"><svg class="ic sm"><use href="#i-plus"/></svg></button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:18px;">
+          <span style="font-size:12px;color:var(--text-soft);">Sentence 1 / 8</span>
+          <div class="progress" style="flex:1;"><i style="width:13%"></i></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:18px;" data-go="speak"><svg class="ic"><use href="#i-mic"/></svg> Practice speaking this</button>
+      </section>
+
+      <!-- SPEAKING -->
+      <section class="screen" id="speak">
+        <div class="appbar">
+          <button class="iconbtn" data-go="read"><svg class="ic"><use href="#i-left"/></svg></button>
+          <div style="text-align:center;"><div style="font-weight:800;font-size:16px;">Speaking</div><div style="font-size:11px;color:var(--text-soft);">Sentence 3 of 12</div></div>
+          <button class="iconbtn"><svg class="ic"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="progress" style="margin-bottom:18px;"><i style="width:42%"></i></div>
+        <div class="toolbar" style="margin-bottom:16px;">
+          <button class="pill"><span style="font-size:16px;line-height:1;vertical-align:-2px;">🐢</span> Slow</button>
+          <button class="pill">Pinyin</button>
+          <button class="pill">Translate</button>
+        </div>
+        <div class="scorecard">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">
+            <div class="han-score" style="flex:1;"><span class="good">我</span><span class="good">喜欢</span><span class="close">学习</span><span class="retry">中文</span></div>
+            <div class="ring"><span>75</span></div>
+          </div>
+          <div style="font-size:13px;color:var(--text-soft);margin-top:10px;">wǒ xǐhuān xuéxí zhōngwén</div>
+        </div>
+        <div class="repeat" style="margin-top:18px;">
+          <div class="lbl">Repeat this word</div>
+          <div class="big">学习</div>
+          <div style="font-size:14px;color:var(--text-soft);margin-top:6px;">xuéxí · tone 2 was flat</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:28px;margin-top:auto;padding:24px 0 10px;">
+          <button class="pill" style="padding:15px 20px;"><svg class="ic"><use href="#i-vol"/></svg> Listen</button>
+          <button class="mic"><svg class="ic lg"><use href="#i-mic"/></svg></button>
+          <button class="pill" style="padding:15px 20px;">Skip <svg class="ic sm"><use href="#i-right"/></svg></button>
+        </div>
+      </section>
+
+      <!-- FLASHCARDS -->
+      <section class="screen" id="cards">
+        <div class="appbar">
+          <button class="iconbtn" data-go="home"><svg class="ic"><use href="#i-left"/></svg></button>
+          <div style="text-align:center;"><div style="font-weight:800;font-size:16px;">Flashcards</div><div style="font-size:11px;color:var(--text-soft);">Saved words</div></div>
+          <div class="pill" style="padding:7px 12px;">7 / 20</div>
+        </div>
+        <div class="progress" style="margin-bottom:20px;"><i style="width:35%"></i></div>
+        <div class="flash">
+          <div class="word">中国</div>
+          <button class="pill" style="padding:10px 15px;"><svg class="ic sm"><use href="#i-vol"/></svg> Play</button>
+          <div class="py">zhōngguó</div>
+          <div class="ex">他来<span style="color:var(--cyan-ink)">中国</span>以前就看过。</div>
+          <div class="flip"><svg class="ic sm"><use href="#i-cards"/></svg> tap card to flip</div>
+        </div>
+        <div style="padding:20px 0 8px;">
+          <div style="font-size:12px;color:var(--text-soft);text-align:center;margin-bottom:12px;">How well did you know it?</div>
+          <div class="reviewbtns">
+            <button class="rb again">Again<small>&lt; 1 min</small></button>
+            <button class="rb good">Good<small>2 days</small></button>
+            <button class="rb easy">Easy<small>6 days</small></button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <nav class="tabbar" id="tabbar">
+      <button class="tab" data-go="home"><svg class="ic sm"><use href="#i-home"/></svg>Home</button>
+      <button class="tab" data-go="read"><svg class="ic sm"><use href="#i-book"/></svg>Read</button>
+      <button class="tab" data-go="speak"><svg class="ic sm"><use href="#i-mic"/></svg>Speak</button>
+      <button class="tab" data-go="cards"><svg class="ic sm"><use href="#i-cards"/></svg>Cards</button>
+      <button class="tab"><svg class="ic sm"><use href="#i-user"/></svg>Profile</button>
+    </nav>
+  </div>
+
+  <script>
+    const tabMap = {home:0, read:1, speak:2, cards:3};
+    function go(id){
+      document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('show', s.id===id));
+      document.querySelectorAll('.picker button').forEach(b=>b.classList.toggle('active', b.dataset.go===id));
+      const tabs = document.querySelectorAll('#tabbar .tab');
+      tabs.forEach(t=>t.classList.remove('active'));
+      if(id in tabMap) tabs[tabMap[id]].classList.add('active');
+      document.getElementById('tabbar').style.display = (id==='onboarding') ? 'none' : 'flex';
+      window.scrollTo(0,0);
+    }
+    document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.go)));
+    go('onboarding');
+  </script>
+</body>
+</html>
