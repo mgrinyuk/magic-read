@@ -1355,15 +1355,10 @@ document.querySelectorAll(".sonic-tab").forEach(tab => {
 ----------------------------- */
 
 const onboardingStepA = document.getElementById("onboarding-step-a");
-const onboardingStepB = document.getElementById("onboarding-step-b");
 const onboardingSourceLangEl = document.getElementById("onboardingSourceLang");
 const onboardingTargetLangEl = document.getElementById("onboardingTargetLang");
-const skillCardWritingEl = document.getElementById("skillCardWriting");
-const routeChoiceTextEl = document.getElementById("routeChoiceText");
 const homeBackBtn = document.getElementById("homeBackBtn");
 
-// Which experience the reader is in: "pronunciation" (cards only) or "reading"
-// (full text + fill-the-gap exercise). Set when a mode is chosen in onboarding.
 let appMode = "pronunciation";
 let pendingMode = "pronunciation";
 
@@ -1386,28 +1381,20 @@ function syncMainToOnboarding() {
   }
 }
 
-function updateWritingSkillCard() {
-  const lang = onboardingSourceLangEl?.value || sourceLangSelect?.value;
-  if (skillCardWritingEl) {
-    skillCardWritingEl.hidden = !["zh", "ja", "ru"].includes(lang);
-  }
-}
-
 function showOnboardingStepA() {
   if (onboardingStepA) onboardingStepA.hidden = false;
-  if (onboardingStepB) onboardingStepB.hidden = true;
+  const trialStep = document.getElementById("onboarding-step-trial");
+  if (trialStep) trialStep.hidden = true;
   sessionStorage.setItem("onboardingStep", "a");
   syncMainToOnboarding();
   showScreen(screenOnboarding);
 }
 
-function showOnboardingStepB() {
+function showOnboardingStepTrial() {
   if (onboardingStepA) onboardingStepA.hidden = true;
-  if (onboardingStepB) onboardingStepB.hidden = false;
-  if (routeChoiceTextEl) routeChoiceTextEl.hidden = true;
-  document.querySelectorAll(".skill-card").forEach(c => c.classList.remove("skill-card-active"));
-  sessionStorage.setItem("onboardingStep", "b");
-  updateWritingSkillCard();
+  const trialStep = document.getElementById("onboarding-step-trial");
+  if (trialStep) trialStep.hidden = false;
+  sessionStorage.setItem("onboardingStep", "trial");
   showScreen(screenOnboarding);
 }
 
@@ -1417,8 +1404,8 @@ function restoreActiveScreen() {
   const target = savedId ? document.getElementById(savedId) : null;
 
   if (!target || savedId === "screen-onboarding") {
-    if (sessionStorage.getItem("onboardingStep") === "b") {
-      showOnboardingStepB();
+    if (sessionStorage.getItem("onboardingStep") === "trial") {
+      showOnboardingStepTrial();
     } else {
       showOnboardingStepA();
     }
@@ -1429,64 +1416,24 @@ function restoreActiveScreen() {
 }
 
 function goHome() {
-  showOnboardingStepB();
+  showScreen(screenMain);
 }
 
 document.getElementById("onboardingContinueBtn")?.addEventListener("click", () => {
   syncOnboardingToMain();
-  showOnboardingStepB();
+  showOnboardingStepTrial();
 });
 
-onboardingSourceLangEl?.addEventListener("change", updateWritingSkillCard);
-
-document.querySelectorAll(".skill-card").forEach(card => {
-  card.addEventListener("click", () => {
-    document.querySelectorAll(".skill-card").forEach(c => c.classList.remove("skill-card-active"));
-    card.classList.add("skill-card-active");
-
-    const mode = card.dataset.mode;
-    if (routeChoiceTextEl) routeChoiceTextEl.hidden = true;
-
-    if (mode === "pronunciation" || mode === "reading") {
-      // Both start from a text; remember which experience to open afterwards.
-      pendingMode = mode;
-      if (routeChoiceTextEl) {
-        routeChoiceTextEl.hidden = false;
-        routeChoiceTextEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    } else if (mode === "flashcards") {
-      showScreen(screenFlashcards);
-      renderDeckSelector();
-      renderFlashcards();
-    } else if (mode === "calligraphy") {
-      showScreen(screenWriting);
-    }
-  });
+document.getElementById("onboardingStartBtn")?.addEventListener("click", () => {
+  showScreen(screenMain);
 });
 
-document.querySelectorAll(".route-choice-card").forEach(card => {
-  card.addEventListener("click", () => {
-    const route = card.dataset.route;
-
-    // Lock in the experience chosen above (pronunciation vs reading).
-    appMode = pendingMode;
-
-    if (route === "own-text") {
-      showScreen(screenMain);
-      applyMode();
-      if (startComposerArea) startComposerArea.hidden = false;
-      if (textLibraryPanel) textLibraryPanel.hidden = true;
-      if (savedTextsPanel) savedTextsPanel.hidden = true;
-    } else if (route === "library") {
-      showScreen(screenMain);
-      applyMode();
-      if (savedTextsPanel) savedTextsPanel.hidden = true;
-      if (textLibraryPanel) {
-        textLibraryPanel.hidden = false;
-        loadTextLibrary();
-      }
-    }
-  });
+// TODO §7: wire Supabase Google / Apple OAuth
+document.getElementById("googleAuthBtn")?.addEventListener("click", () => {
+  showToast("Google sign-in coming soon.", "info");
+});
+document.getElementById("appleAuthBtn")?.addEventListener("click", () => {
+  showToast("Apple sign-in coming soon.", "info");
 });
 
 /* -----------------------------
