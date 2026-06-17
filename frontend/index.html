@@ -440,12 +440,6 @@
                   <div class="flashcard-face flashcard-back">
                     <p id="flashcardWordBack" class="flashcard-word-back"></p>
                     <p id="flashcardTranslation" class="flashcard-translation"></p>
-                    <div class="flashcard-context-block">
-                      <p class="flashcard-label" data-i18n="context">Context</p>
-                      <p id="flashcardSentence" class="flashcard-sentence"></p>
-                      <p id="flashcardSentencePinyin" class="flashcard-pinyin"></p>
-                    </div>
-                    <button id="flashcardPlaySentenceBtn" class="flashcard-play-btn" type="button">🔊</button>
                   </div>
                 </div>
               </div>
@@ -454,6 +448,15 @@
             </div>
 
             <div id="flashcardSpeakingResult" class="flashcard-speaking-result" hidden></div>
+
+            <div id="flashcardSrsReview" class="fc-review" hidden>
+              <p class="fc-review-q">How well do you know it?</p>
+              <div class="fc-review-btns">
+                <button id="srsAgainBtn" class="fc-rb fc-rb-again" type="button">Again<small>&lt; 1 min</small></button>
+                <button id="srsGoodBtn"  class="fc-rb fc-rb-good"  type="button">Good<small>2 days</small></button>
+                <button id="srsEasyBtn"  class="fc-rb fc-rb-easy"  type="button">Easy<small>6 days</small></button>
+              </div>
+            </div>
           </div>
         </section>
       </section>

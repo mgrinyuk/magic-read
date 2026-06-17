@@ -4080,6 +4080,16 @@ function renderDeckSelector() {
   selectEl.value = currentDeckId || "";
 }
 
+function cleanTranslation(str = "") {
+  return String(str)
+    .replace(/\*\*/g, "")
+    .replace(/\[.*?\]/g, "")
+    .replace(/^\s*\d+\.\s*/g, "")
+    .replace(/^[·•\-–—]\s*/g, "")
+    .replace(/^["""'']+|["""'']+$/g, "")
+    .trim();
+}
+
 async function renderFlashcards() {
   const cards = getCurrentCards();
   const deck = getCurrentDeck();
@@ -4091,10 +4101,8 @@ async function renderFlashcards() {
   const wordEl = document.getElementById("flashcardWord");
   const wordPinyinEl = document.getElementById("flashcardWordPinyin");
   const wordBackEl = document.getElementById("flashcardWordBack");
-  const sentenceEl = document.getElementById("flashcardSentence");
-  const sentencePinyinEl = document.getElementById("flashcardSentencePinyin");
   const translationEl = document.getElementById("flashcardTranslation");
-  const contextBlockEl = document.querySelector(".flashcard-context-block");
+  const srsReviewEl = document.getElementById("flashcardSrsReview");
 
   if (!emptyEl || !deckEl || !cardEl) return;
 
@@ -4118,11 +4126,7 @@ async function renderFlashcards() {
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
   if (wordBackEl) wordBackEl.textContent = card.word || "";
-  sentenceEl.textContent = card.sentence || "";
-  sentenceEl.dataset.fullSentence = card.sentence || "";
-  sentencePinyinEl.textContent = card.sentencePinyin || "";
-  translationEl.textContent = card.translation || "";
-  if (contextBlockEl) contextBlockEl.hidden = !card.sentence;
+  if (translationEl) translationEl.textContent = cleanTranslation(card.translation);
 
   flashcardFlipped = false;
   cardEl.classList.remove("is-flipped");
@@ -4142,6 +4146,7 @@ async function renderFlashcards() {
     if (speakHardBtn) speakHardBtn.hidden = true;
     if (speakExitBtn) speakExitBtn.hidden = false;
     if (nextBtn) nextBtn.disabled = !flashcardSpeakingUnlocked;
+    if (srsReviewEl) srsReviewEl.hidden = true;
 
     if (flashcardSpeakingMode === "easy") {
       if (hardTranslEl)  hardTranslEl.hidden = true;
@@ -4171,6 +4176,7 @@ async function renderFlashcards() {
     if (speakPromptEl) speakPromptEl.hidden = true;
     if (hardTranslEl)  hardTranslEl.hidden = true;
     if (nextBtn)       nextBtn.disabled = false;
+    if (srsReviewEl)   srsReviewEl.hidden = false;
   }
 }
 
@@ -4625,24 +4631,14 @@ document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async
   }
 });
 
-document.getElementById("flashcardPlaySentenceBtn")?.addEventListener("click", async (e) => {
-  unlockAudioForMobile();
-  e.stopPropagation();
+// TODO §7: SRS backend fields (ease, interval, due_date) — schedule via /api/srs-review
+function scheduleCard(rating) {
+  goToNextFlashcard();
+}
 
-  const cards = getCurrentCards();
-  if (!cards.length) return;
-
-  const card = cards[currentFlashcardIndex];
-  const sentence = card?.sentence || "";
-  const lang = card?.lang;
-
-  const cleanSentence = await prepareTTSInput(sentence, lang);
-
-  if (cleanSentence) {
-    stopAllTTS();
-    await playGoogleTTS(cleanSentence, lang);
-  }
-});
+document.getElementById("srsAgainBtn")?.addEventListener("click", () => scheduleCard("again"));
+document.getElementById("srsGoodBtn")?.addEventListener("click",  () => scheduleCard("good"));
+document.getElementById("srsEasyBtn")?.addEventListener("click",  () => scheduleCard("easy"));
 
 /* -----------------------------
    CALLIGRAPHY
@@ -4705,7 +4701,6 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
 
 window.addEventListener("DOMContentLoaded", async () => {
   syncMainToOnboarding();
-  updateWritingSkillCard();
   restoreActiveScreen();
   updateLanguageBasedUI();
   updateSlowLabels();
