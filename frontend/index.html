@@ -95,40 +95,77 @@
 
         <div class="landing-hero-copy">
 
-          <p class="eyebrow">Magic Read</p>
+          <span class="hero-eyebrow"><span class="hero-eyebrow-dot"></span> Pronunciation scoring powered by Azure AI</span>
 
-          <h1>Master your pronunciation from real texts</h1>
+          <h1>Laser-focus on<br>your <span class="hero-grad">pronunciation.</span></h1>
 
-          <p>
-            Paste homework, articles, dialogues, or exam texts.
-            Listen sentence by sentence, repeat aloud, and improve pronunciation naturally.
-          </p>
-
-          <p class="hero-support">
-            Works with course books, articles, and classroom materials
+          <p class="landing-hero-copy-sub">
+            Paste any foreign text, listen sentence by sentence, then speak it aloud.
+            Get instant word-by-word pronunciation scores on the texts you actually want to read.
           </p>
 
           <div class="landing-actions">
             <button class="primary-btn" type="button"
               onclick="document.getElementById('screen-main').scrollIntoView({ behavior: 'smooth' })">
-              Try with your text
+              Start speaking — it's free
             </button>
+            <a href="#how-it-works" class="hero-ghost-link">See how it works</a>
+          </div>
 
-            <a href="#how-it-works">See how it works</a>
+          <div class="hero-langs">
+            <span>8 languages:</span>
+            <span class="hero-lang-chip">中文</span>
+            <span class="hero-lang-chip">Русский</span>
+            <span class="hero-lang-chip">日本語</span>
+            <span class="hero-lang-chip">English</span>
+            <span class="hero-lang-chip">+4</span>
           </div>
 
         </div>
 
-        <div class="product-demo-card">
-          <video
-            class="demo-video"
-            autoplay
-            muted
-            loop
-            playsinline
-          >
-            <source src="demo.mp4" type="video/mp4" />
-          </video>
+        <div class="hero-demo-card">
+          <div class="hero-demo-top">
+            <span class="hero-demo-label">Your reading · sentence 3 of 12</span>
+            <div class="hero-demo-score-wrap">
+              <span class="hero-demo-score-n">Overall 79</span>
+              <div class="hero-demo-ring"><span>79</span></div>
+            </div>
+          </div>
+
+          <div class="hero-demo-sentence">
+            <span class="hds-w hds-good">我</span><span class="hds-w hds-good">喜欢</span><span class="hds-w hds-close">学习</span><span class="hds-w hds-retry">中文</span>
+          </div>
+          <div class="hero-demo-pinyin">wǒ &nbsp; xǐhuān &nbsp; xuéxí &nbsp; zhōngwén — "I like learning Chinese"</div>
+
+          <div class="hero-demo-player">
+            <div class="hero-mic" aria-hidden="true"></div>
+            <div class="hero-wave" aria-hidden="true">
+              <i style="height:30%"></i><i style="height:55%"></i><i style="height:80%"></i><i style="height:45%"></i>
+              <i style="height:95%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:70%"></i>
+              <i style="height:90%"></i><i style="height:50%"></i><i style="height:25%"></i><i style="height:65%"></i>
+              <i style="height:85%"></i><i style="height:40%"></i><i style="height:55%"></i><i style="height:30%"></i>
+            </div>
+            <span class="hero-demo-time">0:04</span>
+          </div>
+
+          <div class="hero-demo-rows">
+            <div class="hero-demo-row">
+              <div><span class="hero-demo-word" style="color:var(--good)">我</span><span class="hero-demo-py">wǒ</span></div>
+              <span class="hero-demo-pill hdp-good">96 · great</span>
+            </div>
+            <div class="hero-demo-row">
+              <div><span class="hero-demo-word" style="color:var(--good)">喜欢</span><span class="hero-demo-py">xǐhuān</span></div>
+              <span class="hero-demo-pill hdp-good">91 · great</span>
+            </div>
+            <div class="hero-demo-row">
+              <div><span class="hero-demo-word" style="color:var(--close)">学习</span><span class="hero-demo-py">xuéxí</span></div>
+              <span class="hero-demo-pill hdp-close">74 · tone 2 flat</span>
+            </div>
+            <div class="hero-demo-row">
+              <div><span class="hero-demo-word" style="color:var(--retry)">中文</span><span class="hero-demo-py">zhōngwén</span></div>
+              <span class="hero-demo-pill hdp-retry">52 · retry</span>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -471,24 +508,22 @@
       </section>
 
       <section id="screen-writing" class="app-screen">
-        <section class="workspace-card">
-          <button id="backToReaderBtnWriting" class="ghost-btn home-back-btn" type="button">← Home</button>
-          <div class="workspace-head">
-            <div>
-              <p class="eyebrow" data-i18n="calligraphy">Calligraphy</p>
-              <h3 data-i18n="calligraphy">Calligraphy</h3>
-              <p class="subtle" data-i18n="calligraphyHint">Chinese and Russian only</p>
-            </div>
-          </div>
-
+        <div class="acct-appbar">
+          <button id="backToReaderBtnWriting" type="button" class="acct-iconbtn" aria-label="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+          </button>
+          <span class="acct-appbar-title">Write</span>
+          <span style="width:40px"></span>
+        </div>
+        <div class="write-card">
+          <p class="write-eyebrow">Calligraphy worksheet</p>
+          <p class="write-hint" data-i18n="calligraphyHint">Chinese and Russian only</p>
           <textarea id="writingInput" data-i18n-placeholder="writingPlaceholder" placeholder="Paste characters or words"></textarea>
-
           <div class="action-group">
             <button id="createWritingSheetBtn" type="button" class="primary-btn" data-i18n="createSheet">Create sheet</button>
           </div>
-
           <div id="writingResult" class="translation-box panel-box"></div>
-        </section>
+        </div>
       </section>
 
       <section id="screen-account" class="app-screen">
@@ -581,33 +616,33 @@
     <div class="site-container">
       <div class="landing-section-head">
         <p class="eyebrow">How it works</p>
-        <h2>From text to practice in seconds</h2>
+        <h2>From text to fluency in minutes</h2>
         <p>No course setup. No lesson planning. Just paste a text and begin.</p>
       </div>
 
       <div class="how-grid">
         <div class="how-card">
           <div class="how-number">1</div>
-          <h3>Paste or choose a text</h3>
-          <p>Use articles, dialogues, lessons, or classroom materials.</p>
+          <h3>Paste any text</h3>
+          <p>Articles, dialogues, exam prep, song lyrics — anything you want to read.</p>
         </div>
 
         <div class="how-card">
           <div class="how-number">2</div>
-          <h3>Read sentence by sentence</h3>
-          <p>Stay focused without getting lost in the full text.</p>
+          <h3>Listen sentence by sentence</h3>
+          <p>Native-quality audio for every sentence. Tap a word to see pinyin and meaning.</p>
         </div>
 
         <div class="how-card">
           <div class="how-number">3</div>
-          <h3>Listen and repeat</h3>
-          <p>Move from passive reading to speaking practice.</p>
+          <h3>Speak and get scored</h3>
+          <p>Record yourself and see word-by-word pronunciation scores powered by Azure AI.</p>
         </div>
 
         <div class="how-card">
           <div class="how-number">4</div>
-          <h3>Save useful words</h3>
-          <p>Build flashcards from vocabulary you met in context.</p>
+          <h3>Save words to flashcards</h3>
+          <p>One tap adds a word to your deck. Review with spaced repetition later.</p>
         </div>
       </div>
     </div>

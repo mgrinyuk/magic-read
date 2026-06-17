@@ -3757,3 +3757,253 @@ body.is-logged-in .top-ui-language {
   background: rgba(225, 29, 72, 0.10);
   color: var(--retry);
 }
+
+/* ── Write / calligraphy screen ─────────────────────────── */
+#screen-writing {
+  padding: clamp(14px, 3.5vw, 24px) clamp(16px, 4vw, 30px);
+}
+.write-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: clamp(18px, 3vw, 28px);
+}
+.write-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+.write-hint {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 4px;
+}
+/* Tighten the textarea inside the Sonic write card */
+#screen-writing textarea {
+  margin-top: 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  min-height: 160px;
+}
+
+/* ── Landing hero — Sonic ───────────────────────────────── */
+.landing-hero {
+  background:
+    radial-gradient(820px 440px at 90% 10%, rgba(10,180,214,.08), transparent 60%),
+    radial-gradient(700px 480px at 4% 95%, rgba(229,38,126,.08), transparent 60%);
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cyan-ink);
+  background: rgba(10,180,214,.10);
+  border: 1px solid rgba(10,180,214,.30);
+  padding: 6px 13px;
+  border-radius: 999px;
+  margin-bottom: 22px;
+}
+.hero-eyebrow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  flex: none;
+}
+.hero-grad {
+  background: linear-gradient(90deg, var(--primary), var(--cyan-ink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.landing-hero-copy-sub {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-soft);
+  max-width: 480px;
+  margin: 0 0 28px;
+}
+.hero-ghost-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 20px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+}
+.hero-ghost-link:hover {
+  border-color: var(--cyan);
+  color: var(--cyan-ink);
+}
+.hero-langs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-top: 22px;
+}
+.hero-lang-chip {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Hero demo card */
+.hero-demo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 40px 80px -34px rgba(28,18,51,.18);
+}
+.hero-demo-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.hero-demo-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+.hero-demo-score-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-demo-score-n {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cyan-ink);
+}
+.hero-demo-ring {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--cyan) 0 79%, var(--surface-2) 79% 100%);
+}
+.hero-demo-ring span {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cyan-ink);
+}
+.hero-demo-sentence {
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: clamp(28px, 5vw, 38px);
+  font-weight: 700;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+.hds-w {
+  border-bottom: 3px solid transparent;
+  padding-bottom: 1px;
+}
+.hds-good  { color: var(--good);  border-color: rgba(22,163,74,.4); }
+.hds-close { color: var(--close); border-color: rgba(217,119,6,.45); }
+.hds-retry { color: var(--retry); border-color: rgba(225,29,72,.5); }
+.hero-demo-pinyin {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 18px;
+}
+.hero-demo-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.hero-mic {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex: none;
+  background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+  box-shadow: 0 0 0 6px rgba(229,38,126,.14);
+}
+.hero-wave {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 32px;
+}
+.hero-wave i {
+  flex: 1;
+  border-radius: 3px;
+  background: var(--cyan);
+  opacity: .9;
+}
+.hero-demo-time {
+  font-size: 12px;
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+.hero-demo-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hero-demo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 13px;
+}
+.hero-demo-word {
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+.hero-demo-py {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-left: 7px;
+  font-weight: 500;
+}
+.hero-demo-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.hdp-good  { color: var(--good);  background: rgba(22,163,74,.12); }
+.hdp-close { color: var(--close); background: rgba(217,119,6,.12); }
+.hdp-retry { color: var(--retry); background: rgba(225,29,72,.12); }
+
+/* How-it-works Sonic step numbers */
+.how-number {
+  background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+  color: #fff;
+}
