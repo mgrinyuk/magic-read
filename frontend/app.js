@@ -487,7 +487,6 @@ const guestUsage = {
   cardsPlayed: 0,
   wordClicks: 0,
   translations: 0,
-  grammarViews: 0,
   fullTextsGenerated: 0,
   graceModeActive: false,
   graceListens: 0,
@@ -2077,6 +2076,17 @@ showSavedTextsBtn?.addEventListener("click", async () => {
   await loadSavedTexts(true);
 });
 
+document.getElementById("savedTextsBtnToolbar")?.addEventListener("click", async () => {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
+    document.getElementById("authOverlay")?.removeAttribute("hidden");
+    document.body.style.overflow = "hidden";
+    return;
+  }
+  if (textLibraryPanel) textLibraryPanel.hidden = true;
+  await loadSavedTexts(true);
+});
+
 async function loadSavedTexts(forceOpen = false) {
   if (!savedTextsPanel || !savedTextsList) return;
 
@@ -2481,8 +2491,7 @@ function trackGuest(event) {
     guestUsage.fullTextsGenerated >= 2 ||
     guestUsage.cardsPlayed >= 12 ||
     guestUsage.wordClicks >= 20 ||
-    guestUsage.translations >= 8 ||
-    guestUsage.grammarViews >= 8;
+    guestUsage.translations >= 8;
 
   if (limitReached) maybeShowAuthOverlay();
 }
@@ -2582,13 +2591,11 @@ async function renderCards(sentences) {
                   ? `<button class="sentence-pinyin-btn" type="button">Show pinyin</button>`
                   : ""}
                 <button class="translate-btn" type="button">${escapeHtml(t.showTranslation)}</button>
-                <button class="grammar-btn" type="button">${escapeHtml(t.grammar)}</button>
               </div>
             </div>
           </div>
 
           <div class="translation-box panel-box"></div>
-          <div class="grammar-box panel-box"></div>
           <div class="pronunciation-box panel-box"></div>
         </div>
       `;
@@ -2603,7 +2610,6 @@ async function renderCards(sentences) {
     const ttsBtn = card.querySelector(".tts-btn");
     const recordBtn = card.querySelector(".record-btn");
     const translateBtn = card.querySelector(".translate-btn");
-    const grammarBtn = card.querySelector(".grammar-btn");
     const sentencePinyinBtn = card.querySelector(".sentence-pinyin-btn");
     const sentencePinyinBox = card.querySelector(".sentence-pinyin-box");
     const moreBtn = card.querySelector(".more-btn");
@@ -2701,24 +2707,114 @@ async function renderCards(sentences) {
       record(sentence, card, recordBtn);
     });
 
-    grammarBtn?.addEventListener("click", async () => {
-      if (moreMenu) moreMenu.hidden = true;
-
-      const data = await grammar(sentence, card);
-      highlightGrammarInSentence(card.querySelector(".sentence"), data.items, sourceLangSelect.value);
-
-      card.querySelectorAll(".grammar-item").forEach(el => {
-        el.addEventListener("click", () => {
-          openGrammarArticle(el.dataset.id, card);
-        });
-      });
-    });
   });
-  
+
+  buildWordOrderExercise(sentences);
 }
 
 /* -----------------------------
-   TRANSLATION / GRAMMAR
+   WORD ORDER EXERCISE
+----------------------------- */
+
+function buildWordOrderExercise(sentences) {
+  const section = document.getElementById("wordOrderExercise");
+  if (!section || !sentences.length) return;
+
+  const isZh = sourceLangSelect.value === "zh";
+  const picks = sentences.slice(0, 3);
+  let currentIdx = 0;
+
+  function tokenize(sentence) {
+    if (isZh) {
+      const segs = segmentCache.get(sentence);
+      if (segs && segs.length) return segs.map(s => s.word || s).filter(w => /\S/.test(w));
+      return [...sentence].filter(c => /\S/.test(c));
+    }
+    return sentence.trim().split(/\s+/);
+  }
+
+  function renderStep(idx) {
+    if (idx >= picks.length) {
+      section.innerHTML = '<p class="wo-done">All done! ✓</p>';
+      return;
+    }
+    const sentence = picks[idx];
+    const words = tokenize(sentence);
+    if (words.length < 2) { renderStep(idx + 1); return; }
+
+    const shuffled = [...words].sort(() => Math.random() - 0.5);
+    if (JSON.stringify(shuffled) === JSON.stringify(words) && shuffled.length > 1) {
+      [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+    }
+
+    let placed = [];
+
+    section.innerHTML = `
+      <div class="wo-head">
+        <span class="wo-tag">Exercise</span>
+        <h3>Put the words in order</h3>
+      </div>
+      <p class="subtle wo-prompt">Tap a word to place it. Tap a placed word to return it.</p>
+      <div class="wo-slots" id="woSlots"></div>
+      <div class="wo-bank" id="woBank">
+        ${shuffled.map((w, i) => `<button class="wo-chip" data-idx="${i}" type="button">${escapeHtml(w)}</button>`).join("")}
+      </div>
+      <div class="wo-foot">
+        <button id="woCheckBtn" class="primary-btn" type="button">Check</button>
+        <button id="woSkipBtn" class="text-link-btn" type="button">Skip</button>
+      </div>
+    `;
+
+    const slotsEl = document.getElementById("woSlots");
+    const bankEl = document.getElementById("woBank");
+
+    function addSlot(word, chipIdx) {
+      placed.push({ word, chipIdx });
+      const btn = document.createElement("button");
+      btn.className = "wo-slot";
+      btn.type = "button";
+      btn.textContent = word;
+      btn.dataset.chipIdx = String(chipIdx);
+      btn.addEventListener("click", () => {
+        placed = placed.filter(p => p.chipIdx !== Number(chipIdx));
+        btn.remove();
+        bankEl.querySelector(`[data-idx="${chipIdx}"]`)?.classList.remove("wo-chip-used");
+      });
+      slotsEl.appendChild(btn);
+    }
+
+    bankEl.querySelectorAll(".wo-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        if (chip.classList.contains("wo-chip-used")) return;
+        chip.classList.add("wo-chip-used");
+        addSlot(chip.textContent, Number(chip.dataset.idx));
+      });
+    });
+
+    document.getElementById("woCheckBtn")?.addEventListener("click", () => {
+      const answer = placed.map(p => p.word).join(isZh ? "" : " ");
+      const correct = words.join(isZh ? "" : " ");
+      if (answer === correct) {
+        showToast("Correct!", "success");
+        currentIdx++;
+        setTimeout(() => renderStep(currentIdx), 700);
+      } else {
+        showToast("Not quite — try again!", "info");
+      }
+    });
+
+    document.getElementById("woSkipBtn")?.addEventListener("click", () => {
+      currentIdx++;
+      renderStep(currentIdx);
+    });
+  }
+
+  renderStep(0);
+  section.hidden = false;
+}
+
+/* -----------------------------
+   TRANSLATION
 ----------------------------- */
 
 async function translateSentence(sentence, card) {
@@ -2751,142 +2847,6 @@ async function translateSentence(sentence, card) {
     console.error("Translation error:", error);
     translationBox.textContent = "Translation failed.";
   }
-}
-
-async function grammar(sentence, card) {
-  const resultBox = card.querySelector(".grammar-box");
-
-  try {
-    resultBox.innerHTML = "Checking grammar...";
-
-    const response = await fetchWithAuth(`${API_BASE}/api/grammar`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        sentence,
-        sourceLang: sourceLangSelect.value
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Grammar analysis failed");
-    }
-
-    if (!data.items || !data.items.length) {
-      resultBox.innerHTML = "No grammar notes found for this sentence yet.";
-      return data;
-    }
-
-    resultBox.innerHTML = `
-      <div class="grammar-panel">
-        <h4>Grammar</h4>
-        <ul class="grammar-list">
-          ${data.items.map(item => `
-            <li class="grammar-item" data-id="${escapeHtml(item.articleId)}">
-              <div class="grammar-top">
-                <span class="grammar-label">${escapeHtml(item.label)}</span>
-                ${item.matchedText ? `<span class="grammar-match">${escapeHtml(item.matchedText)}</span>` : ""}
-              </div>
-              <p class="grammar-expl">${escapeHtml(item.shortExplanation || "")}</p>
-            </li>
-          `).join("")}
-        </ul>
-      </div>
-    `;
-
-    return data;
-  } catch (error) {
-    console.error("Grammar error:", error);
-    resultBox.innerHTML = getT().grammarFailed;
-    return { items: [] };
-  }
-}
-
-async function openGrammarArticle(articleId, card) {
-  trackGuest("grammarViews");
-  const resultBox = card.querySelector(".grammar-box");
-  if (!resultBox) return;
-
-  resultBox.innerHTML = "Loading explanation...";
-
-  try {
-    const response = await fetchWithAuth(`${API_BASE}/api/grammar/${articleId}?lang=${sourceLangSelect.value}`);
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to load grammar article");
-    }
-
-    const examples = [];
-
-    if (data.ex1_ch) examples.push({ text: data.ex1_ch, translation: data.ex1_py || "" });
-    if (data.ex2_ch) examples.push({ text: data.ex2_ch, translation: data.ex2_py || "" });
-    if (data.ex3_ch) examples.push({ text: data.ex3_ch, translation: data.ex3_py || "" });
-
-    resultBox.innerHTML = `
-      <div class="grammar-article">
-        <h4>${escapeHtml(data.title || "")}</h4>
-        <p>${escapeHtml(data.fullExplanation || "")}</p>
-
-        ${examples.length ? `
-          <div class="examples">
-            <strong>Examples</strong>
-            <ul>
-              ${examples.map(example => `
-                <li>
-                  <div>${escapeHtml(example.text)}</div>
-                  ${example.translation ? `<div class="example-pinyin">${escapeHtml(example.translation)}</div>` : ""}
-                </li>
-              `).join("")}
-            </ul>
-          </div>
-        ` : ""}
-      </div>
-    `;
-  } catch (error) {
-    console.error("openGrammarArticle error:", error);
-    resultBox.innerHTML = "Failed to load grammar explanation.";
-  }
-}
-
-function highlightGrammarInSentence(sentenceEl, items, lang) {
-  if (!sentenceEl || !items) return;
-
-  const wordEls = sentenceEl.querySelectorAll(".word");
-
-  wordEls.forEach(el => {
-    el.classList.remove("grammar-highlight");
-  });
-
-  items.forEach(item => {
-    if (!item.matchedText) return;
-
-    const target = normalizeText(item.matchedText, lang);
-
-    wordEls.forEach(el => {
-      const wordText = normalizeText(el.dataset.word || el.textContent, lang);
-
-      if (lang === "zh") {
-        if (target.includes(wordText)) el.classList.add("grammar-highlight");
-      } else if (lang === "ru" || lang === "tr") {
-        if (target.startsWith("-") && target.endsWith("-")) {
-          const infix = target.slice(1, -1);
-          if (wordText.includes(infix)) el.classList.add("grammar-highlight");
-        } else if (target.startsWith("-")) {
-          const suffix = target.slice(1);
-          if (wordText.endsWith(suffix)) el.classList.add("grammar-highlight");
-        } else if (wordText === target) {
-          el.classList.add("grammar-highlight");
-        }
-      } else if (wordText === target) {
-        el.classList.add("grammar-highlight");
-      }
-    });
-  });
 }
 
 /* -----------------------------
@@ -3019,11 +2979,18 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
 
   function renderPopupContent({ translation = "", pinyin = "" }) {
     popup.innerHTML = `
-    ${pinyin ? `<div class="popup-pinyin">${escapeHtml(pinyin)}</div>` : ""}
-    <div>${escapeHtml(translation)}</div>
-    ${allowSave ? renderPopupDeckSelect() : ""}
-    ${allowSave ? `<button class="popup-save-btn">${escapeHtml(getT().save || "Save")}</button>` : ""}
-  `;
+      <div class="popup-row">
+        <div class="popup-left">
+          <div class="popup-word">${escapeHtml(word)}</div>
+          ${pinyin ? `<div class="popup-pinyin">${escapeHtml(pinyin)}</div>` : ""}
+        </div>
+        <div class="popup-translation">${escapeHtml(translation)}</div>
+        ${allowSave ? `<button class="popup-save-btn" aria-label="Save to flashcards">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>` : ""}
+      </div>
+      ${allowSave ? renderPopupDeckSelect() : ""}
+    `;
 
     if (allowSave) {
       attachSaveButton(
