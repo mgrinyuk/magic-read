@@ -14,6 +14,7 @@ import PDFDocument from "pdfkit";
 import Papa from "papaparse";
 import Stripe from "stripe";
 import { isLifetimeOfferEligible } from "./lib/planRules.js";
+import { getActivityRpcArgs } from "./lib/activityRules.js";
 
 
 dotenv.config();
@@ -268,6 +269,10 @@ const ttsClient = new textToSpeech.TextToSpeechClient({
 
 
 app.use(cors());
+
+app.get("/", (_req, res) => {
+  res.redirect(302, "https://magicread.app");
+});
 
 /* -----------------------------
    STRIPE WEBHOOK
@@ -910,6 +915,8 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
   }
 });
 
+let recordActivityRpcMode = "typed";
+
 // Records activity counters (words read/spoken/practiced) and updates the
 // daily streak. Fire-and-forget from the frontend — always returns 200 so
 // a stats failure never blocks the user.
@@ -922,12 +929,25 @@ app.post("/api/record-activity", extractUser, requireUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-    const { error } = await supabaseAdmin.rpc("record_activity", {
-      p_user_id: userId,
-      p_type:    type,
-      p_count:   count,
-      p_today:   today
-    });
+    const activity = { userId, type, count, today };
+    let { error } = await supabaseAdmin.rpc(
+      "record_activity",
+      getActivityRpcArgs(recordActivityRpcMode, activity)
+    );
+
+    if (error && recordActivityRpcMode === "typed" &&
+        (error.code === "PGRST202" || error.message?.includes("Could not find the function"))) {
+      const fallback = await supabaseAdmin.rpc(
+        "record_activity",
+        getActivityRpcArgs("legacy", activity)
+      );
+      error = fallback.error;
+      if (!error) {
+        recordActivityRpcMode = "legacy";
+        console.log("[Stats] Using legacy record_activity RPC signature.");
+      }
+    }
+
     if (error) console.error("[Stats] record_activity error:", error.message);
   } catch (err) {
     console.error("[Stats] record-activity exception:", err.message);
