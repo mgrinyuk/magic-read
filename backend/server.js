@@ -818,11 +818,13 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
     const { plan, trialEndsAt, trialActive, effectivePlan } = await getUserPlan(userId);
     const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 
-    const [textRes, pronRes] = await Promise.all([
+    const [textRes, pronRes, statsRes] = await Promise.all([
       supabaseAdmin.from("text_processing_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle(),
-      supabaseAdmin.from("pronunciation_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle()
+      supabaseAdmin.from("pronunciation_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle(),
+      supabaseAdmin.from("user_stats").select("words_read,words_spoken,words_practiced,current_streak").eq("user_id", userId).maybeSingle()
     ]);
 
+    const stats = statsRes.data || {};
     res.json({
       plan,
       effectivePlan,
@@ -830,6 +832,10 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
       trialActive,
       textUsedToday: textRes.data?.count || 0,
       pronouncedToday: pronRes.data?.count || 0,
+      wordsRead: stats.words_read || 0,
+      wordsSpoken: stats.words_spoken || 0,
+      wordsPracticed: stats.words_practiced || 0,
+      currentStreak: stats.current_streak || 0,
       limits: {
         textPerDay: FREE_DAILY_TEXT_LIMIT,
         pronunciationPerDay: FREE_DAILY_PRONUNCIATION_LIMIT,
@@ -842,6 +848,31 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
     console.error("[Plan] my-plan error:", error.message);
     res.status(500).json({ error: "Could not load plan." });
   }
+});
+
+// Records activity counters (words read/spoken/practiced) and updates the
+// daily streak. Fire-and-forget from the frontend — always returns 200 so
+// a stats failure never blocks the user.
+app.post("/api/record-activity", extractUser, requireUser, async (req, res) => {
+  const { type, count } = req.body || {};
+  const validTypes = ["words_read", "words_spoken", "words_practiced"];
+  if (!validTypes.includes(type) || !Number.isInteger(count) || count < 1) {
+    return res.status(400).json({ error: "Invalid type or count." });
+  }
+  try {
+    const userId = req.user.id;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    const { error } = await supabaseAdmin.rpc("record_activity", {
+      p_user_id: userId,
+      p_type:    type,
+      p_count:   count,
+      p_today:   today
+    });
+    if (error) console.error("[Stats] record_activity error:", error.message);
+  } catch (err) {
+    console.error("[Stats] record-activity exception:", err.message);
+  }
+  res.json({ ok: true });
 });
 
 // Metered: increments the per-day text counter for free users.

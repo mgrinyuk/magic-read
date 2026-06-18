@@ -441,6 +441,7 @@ const uiLangSelect = document.getElementById("uiLang");
 const sourceLangSelect = document.getElementById("sourceLang");
 const targetLangSelect = document.getElementById("targetLang");
 
+const screenHome = document.getElementById("screen-home");
 const screenMain = document.getElementById("screen-main");
 const screenFlashcards = document.getElementById("screen-flashcards");
 const screenWriting = document.getElementById("screen-writing");
@@ -767,6 +768,10 @@ let userPlan = {
   trialEndsAt: null,
   textUsedToday: 0,
   pronouncedToday: 0,
+  wordsRead: 0,
+  wordsSpoken: 0,
+  wordsPracticed: 0,
+  currentStreak: 0,
   limits: { textPerDay: 3, pronunciationPerDay: 20, savedTexts: 5, decks: 2, cards: 100 }
 };
 
@@ -783,6 +788,16 @@ async function fetchMyPlan() {
   } catch {
     // Keep last-known plan on a network hiccup.
   }
+}
+
+// Fire-and-forget stats ping. Never throws — a stats failure must not block the user.
+function recordActivity(type, count) {
+  if (!document.body.classList.contains("is-logged-in")) return;
+  fetchWithAuth(`${API_BASE}/api/record-activity`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, count })
+  }).catch(() => {});
 }
 
 function trialDaysLeft() {
@@ -1327,6 +1342,7 @@ updatePasswordBtn?.addEventListener("click", async () => {
 ----------------------------- */
 
 const TAB_BY_SCREEN = {
+  "screen-home":       "home",
   "screen-main":       "read",
   "screen-flashcards": "cards",
   "screen-writing":    null,
@@ -1406,6 +1422,70 @@ document.getElementById("acctBackBtn")?.addEventListener("click", () => {
   showScreen(screenMain);
 });
 
+function renderHomeScreen() {
+  supabase.auth.getUser().then(({ data }) => {
+    const user = data?.user;
+    const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "there";
+    const initial = (name[0] || "?").toUpperCase();
+
+    const nameEl   = document.getElementById("homeName");
+    const avatarEl = document.getElementById("homeAvatar");
+    const badgeEl  = document.getElementById("homePlanBadge");
+
+    if (nameEl)   nameEl.textContent   = `Hello, ${name}`;
+    if (avatarEl) avatarEl.textContent = initial;
+
+    if (badgeEl) {
+      const paidPro = userPlan.plan === "pro";
+      if (paidPro && !userPlan.trialActive) {
+        badgeEl.textContent = "Pro";
+        badgeEl.dataset.variant = "pro";
+      } else if (userPlan.trialActive) {
+        const days = trialDaysLeft();
+        badgeEl.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
+        badgeEl.dataset.variant = "trial";
+      } else {
+        badgeEl.textContent = "Free plan";
+        delete badgeEl.dataset.variant;
+      }
+      badgeEl.hidden = false;
+    }
+  });
+
+  // Streak
+  const streak = userPlan.currentStreak || 0;
+  const streakN = document.getElementById("homeStreakN");
+  if (streakN) streakN.textContent = `${streak}-day streak`;
+
+  const dotsEl = document.getElementById("homeStreakDots");
+  if (dotsEl) {
+    const on = Math.min(streak, 7);
+    dotsEl.innerHTML =
+      Array(7 - on).fill('<span class="hd-day"></span>').join("") +
+      Array(on).fill('<span class="hd-day hd-day-on"></span>').join("");
+  }
+
+  // Stat tiles
+  const fmt = n => Number(n || 0).toLocaleString();
+  const readEl      = document.getElementById("homeStatRead");
+  const spokenEl    = document.getElementById("homeStatSpoken");
+  const practicedEl = document.getElementById("homeStatPracticed");
+  if (readEl)      readEl.textContent      = fmt(userPlan.wordsRead);
+  if (spokenEl)    spokenEl.textContent    = fmt(userPlan.wordsSpoken);
+  if (practicedEl) practicedEl.textContent = fmt(userPlan.wordsPracticed);
+
+  // Resume card — show only when text is loaded in the reader
+  const resumeEl    = document.getElementById("homeResume");
+  const resumeTitle = document.getElementById("homeResumeTitle");
+  if (resumeEl) {
+    const hasText = typeof currentText === "string" && currentText.trim().length > 0;
+    resumeEl.hidden = !hasText;
+    if (hasText && resumeTitle) {
+      resumeTitle.textContent = currentText.trim().slice(0, 50) + (currentText.trim().length > 50 ? "…" : "");
+    }
+  }
+}
+
 document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
   const picker = document.getElementById("acctPlanPicker");
   if (picker) picker.hidden = !picker.hidden;
@@ -1470,11 +1550,36 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
   });
 });
 
+// Home dashboard action tile clicks
+document.querySelectorAll("[data-hd-target]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.hdTarget;
+    if (target === "speak" || target === "read") {
+      showScreen(screenMain);
+    } else if (target === "cards") {
+      showScreen(screenFlashcards);
+      renderDeckSelector();
+      renderFlashcards();
+    } else if (target === "write") {
+      showScreen(screenWriting);
+    } else if (target === "video") {
+      showToast("Video is coming in Phase 2.", "info");
+    }
+  });
+});
+
+document.getElementById("homeResume")?.addEventListener("click", () => {
+  showScreen(screenMain);
+});
+
 // Bottom tab bar navigation
 document.querySelectorAll(".sonic-tab").forEach(tab => {
   tab.addEventListener("click", () => {
     const t = tab.dataset.tab;
-    if (t === "home" || t === "read" || t === "speak") {
+    if (t === "home") {
+      renderHomeScreen();
+      showScreen(screenHome);
+    } else if (t === "read" || t === "speak") {
       showScreen(screenMain);
     } else if (t === "cards") {
       showScreen(screenFlashcards);
@@ -1562,6 +1667,7 @@ function restoreActiveScreen() {
     return;
   }
 
+  if (savedId === "screen-home") renderHomeScreen();
   showScreen(target);
 }
 
@@ -1575,7 +1681,8 @@ document.getElementById("onboardingContinueBtn")?.addEventListener("click", () =
 });
 
 document.getElementById("onboardingStartBtn")?.addEventListener("click", () => {
-  showScreen(screenMain);
+  renderHomeScreen();
+  showScreen(screenHome);
 });
 
 // TODO §7: wire Supabase Google / Apple OAuth
@@ -2003,6 +2110,10 @@ async function startReadingFromText(text) {
 
     currentText = cleanText;
     currentSentences = sentences;
+
+    // Count words in the full text as a proxy for "words read this session".
+    const wordCount = cleanText.trim().split(/\s+/).filter(Boolean).length || cleanText.replace(/\s/g, "").length;
+    recordActivity("words_read", wordCount);
 
     if (sourceLangSelect.value === "zh") {
       await preloadChineseSegments([cleanText, ...sentences]);
@@ -3924,6 +4035,9 @@ async function record(sentence, card, recordBtn = null) {
         renderToneFeedback(azure.result, shortLang, sentence) +
         renderRepeatCard(azure.result, shortLang, sentence)
       );
+      // Count scored words as "words spoken" for the stats counter.
+      const spokenCount = (azure.result.words || []).length || 1;
+      recordActivity("words_spoken", spokenCount);
     }
 
     const advanceToNext = () => {
@@ -4771,6 +4885,7 @@ document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async
 
 // TODO §7: SRS backend fields (ease, interval, due_date) — schedule via /api/srs-review
 function scheduleCard(rating) {
+  recordActivity("words_practiced", 1);
   goToNextFlashcard();
 }
 
