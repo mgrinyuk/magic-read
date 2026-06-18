@@ -44,3 +44,13 @@ export async function translateText(text, sourceLang, targetLang) {
 
   return Array.isArray(translation) ? translation[0] : translation;
 }
+
+// Translate an array of strings in a single API call.
+export async function translateBatch(texts, sourceLang, targetLang) {
+  if (!texts.length) return [];
+  if (!translateClient) throw new Error("Google Translate is not configured");
+  const source = mapToGoogleTranslateLang(sourceLang);
+  const target = mapToGoogleTranslateLang(targetLang);
+  const [result] = await translateClient.translate(texts, { from: source, to: target });
+  return Array.isArray(result) ? result : [result];
+}

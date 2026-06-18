@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { translateText } from "./services/translateService.js";
+import { translateText, translateBatch } from "./services/translateService.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -77,6 +77,7 @@ const FREE_DAILY_TEXT_LIMIT = Number(process.env.FREE_DAILY_TEXT_LIMIT || 3);
 const FREE_MAX_SAVED_TEXTS = Number(process.env.FREE_MAX_SAVED_TEXTS || 5);
 const FREE_MAX_DECKS = Number(process.env.FREE_MAX_DECKS || 2);
 const FREE_MAX_CARDS = Number(process.env.FREE_MAX_CARDS || 100);
+const FREE_VIDEO_TRIAL_LIMIT = Number(process.env.FREE_VIDEO_TRIAL_LIMIT || 3);
 
 // Centralized plan resolver. Returns the user's *effective* plan, honoring the
 // 7-day welcome-week trial: a user is treated as 'pro' if they're a paid pro OR
@@ -818,10 +819,11 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
     const { plan, trialEndsAt, trialActive, effectivePlan } = await getUserPlan(userId);
     const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 
-    const [textRes, pronRes, statsRes] = await Promise.all([
+    const [textRes, pronRes, statsRes, videoRes] = await Promise.all([
       supabaseAdmin.from("text_processing_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle(),
       supabaseAdmin.from("pronunciation_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle(),
-      supabaseAdmin.from("user_stats").select("words_read,words_spoken,words_practiced,current_streak").eq("user_id", userId).maybeSingle()
+      supabaseAdmin.from("user_stats").select("words_read,words_spoken,words_practiced,current_streak").eq("user_id", userId).maybeSingle(),
+      supabaseAdmin.from("video_usage").select("opens").eq("user_id", userId).maybeSingle()
     ]);
 
     const stats = statsRes.data || {};
@@ -832,6 +834,7 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
       trialActive,
       textUsedToday: textRes.data?.count || 0,
       pronouncedToday: pronRes.data?.count || 0,
+      videosOpened: videoRes.data?.opens || 0,
       wordsRead: stats.words_read || 0,
       wordsSpoken: stats.words_spoken || 0,
       wordsPracticed: stats.words_practiced || 0,
@@ -841,7 +844,8 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
         pronunciationPerDay: FREE_DAILY_PRONUNCIATION_LIMIT,
         savedTexts: FREE_MAX_SAVED_TEXTS,
         decks: FREE_MAX_DECKS,
-        cards: FREE_MAX_CARDS
+        cards: FREE_MAX_CARDS,
+        videosPerTrial: FREE_VIDEO_TRIAL_LIMIT
       }
     });
   } catch (error) {
@@ -873,6 +877,163 @@ app.post("/api/record-activity", extractUser, requireUser, async (req, res) => {
     console.error("[Stats] record-activity exception:", err.message);
   }
   res.json({ ok: true });
+});
+
+/* -----------------------------
+   VIDEO CAPTIONS
+   Fetches captions from YouTube (human or auto), enriches them with
+   pinyin (Chinese) + translation, caches in public.video_captions.
+   Auth required; returns { captions, source, cached } or { needsGeneration: true }.
+----------------------------- */
+
+// Walk the raw HTML string to extract a balanced JSON object that starts
+// after `marker`, without a regex that can't match nested braces.
+function extractJsonObject(html, marker) {
+  const idx = html.indexOf(marker);
+  if (idx === -1) return null;
+  const start = html.indexOf("{", idx);
+  if (start === -1) return null;
+
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < html.length; i++) {
+    const c = html[i];
+    if (esc)        { esc = false; continue; }
+    if (c === "\\" && inStr) { esc = true;  continue; }
+    if (c === '"')  { inStr = !inStr; continue; }
+    if (inStr)      continue;
+    if (c === "{")  depth++;
+    else if (c === "}") {
+      if (--depth === 0) {
+        try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+// Normalize YouTube language codes to our internal codes (zh-Hans → zh, en-US → en).
+function normYtLang(code) {
+  if (!code) return "";
+  if (code.startsWith("zh")) return "zh";
+  return code.split("-")[0];
+}
+
+app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
+  const { videoId, lang, targetLang = "en" } = req.query;
+
+  if (!videoId || !lang) {
+    return res.status(400).json({ error: "videoId and lang are required" });
+  }
+  // YouTube video IDs are exactly 11 chars from [A-Za-z0-9_-]
+  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return res.status(400).json({ error: "Invalid videoId" });
+  }
+
+  try {
+    // 1. Cache hit — service-role client bypasses RLS
+    const { data: cached } = await supabaseAdmin
+      .from("video_captions")
+      .select("captions, source")
+      .eq("video_id", videoId)
+      .eq("lang", lang)
+      .maybeSingle();
+
+    if (cached) {
+      return res.json({ captions: cached.captions, source: cached.source, cached: true });
+    }
+
+    // 2. Fetch the YouTube watch page to discover caption track URLs
+    const ytHeaders = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9"
+    };
+
+    const watchRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, { headers: ytHeaders });
+    if (!watchRes.ok) {
+      return res.status(502).json({ error: "Could not reach YouTube." });
+    }
+    const html = await watchRes.text();
+
+    // Try both marker spellings (YouTube has varied this over time)
+    const playerResponse =
+      extractJsonObject(html, "var ytInitialPlayerResponse =") ||
+      extractJsonObject(html, "ytInitialPlayerResponse=");
+
+    if (!playerResponse) {
+      return res.json({ needsGeneration: true });
+    }
+
+    const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+    const targetCode = normYtLang(lang);
+
+    // Prefer human-made track; fall back to ASR (auto-generated)
+    const human = tracks.find(t => normYtLang(t.languageCode) === targetCode && t.kind !== "asr");
+    const auto  = tracks.find(t => normYtLang(t.languageCode) === targetCode);
+    const track = human ?? auto;
+
+    if (!track) {
+      return res.json({ needsGeneration: true });
+    }
+
+    const source = track.kind === "asr" ? "youtube_auto" : "youtube";
+
+    // 3. Download caption track as JSON3 (YouTube's structured caption format)
+    const captionRes = await fetch(`${track.baseUrl}&fmt=json3`, { headers: ytHeaders });
+    if (!captionRes.ok) {
+      return res.json({ needsGeneration: true });
+    }
+    const captionJson = await captionRes.json();
+
+    const rawLines = (captionJson.events ?? [])
+      .filter(e => e.segs && e.tStartMs !== undefined)
+      .map(e => ({
+        start: e.tStartMs / 1000,
+        dur:   (e.dDurationMs ?? 3000) / 1000,
+        text:  e.segs.map(s => s.utf8 ?? "").join("").replace(/\n/g, " ").trim()
+      }))
+      .filter(l => l.text);
+
+    if (!rawLines.length) {
+      return res.json({ needsGeneration: true });
+    }
+
+    // 4. Enrich: batch-translate all lines in one API call; add pinyin for Chinese
+    const isZh = targetCode === "zh";
+    const srcLang = normYtLang(lang) || lang;
+
+    let translations = rawLines.map(() => "");
+    try {
+      translations = await translateBatch(rawLines.map(l => l.text), srcLang, targetLang);
+    } catch (err) {
+      console.error("[Captions] translation error:", err.message);
+    }
+
+    const enriched = rawLines.map((line, i) => {
+      const out = {
+        start:       line.start,
+        dur:         line.dur,
+        text:        line.text,
+        translation: translations[i] ?? ""
+      };
+      if (isZh) {
+        out.pinyin = pinyin(line.text, { toneType: "symbol", type: "array" }).join(" ");
+        out.tokens = segmentChineseText(line.text); // [{ word, pinyin }] for tappable words
+      }
+      return out;
+    });
+
+    // 5. Write to cache (fire-and-forget — user already has the response)
+    supabaseAdmin
+      .from("video_captions")
+      .upsert({ video_id: videoId, lang, source, captions: enriched })
+      .then(({ error }) => { if (error) console.error("[Captions] cache write:", error.message); });
+
+    return res.json({ captions: enriched, source, cached: false });
+
+  } catch (err) {
+    console.error("[Captions] error:", err.message);
+    res.status(500).json({ error: "Could not fetch captions." });
+  }
 });
 
 // Metered: increments the per-day text counter for free users.
@@ -910,6 +1071,57 @@ app.post("/api/check-text-quota", extractUser, requireUser, async (req, res) => 
     res.json({ allowed: true, used: used + 1, limit: FREE_DAILY_TEXT_LIMIT });
   } catch (error) {
     console.error("[Quota] text quota error:", error.message);
+    res.status(500).json({ error: "Quota check failed." });
+  }
+});
+
+// Lifetime video open counter. Trial users get FREE_VIDEO_TRIAL_LIMIT total opens;
+// paid Pro users are unlimited; free users with an expired trial are blocked entirely.
+app.post("/api/check-video-quota", extractUser, requireUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { plan, trialActive } = await getUserPlan(userId);
+
+    // Paid Pro — always allowed.
+    if (plan === "pro") return res.json({ allowed: true });
+
+    // Trial expired (free user, no active trial) — Videos are Pro-only.
+    if (!trialActive) {
+      return res.status(429).json({
+        error: "Videos are a Pro feature.",
+        code: "VIDEO_QUOTA_EXCEEDED",
+        used: null,
+        limit: FREE_VIDEO_TRIAL_LIMIT
+      });
+    }
+
+    // Active trial — check lifetime counter.
+    const { data: usageRow, error: usageErr } = await supabaseAdmin
+      .from("video_usage")
+      .select("opens")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (usageErr) console.error("[VideoQuota] lookup error:", usageErr.message);
+
+    const used = usageRow?.opens || 0;
+    if (used >= FREE_VIDEO_TRIAL_LIMIT) {
+      return res.status(429).json({
+        error: `You've used your ${FREE_VIDEO_TRIAL_LIMIT} trial videos. Go Pro to keep learning from any video.`,
+        code: "VIDEO_QUOTA_EXCEEDED",
+        used,
+        limit: FREE_VIDEO_TRIAL_LIMIT
+      });
+    }
+
+    // Increment counter.
+    const { error: incErr } = await supabaseAdmin
+      .from("video_usage")
+      .upsert({ user_id: userId, opens: used + 1 }, { onConflict: "user_id" });
+    if (incErr) console.error("[VideoQuota] increment error:", incErr.message);
+
+    res.json({ allowed: true, used: used + 1, limit: FREE_VIDEO_TRIAL_LIMIT });
+  } catch (error) {
+    console.error("[VideoQuota] error:", error.message);
     res.status(500).json({ error: "Quota check failed." });
   }
 });

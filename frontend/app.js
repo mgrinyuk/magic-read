@@ -447,6 +447,7 @@ const screenFlashcards = document.getElementById("screen-flashcards");
 const screenWriting = document.getElementById("screen-writing");
 const screenOnboarding = document.getElementById("screen-onboarding");
 const screenAccount = document.getElementById("screen-account");
+const screenVideo = document.getElementById("screen-video");
 
 const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
@@ -515,6 +516,9 @@ let popupTimeout = null;
 
 let currentText = "";
 let currentSentences = [];
+let currentTextId    = null;  // "lib_<id>" for library texts, UUID for saved texts, null for pasted
+let currentTextTitle = "";
+let _resumeProgress  = null;
 let savedTextsCache = null;
 const segmentCache = new Map();
 const ttsCache = new Map();
@@ -768,11 +772,12 @@ let userPlan = {
   trialEndsAt: null,
   textUsedToday: 0,
   pronouncedToday: 0,
+  videosOpened: 0,
   wordsRead: 0,
   wordsSpoken: 0,
   wordsPracticed: 0,
   currentStreak: 0,
-  limits: { textPerDay: 3, pronunciationPerDay: 20, savedTexts: 5, decks: 2, cards: 100 }
+  limits: { textPerDay: 3, pronunciationPerDay: 20, savedTexts: 5, decks: 2, cards: 100, videosPerTrial: 3 }
 };
 
 const GUEST_PLAN = { ...userPlan };
@@ -798,6 +803,20 @@ function recordActivity(type, count) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type, count })
   }).catch(() => {});
+}
+
+let _saveProgressTimer = null;
+function saveProgress(activity, itemId, position, title) {
+  if (!itemId || !document.body.classList.contains("is-logged-in")) return;
+  clearTimeout(_saveProgressTimer);
+  _saveProgressTimer = setTimeout(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    supabase.from("user_progress").upsert(
+      { user_id: user.id, activity, item_id: String(itemId), position, title: title || "", updated_at: new Date().toISOString() },
+      { onConflict: "user_id,activity,item_id" }
+    ).then(({ error }) => { if (error) console.error("[Progress] upsert:", error.message); });
+  }, 1500);
 }
 
 function trialDaysLeft() {
@@ -855,6 +874,7 @@ function renderPlanUI() {
   renderWelcomeBanner();
   renderTextCounter();
   renderSpeakMeter();
+  renderVidFreeChip();
 }
 
 function renderWelcomeBanner() {
@@ -949,6 +969,11 @@ function getUpgradeMessage(code) {
     CARD_QUOTA_EXCEEDED: {
       title: "You've reached the free limit",
       sub: `Your deck has ${lim.cards} cards (free limit). Go Pro for unlimited cards.`,
+      reassurance: null
+    },
+    VIDEO_QUOTA_EXCEEDED: {
+      title: "Videos are a Pro feature",
+      sub: `You've used your ${lim.videosPerTrial} trial videos. Go Pro to keep learning from any video.`,
       reassurance: null
     }
   };
@@ -1345,6 +1370,7 @@ const TAB_BY_SCREEN = {
   "screen-home":       "home",
   "screen-main":       "read",
   "screen-flashcards": "cards",
+  "screen-video":      "video",
   "screen-writing":    null,
   "screen-onboarding": null,
   "screen-account":    null,
@@ -1422,6 +1448,32 @@ document.getElementById("acctBackBtn")?.addEventListener("click", () => {
   showScreen(screenMain);
 });
 
+async function loadRecentProgress() {
+  const resumeEl    = document.getElementById("homeResume");
+  const resumeLabel = resumeEl?.querySelector(".hd-resume-label");
+  const resumeTitle = document.getElementById("homeResumeTitle");
+  if (!resumeEl) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { resumeEl.hidden = true; return; }
+
+  const { data, error } = await supabase
+    .from("user_progress")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) { resumeEl.hidden = true; return; }
+
+  _resumeProgress = data;
+  const activityLabels = { reading: "Continue reading", speaking: "Continue speaking", flashcards: "Continue cards", video: "Continue video" };
+  if (resumeLabel) resumeLabel.textContent = activityLabels[data.activity] || "Continue";
+  if (resumeTitle) resumeTitle.textContent = data.title || "Untitled";
+  resumeEl.hidden = false;
+}
+
 function renderHomeScreen() {
   supabase.auth.getUser().then(({ data }) => {
     const user = data?.user;
@@ -1476,16 +1528,7 @@ function renderHomeScreen() {
 
   updateHomeCardsBadge();
 
-  // Resume card — show only when text is loaded in the reader
-  const resumeEl    = document.getElementById("homeResume");
-  const resumeTitle = document.getElementById("homeResumeTitle");
-  if (resumeEl) {
-    const hasText = typeof currentText === "string" && currentText.trim().length > 0;
-    resumeEl.hidden = !hasText;
-    if (hasText && resumeTitle) {
-      resumeTitle.textContent = currentText.trim().slice(0, 50) + (currentText.trim().length > 50 ? "…" : "");
-    }
-  }
+  loadRecentProgress();
 }
 
 document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
@@ -1565,13 +1608,48 @@ document.querySelectorAll("[data-hd-target]").forEach(btn => {
     } else if (target === "write") {
       showScreen(screenWriting);
     } else if (target === "video") {
-      showToast("Video is coming in Phase 2.", "info");
+      showScreen(screenVideo);
+      initVideoScreen();
     }
   });
 });
 
-document.getElementById("homeResume")?.addEventListener("click", () => {
-  showScreen(screenMain);
+document.getElementById("homeResume")?.addEventListener("click", async () => {
+  if (!_resumeProgress) { showScreen(screenMain); return; }
+  const { activity, item_id, position } = _resumeProgress;
+
+  if (activity === "flashcards") {
+    currentDeckId = item_id;
+    currentFlashcardIndex = position?.card ?? 0;
+    renderDeckSelector();
+    renderFlashcards();
+    showScreen(screenFlashcards);
+    return;
+  }
+
+  showMagicLoadingOverlay();
+  try {
+    if (item_id.startsWith("lib_")) {
+      await loadLibraryText(item_id.slice(4));
+    } else {
+      const { data: saved } = await supabase.from("saved_texts").select("*").eq("id", item_id).single();
+      if (saved) {
+        if (saved.source_lang) sourceLangSelect.value = saved.source_lang;
+        if (saved.target_lang) targetLangSelect.value = saved.target_lang;
+        updateLanguageBasedUI();
+        await startReadingFromText(saved.text || "");
+      }
+    }
+    const sentenceIdx = position?.sentence ?? 0;
+    if (sentenceIdx > 0) {
+      const cards = container?.querySelectorAll(".card");
+      const target = cards?.[sentenceIdx];
+      if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    }
+    showScreen(screenMain);
+  } finally {
+    hideMagicLoadingOverlay();
+  }
 });
 
 // Bottom tab bar navigation
@@ -1588,7 +1666,8 @@ document.querySelectorAll(".sonic-tab").forEach(tab => {
       renderDeckSelector();
       renderFlashcards();
     } else if (t === "video") {
-      showToast("Video is coming in Phase 2.", "info");
+      showScreen(screenVideo);
+      initVideoScreen();
     }
   });
 });
@@ -1687,12 +1766,11 @@ document.getElementById("onboardingStartBtn")?.addEventListener("click", () => {
   showScreen(screenHome);
 });
 
-// TODO §7: wire Supabase Google / Apple OAuth
-document.getElementById("googleAuthBtn")?.addEventListener("click", () => {
-  showToast("Google sign-in coming soon.", "info");
-});
-document.getElementById("appleAuthBtn")?.addEventListener("click", () => {
-  showToast("Apple sign-in coming soon.", "info");
+document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.origin }
+  });
 });
 
 /* -----------------------------
@@ -2116,6 +2194,7 @@ async function startReadingFromText(text) {
     // Count words in the full text as a proxy for "words read this session".
     const wordCount = cleanText.trim().split(/\s+/).filter(Boolean).length || cleanText.replace(/\s/g, "").length;
     recordActivity("words_read", wordCount);
+    saveProgress(appMode === "reading" ? "reading" : "speaking", currentTextId, { sentence: 0 }, currentTextTitle);
 
     if (sourceLangSelect.value === "zh") {
       await preloadChineseSegments([cleanText, ...sentences]);
@@ -2179,6 +2258,8 @@ createBtn?.addEventListener("click", async () => {
       // Fail open on network error — don't block a legitimate user.
     }
   }
+  currentTextId    = null;
+  currentTextTitle = "";
   await startReadingFromText(inputText.value);
 });
 
@@ -2309,6 +2390,8 @@ async function loadLibraryText(id) {
       return;
     }
 
+    currentTextId    = `lib_${id}`;
+    currentTextTitle = data.title || "Library text";
     await startReadingFromText(fullText);
   } catch (err) {
     console.error("Text load error:", err);
@@ -2424,6 +2507,8 @@ async function loadSavedTexts(forceOpen = false) {
       if (savedText.target_lang) targetLangSelect.value = savedText.target_lang;
 
       updateLanguageBasedUI();
+      currentTextId    = savedText.id;
+      currentTextTitle = savedText.title || "Saved text";
       await startReadingFromText(savedText.text || "");
     });
   });
@@ -2890,6 +2975,7 @@ async function renderCards(sentences) {
     ttsBtn?.addEventListener("click", async () => {
       unlockAudioForMobile();
       trackGuest("cardsPlayed");
+      saveProgress("speaking", currentTextId, { sentence: index }, currentTextTitle);
 
       const cleanSentence = await prepareTTSInput(sentence, sourceLangSelect.value);
 
@@ -2968,6 +3054,7 @@ async function renderCards(sentences) {
     });
 
     recordBtn?.addEventListener("click", () => {
+      saveProgress("speaking", currentTextId, { sentence: index }, currentTextTitle);
       record(sentence, card, recordBtn);
     });
 
@@ -5010,6 +5097,8 @@ async function scheduleCard(rating) {
 
   goToNextFlashcard();
   updateHomeCardsBadge();
+  const _sdeck = getCurrentDeck();
+  if (_sdeck) saveProgress("flashcards", _sdeck.id, { card: currentFlashcardIndex }, _sdeck.name);
 }
 
 document.getElementById("srsAgainBtn")?.addEventListener("click", () => scheduleCard("again"));
@@ -5147,6 +5236,405 @@ function showConfirm(message) {
     document.body.appendChild(overlay);
     overlay.querySelector(".modal-confirm").addEventListener("click", () => { overlay.remove(); resolve(true); });
     overlay.querySelector(".modal-cancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
+  });
+}
+
+/* ======================================================
+   VIDEO SCREEN
+   ====================================================== */
+
+let vidPlayer      = null;   // YT.Player instance
+let vidCaptions    = [];     // enriched caption array from /api/video-captions
+let videoLang      = "";     // caption language (e.g. "zh")
+let vidSlowOn      = false;
+let vidPinyinOn    = true;
+let vidHighlightId = null;   // setInterval handle for line highlighting
+
+// ── YouTube IFrame API ──────────────────────────────────
+
+let _ytApiReady = false;
+const _ytApiCallbacks = [];
+
+window.onYouTubeIframeAPIReady = () => {
+  _ytApiReady = true;
+  _ytApiCallbacks.forEach(cb => cb());
+  _ytApiCallbacks.length = 0;
+};
+
+function whenYTReady(cb) {
+  if (_ytApiReady) { cb(); return; }
+  _ytApiCallbacks.push(cb);
+  if (!document.getElementById("yt-api-script")) {
+    const s = document.createElement("script");
+    s.id = "yt-api-script";
+    s.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(s);
+  }
+}
+
+function extractYouTubeId(input) {
+  const s = (input || "").trim();
+  const re = /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const m = s.match(re) || s.match(/^([a-zA-Z0-9_-]{11})$/);
+  return m ? m[1] : null;
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const ss = Math.floor(s % 60);
+  return `${m}:${String(ss).padStart(2, "0")}`;
+}
+
+// ── Player lifecycle ────────────────────────────────────
+
+function mountYTPlayer(videoId) {
+  const container = document.getElementById("vidPlayerContainer");
+  if (!container) return Promise.resolve();
+
+  // Wipe old iframe
+  container.innerHTML = "";
+  const div = document.createElement("div");
+  container.appendChild(div);
+
+  return new Promise(resolve => {
+    whenYTReady(() => {
+      vidPlayer = new YT.Player(div, {
+        videoId,
+        playerVars: { controls: 0, rel: 0, modestbranding: 1, playsinline: 1 },
+        events: {
+          onReady:       () => resolve(),
+          onStateChange: onVidStateChange
+        }
+      });
+    });
+  });
+}
+
+function onVidStateChange(event) {
+  const playing = event.data === 1; // YT.PlayerState.PLAYING
+  const useEl = document.getElementById("vidPlayPauseUse");
+  if (useEl) useEl.setAttribute("href", playing ? "#sonic-i-pause" : "#sonic-i-play");
+  if (playing) startHighlightLoop();
+  else          stopHighlightLoop();
+}
+
+// ── Caption highlighting ────────────────────────────────
+
+function startHighlightLoop() {
+  stopHighlightLoop();
+  vidHighlightId = setInterval(() => {
+    if (!vidPlayer?.getCurrentTime) return;
+    const t   = vidPlayer.getCurrentTime();
+    const dur = vidPlayer.getDuration() || 1;
+    updateScrubberUI(t, dur);
+    highlightCurrentLine(t);
+  }, 200);
+}
+
+function stopHighlightLoop() {
+  clearInterval(vidHighlightId);
+  vidHighlightId = null;
+}
+
+function updateScrubberUI(t, dur) {
+  const scrubber = document.getElementById("vidScrubber");
+  if (scrubber && !scrubber._seeking) scrubber.value = (t / dur) * 1000;
+  const timeEl = document.getElementById("vidTimeDisplay");
+  if (timeEl) timeEl.textContent = `${fmtTime(t)} / ${fmtTime(dur)}`;
+}
+
+function highlightCurrentLine(t) {
+  const lines = document.querySelectorAll(".vid-line");
+  let activeEl = null;
+  lines.forEach((el, i) => {
+    const cap = vidCaptions[i];
+    if (!cap) return;
+    const isCurrent = t >= cap.start && t < cap.start + cap.dur;
+    const isPast    = t >= cap.start + cap.dur;
+    el.classList.toggle("current", isCurrent);
+    el.classList.toggle("past",    isPast && !isCurrent);
+    if (isCurrent) activeEl = el;
+  });
+  if (activeEl) {
+    const rect = activeEl.getBoundingClientRect();
+    if (rect.top < 80 || rect.bottom > window.innerHeight - 80) {
+      activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+}
+
+// ── Caption rendering ───────────────────────────────────
+
+function buildChineseLineHTML(tokens) {
+  return (tokens || []).map(({ word, pinyin: py }) =>
+    `<span class="vid-ruby" data-word="${escapeHtml(word)}" data-pinyin="${escapeHtml(py || "")}">` +
+    `<small>${escapeHtml(py || "")}</small>` +
+    `<span class="vid-zh">${escapeHtml(word)}</span>` +
+    `</span>`
+  ).join("");
+}
+
+function buildPlainLineHTML(text) {
+  return text.split(/(\s+)/).map(w =>
+    w.trim()
+      ? `<span class="vid-word" data-word="${escapeHtml(w)}">${escapeHtml(w)}</span>`
+      : escapeHtml(w)
+  ).join("");
+}
+
+function renderCaptions(captions, lang) {
+  const capList = document.getElementById("vidCapList");
+  if (!capList) return;
+  const isZh = lang === "zh";
+
+  capList.innerHTML = captions.map((cap, i) => {
+    const hanHTML = isZh
+      ? `<div class="vid-han">${buildChineseLineHTML(cap.tokens)}</div>`
+      : `<div class="vid-text">${buildPlainLineHTML(cap.text)}</div>`;
+
+    return `
+      <div class="vid-line" data-cap-index="${i}">
+        ${hanHTML}
+        ${cap.translation ? `<div class="vid-tr">${escapeHtml(cap.translation)}</div>` : ""}
+        <div class="vid-line-acts">
+          <button class="vid-listen-btn" type="button" data-cap-index="${i}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
+            Listen
+          </button>
+          <button class="vid-speak-btn" type="button" data-cap-index="${i}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+            Speak
+          </button>
+        </div>
+        <div class="vid-result-box" hidden></div>
+      </div>`;
+  }).join("");
+
+  // Line tap → seek; word tap → popup
+  capList.querySelectorAll(".vid-line").forEach((lineEl, i) => {
+    const cap = captions[i];
+    if (!cap) return;
+
+    // Tap line → seek to start of line
+    lineEl.addEventListener("click", () => {
+      vidPlayer?.seekTo(cap.start, true);
+    });
+
+    // Listen button
+    lineEl.querySelector(".vid-listen-btn")?.addEventListener("click", e => {
+      e.stopPropagation();
+      playGoogleTTS(cap.text, videoLang);
+    });
+
+    // Speak this line — full Azure pronunciation scoring, same flow as the reader
+    lineEl.querySelector(".vid-speak-btn")?.addEventListener("click", async e => {
+      e.stopPropagation();
+      unlockAudioForMobile();
+      stopAllTTS();
+
+      const speakBtn  = lineEl.querySelector(".vid-speak-btn");
+      const resultBox = lineEl.querySelector(".vid-result-box");
+      const speechLang = mapToSpeechLang(videoLang);
+
+      // Pause playback while the user speaks so mic doesn't pick up the video
+      const wasPlaying = vidPlayer?.getPlayerState() === 1;
+      if (wasPlaying) vidPlayer.pauseVideo();
+
+      await tryAzurePronunciation(cap.text, speechLang, resultBox, speakBtn, getT());
+      recordActivity("words_spoken", (cap.text.match(/\S+/g) || [cap.text]).length);
+
+      if (wasPlaying) vidPlayer.playVideo();
+    });
+
+    // Chinese ruby tokens
+    lineEl.querySelectorAll(".vid-ruby").forEach(tokenEl => {
+      tokenEl.addEventListener("click", e => {
+        e.stopPropagation();
+        unlockAudioForMobile();
+        const word = tokenEl.dataset.word;
+        const py   = tokenEl.dataset.pinyin;
+        document.querySelectorAll(".vid-ruby.sel").forEach(el => el.classList.remove("sel"));
+        tokenEl.classList.add("sel");
+        sourceLangSelect.value = videoLang; // align popup's lang with video
+        playGoogleTTS(word, videoLang);
+        showWordPopup(tokenEl, word, cap.text, "", true).catch(console.error);
+      });
+    });
+
+    // Non-Chinese word spans
+    lineEl.querySelectorAll(".vid-word").forEach(wordEl => {
+      wordEl.addEventListener("click", e => {
+        e.stopPropagation();
+        unlockAudioForMobile();
+        const word = wordEl.dataset.word;
+        sourceLangSelect.value = videoLang;
+        playGoogleTTS(word, videoLang);
+        showWordPopup(wordEl, word, cap.text, "", true).catch(console.error);
+      });
+    });
+  });
+}
+
+// ── Load flow ───────────────────────────────────────────
+
+function renderVidFreeChip() {
+  const chip = document.getElementById("vidFreeChip");
+  const txt  = document.getElementById("vidFreeChipText");
+  if (!chip) return;
+  if (!userPlan.trialActive || userPlan.plan === "pro") { chip.hidden = true; return; }
+  const remaining = Math.max(0, userPlan.limits.videosPerTrial - userPlan.videosOpened);
+  if (txt) txt.textContent = `${remaining} free video${remaining === 1 ? "" : "s"} left`;
+  chip.hidden = false;
+}
+
+async function checkVideoQuota() {
+  if (!document.body.classList.contains("is-logged-in")) return true;
+  try {
+    const res  = await fetchWithAuth(`${API_BASE}/api/check-video-quota`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) {
+      showUpgradePrompt(data.code || "VIDEO_QUOTA_EXCEEDED");
+      return false;
+    }
+    if (typeof data.used === "number") userPlan.videosOpened = data.used;
+    renderVidFreeChip();
+    return true;
+  } catch {
+    return true; // fail open on network error
+  }
+}
+
+async function loadVideoById(videoId) {
+  const allowed = await checkVideoQuota();
+  if (!allowed) return;
+
+  const placeholder  = document.getElementById("vidPlayerPlaceholder");
+  const transport    = document.getElementById("vidTransport");
+  const capArea      = document.getElementById("vidCaptionArea");
+  const loadingState = document.getElementById("vidLoadingState");
+  const noCapState   = document.getElementById("vidNoCapState");
+
+  // Reset states
+  if (placeholder)  placeholder.hidden  = false;
+  if (transport)    transport.hidden    = true;
+  if (capArea)      capArea.hidden      = true;
+  if (loadingState) loadingState.hidden = false;
+  if (noCapState)   noCapState.hidden   = true;
+
+  const lang      = sourceLangSelect.value || "zh";
+  const targetLang = targetLangSelect.value || "en";
+  videoLang = lang;
+
+  try {
+    // Start player mount and caption fetch in parallel
+    const [, captionData] = await Promise.all([
+      mountYTPlayer(videoId),
+      fetchWithAuth(
+        `${API_BASE}/api/video-captions?videoId=${encodeURIComponent(videoId)}&lang=${encodeURIComponent(lang)}&targetLang=${encodeURIComponent(targetLang)}`
+      ).then(r => r.json())
+    ]);
+
+    if (loadingState) loadingState.hidden = true;
+    if (placeholder)  placeholder.hidden  = true;
+    if (transport)    transport.hidden    = false;
+
+    if (captionData.needsGeneration || !captionData.captions?.length) {
+      if (noCapState) noCapState.hidden = false;
+      return;
+    }
+
+    vidCaptions = captionData.captions;
+    renderCaptions(vidCaptions, lang);
+
+    if (capArea) capArea.hidden = false;
+
+    // Sync pinyin toggle state
+    const capList = document.getElementById("vidCapList");
+    const pinyinBtn = document.getElementById("vidPinyinToggle");
+    if (capList) capList.classList.toggle("vid-pinyin-off", !vidPinyinOn);
+    if (pinyinBtn) pinyinBtn.classList.toggle("on", vidPinyinOn);
+
+    // Save progress
+    saveProgress("video", videoId, { seconds: 0 }, `YouTube: ${videoId}`);
+
+  } catch (err) {
+    console.error("[Video] load error:", err.message);
+    if (loadingState) loadingState.hidden = true;
+    if (noCapState)   noCapState.hidden   = false;
+    showToast("Could not load video. Check your connection.", "error");
+  }
+}
+
+// ── Screen init (called once per visit to the screen) ──
+
+let _vidScreenInited = false;
+
+function initVideoScreen() {
+  if (_vidScreenInited) return;
+  _vidScreenInited = true;
+
+  const loadBtn  = document.getElementById("vidLoadBtn");
+  const urlInput = document.getElementById("vidUrlInput");
+  const back5Btn = document.getElementById("vidBack5Btn");
+  const ppBtn    = document.getElementById("vidPlayPauseBtn");
+  const slowBtn  = document.getElementById("vidSlowBtn");
+  const scrubber = document.getElementById("vidScrubber");
+  const pinyinBtn = document.getElementById("vidPinyinToggle");
+  const tryAgainBtn = document.getElementById("vidTryAnotherBtn");
+  const autoGenBtn  = document.getElementById("vidAutoGenBtn");
+
+  function triggerLoad() {
+    const id = extractYouTubeId(urlInput?.value || "");
+    if (!id) { showToast("Paste a valid YouTube link.", "error"); return; }
+    loadVideoById(id);
+  }
+
+  loadBtn?.addEventListener("click", triggerLoad);
+  urlInput?.addEventListener("keydown", e => { if (e.key === "Enter") triggerLoad(); });
+
+  back5Btn?.addEventListener("click", () => {
+    if (!vidPlayer) return;
+    vidPlayer.seekTo(Math.max(0, vidPlayer.getCurrentTime() - 5), true);
+  });
+
+  ppBtn?.addEventListener("click", () => {
+    if (!vidPlayer) return;
+    const state = vidPlayer.getPlayerState();
+    if (state === 1) vidPlayer.pauseVideo();
+    else             vidPlayer.playVideo();
+  });
+
+  slowBtn?.addEventListener("click", () => {
+    if (!vidPlayer) return;
+    vidSlowOn = !vidSlowOn;
+    vidPlayer.setPlaybackRate(vidSlowOn ? 0.75 : 1);
+    slowBtn.classList.toggle("on", vidSlowOn);
+  });
+
+  scrubber?.addEventListener("mousedown",  () => { if (scrubber) scrubber._seeking = true; });
+  scrubber?.addEventListener("touchstart", () => { if (scrubber) scrubber._seeking = true; }, { passive: true });
+  scrubber?.addEventListener("input", () => {
+    if (!vidPlayer) return;
+    const dur = vidPlayer.getDuration() || 0;
+    vidPlayer.seekTo((Number(scrubber.value) / 1000) * dur, true);
+  });
+  scrubber?.addEventListener("mouseup",  () => { if (scrubber) scrubber._seeking = false; });
+  scrubber?.addEventListener("touchend", () => { if (scrubber) scrubber._seeking = false; });
+
+  pinyinBtn?.addEventListener("click", () => {
+    vidPinyinOn = !vidPinyinOn;
+    pinyinBtn.classList.toggle("on", vidPinyinOn);
+    const capList = document.getElementById("vidCapList");
+    capList?.classList.toggle("vid-pinyin-off", !vidPinyinOn);
+  });
+
+  tryAgainBtn?.addEventListener("click", () => {
+    document.getElementById("vidNoCapState").hidden = true;
+    urlInput?.focus();
+  });
+
+  autoGenBtn?.addEventListener("click", () => {
+    showToast("Auto-generation coming soon for Pro users.", "info");
   });
 }
 

@@ -31,6 +31,10 @@
   <symbol id="sonic-i-card"     viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></symbol>
   <symbol id="sonic-i-flame"    viewBox="0 0 24 24"><path d="M12 3c3 4 .5 5.5 1.5 8 .8-1 .5-2.5.5-2.5C17 11 18 13 18 15a6 6 0 0 1-12 0c0-3 2.5-4.5 3-7 .4 1.8 1.5 2 3 3 .5-2-1-4 0-8z"/></symbol>
   <symbol id="sonic-i-pencil"   viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19l-4 1z"/></symbol>
+  <symbol id="sonic-i-play"     viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="sonic-i-pause"    viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="sonic-i-back5"    viewBox="0 0 24 24"><path d="M11 7L6 12l5 5"/><path d="M6 12h8a4 4 0 0 1 0 8h-1"/></symbol>
+  <symbol id="sonic-i-vol"      viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
 </svg>
   <header class="app-header">
     <a class="brand" href="#">
@@ -700,6 +704,77 @@
           </button>
         </div>
       </section>
+
+      <section id="screen-video" class="app-screen">
+        <div class="vid-body">
+
+          <!-- URL bar -->
+          <div class="vid-urlbar">
+            <span class="vid-yt-logo" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <input id="vidUrlInput" class="vid-url-input" type="url" placeholder="Paste YouTube link…" autocomplete="off" spellcheck="false" />
+            <button id="vidLoadBtn" class="vid-go-btn" type="button">Load</button>
+          </div>
+
+          <!-- Trial video quota chip (trial users only) -->
+          <div id="vidFreeChip" class="vid-free-chip" hidden>
+            <span id="vidFreeChipText"></span>
+          </div>
+
+          <!-- Player -->
+          <div class="vid-player-wrap">
+            <div id="vidPlayerPlaceholder" class="vid-placeholder">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-video"/></svg>
+              <p class="vid-placeholder-txt">Paste a YouTube link above</p>
+            </div>
+            <div id="vidPlayerContainer"></div>
+          </div>
+
+          <!-- Transport (shown after video loads) -->
+          <div id="vidTransport" class="vid-transport" hidden>
+            <button id="vidBack5Btn" class="vid-tbtn" type="button" aria-label="Back 5 seconds">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-back5"/></svg>
+              <span class="vid-tbtn-num">5</span>
+            </button>
+            <button id="vidPlayPauseBtn" class="vid-tbtn vid-tbtn-play" type="button" aria-label="Play / Pause">
+              <svg id="vidPlayPauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use id="vidPlayPauseUse" href="#sonic-i-play"/></svg>
+            </button>
+            <button id="vidSlowBtn" class="vid-tbtn" type="button" aria-label="Slow mode (0.75×)">
+              <span aria-hidden="true" style="font-size:17px;line-height:1">🐢</span>
+            </button>
+            <div class="vid-scrub">
+              <input id="vidScrubber" class="vid-scrubber-input" type="range" min="0" max="1000" value="0" step="1" />
+              <span id="vidTimeDisplay" class="vid-time">0:00 / 0:00</span>
+            </div>
+          </div>
+
+          <!-- Loading state -->
+          <div id="vidLoadingState" class="vid-state" hidden>
+            <div class="vid-spinner"></div>
+            <p class="vid-state-txt">Loading captions…</p>
+          </div>
+
+          <!-- No captions state -->
+          <div id="vidNoCapState" class="vid-state vid-nocap" hidden>
+            <div class="vid-nocap-icon">📭</div>
+            <p class="vid-nocap-title">No captions found</p>
+            <p class="vid-nocap-sub">This video has no captions in the selected language.</p>
+            <button id="vidTryAnotherBtn" class="vid-nocap-btn" type="button">Try another video</button>
+            <button id="vidAutoGenBtn" class="vid-nocap-btn vid-nocap-btn-pro" type="button">Auto-generate captions (Pro)</button>
+          </div>
+
+          <!-- Pinyin toggle + caption list (shown after captions load) -->
+          <div id="vidCaptionArea" class="vid-caption-area" hidden>
+            <div class="vid-cap-toolbar">
+              <button id="vidPinyinToggle" class="vid-toggle-btn" type="button">Pinyin</button>
+            </div>
+            <div id="vidCapList" class="vid-capwrap"></div>
+          </div>
+
+        </div>
+      </section>
+
     </div>
   </main>
   <nav id="appTabBar" class="sonic-tabbar" hidden>
@@ -804,10 +879,6 @@
           <button id="googleAuthBtn" type="button" class="auth-social-btn auth-google-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
             Continue with Google
-          </button>
-          <button id="appleAuthBtn" type="button" class="auth-social-btn auth-apple-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.2 1.28-2.18 3.81.03 3.02 2.65 4.03 2.68 4.04l-.05.17-.01.02zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-            Continue with Apple
           </button>
         </div>
 
