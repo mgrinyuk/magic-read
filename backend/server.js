@@ -13,6 +13,7 @@ import { google } from "googleapis";
 import PDFDocument from "pdfkit";
 import Papa from "papaparse";
 import Stripe from "stripe";
+import { isLifetimeOfferEligible } from "./lib/planRules.js";
 
 
 dotenv.config();
@@ -78,6 +79,8 @@ const FREE_MAX_SAVED_TEXTS = Number(process.env.FREE_MAX_SAVED_TEXTS || 5);
 const FREE_MAX_DECKS = Number(process.env.FREE_MAX_DECKS || 2);
 const FREE_MAX_CARDS = Number(process.env.FREE_MAX_CARDS || 100);
 const FREE_VIDEO_TRIAL_LIMIT = Number(process.env.FREE_VIDEO_TRIAL_LIMIT || 3);
+const LIFETIME_OFFER_ENABLED = process.env.LIFETIME_OFFER_ENABLED === "true";
+const LIFETIME_OFFER_WINDOW_DAYS = Number(process.env.LIFETIME_OFFER_WINDOW_DAYS || 7);
 
 // Centralized plan resolver. Returns the user's *effective* plan, honoring the
 // 7-day welcome-week trial: a user is treated as 'pro' if they're a paid pro OR
@@ -96,7 +99,13 @@ async function getUserPlan(userId) {
   const trialActive =
     plan !== "pro" && !!trialEndsAt && new Date(trialEndsAt) > new Date();
   const effectivePlan = plan === "pro" || trialActive ? "pro" : "free";
-  return { plan, trialEndsAt, trialActive, effectivePlan };
+  const lifetimeOfferEligible = isLifetimeOfferEligible({
+    enabled: LIFETIME_OFFER_ENABLED,
+    plan,
+    trialEndsAt,
+    windowDays: LIFETIME_OFFER_WINDOW_DAYS
+  });
+  return { plan, trialEndsAt, trialActive, effectivePlan, lifetimeOfferEligible };
 }
 
 // Attaches req.user from a Bearer JWT; silently treats invalid tokens as guests.
@@ -763,6 +772,16 @@ app.post("/api/create-checkout-session", extractUser, requireUser, async (req, r
     const userId = req.user.id;
     const email = req.user.email;
 
+    if (priceType === "lifetime") {
+      const { lifetimeOfferEligible } = await getUserPlan(userId);
+      if (!lifetimeOfferEligible) {
+        return res.status(403).json({
+          error: "The lifetime offer is not available for this account.",
+          code: "LIFETIME_OFFER_UNAVAILABLE"
+        });
+      }
+    }
+
     // Reuse the user's Stripe customer if we already have one; otherwise create
     // it and persist the id on the profile.
     const { data: profile, error: profileErr } = await supabaseAdmin
@@ -852,7 +871,7 @@ app.post("/api/create-billing-portal-session", extractUser, requireUser, async (
 app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { plan, trialEndsAt, trialActive, effectivePlan } = await getUserPlan(userId);
+    const { plan, trialEndsAt, trialActive, effectivePlan, lifetimeOfferEligible } = await getUserPlan(userId);
     const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 
     const [textRes, pronRes, statsRes, videoRes] = await Promise.all([
@@ -868,6 +887,7 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
       effectivePlan,
       trialEndsAt,
       trialActive,
+      lifetimeOfferEligible,
       textUsedToday: textRes.data?.count || 0,
       pronouncedToday: pronRes.data?.count || 0,
       videosOpened: videoRes.data?.opens || 0,

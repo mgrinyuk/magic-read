@@ -1,5 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js";
+import { UI_TEXT } from "./ui-text.js?v=20260618.2";
+import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
   renderAssessment,
@@ -746,6 +747,7 @@ if (uiLangSelect) {
   uiLangSelect.value = savedUiLang;
   uiLangSelect.addEventListener("change", () => {
     applyLocalization(uiLangSelect.value);
+    updateModeCopy();
   });
 }
 
@@ -770,6 +772,7 @@ let userPlan = {
   effectivePlan: "free",
   trialActive: false,
   trialEndsAt: null,
+  lifetimeOfferEligible: false,
   textUsedToday: 0,
   pronouncedToday: 0,
   videosOpened: 0,
@@ -875,6 +878,13 @@ function renderPlanUI() {
   renderTextCounter();
   renderSpeakMeter();
   renderVidFreeChip();
+  renderLifetimeOffer();
+}
+
+function renderLifetimeOffer() {
+  document.querySelectorAll('[data-price-type="lifetime"]').forEach(option => {
+    option.hidden = !userPlan.lifetimeOfferEligible;
+  });
 }
 
 function renderWelcomeBanner() {
@@ -1090,8 +1100,8 @@ function openAuthFromOverlay(mode = "signup") {
 
   if (mode === "signup") {
     if (authNameGroup) authNameGroup.hidden = false;
-    if (authTitleText) authTitleText.textContent = "Create your free account";
-    if (authHintText) authHintText.textContent = "Start your 7-day Pro trial. No payment method required.";
+    if (authTitleText) authTitleText.textContent = getT().signupTitle;
+    if (authHintText) authHintText.textContent = getT().signupTrialHint;
     if (authSwitchText) authSwitchText.hidden = false;
     if (forgotPasswordBtn) forgotPasswordBtn.hidden = true;
 
@@ -1109,8 +1119,8 @@ function openAuthFromOverlay(mode = "signup") {
 
   if (mode === "login") {
     if (authNameGroup) authNameGroup.hidden = true;
-    if (authTitleText) authTitleText.textContent = "Welcome back";
-    if (authHintText) authHintText.textContent = "Log in to continue your practice.";
+    if (authTitleText) authTitleText.textContent = getT().loginTitle;
+    if (authHintText) authHintText.textContent = getT().loginToContinue;
     if (authSwitchText) authSwitchText.hidden = true;
     if (forgotPasswordBtn) forgotPasswordBtn.hidden = false;
 
@@ -1740,16 +1750,11 @@ let pendingMode = "pronunciation";
 function updateModeCopy() {
   const heading = document.querySelector("#startComposerArea .start-copy h1");
   const hint = document.querySelector("#startComposerArea .start-copy .subtle");
+  const copy = getModeCopy(appMode, getT());
 
-  if (appMode === "reading") {
-    if (heading) heading.textContent = "Read and understand any text";
-    if (hint) hint.textContent = "Paste an article, story, or lesson to get audio, translation, and reading exercises.";
-    if (createBtn) createBtn.textContent = "Start reading";
-  } else {
-    if (heading) heading.textContent = "Practice pronunciation with your own texts";
-    if (hint) hint.textContent = "Paste homework, dialogue, or exam text and get sentence-by-sentence speaking feedback.";
-    if (createBtn) createBtn.textContent = "Start speaking";
-  }
+  if (heading) heading.textContent = copy.title;
+  if (hint) hint.textContent = copy.hint;
+  if (createBtn) createBtn.textContent = copy.action;
 }
 
 async function activateReaderMode(mode) {

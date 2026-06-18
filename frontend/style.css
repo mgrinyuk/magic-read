@@ -1849,7 +1849,6 @@ body.is-logged-out #guestLoginBtn {
 
 body.is-logged-out #logoutBtn,
 body.is-logged-out .profile-menu,
-body.is-logged-out .top-ui-language,
 body.is-logged-out #saveTextBtn,
 body.is-logged-out #textLibraryPanel,
 body.is-logged-out #savedTextsPanel {
@@ -2018,6 +2017,16 @@ body.is-logged-in .top-ui-language {
   #guestLoginBtn {
     padding: 10px 16px;
     font-size: 0.95rem;
+  }
+
+  .top-ui-language .menu-select {
+    min-width: 0;
+    width: 96px;
+    padding-inline: 9px;
+  }
+
+  .header-right {
+    gap: 7px;
   }
 
   .landing-hero {

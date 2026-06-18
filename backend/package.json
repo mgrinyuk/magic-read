@@ -5,6 +5,9 @@
   "engines": {
     "node": "20.x"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@google-cloud/text-to-speech": "^6.4.0",
     "@google-cloud/translate": "^9.3.0",

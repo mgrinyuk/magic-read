@@ -71,7 +71,14 @@ STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxx
 STRIPE_PRICE_MONTHLY=price_xxxxxxxxxxxx
 STRIPE_PRICE_ANNUAL=price_xxxxxxxxxxxx
 STRIPE_PRICE_LIFETIME=price_xxxxxxxxxxxx
+LIFETIME_OFFER_ENABLED=false
+LIFETIME_OFFER_WINDOW_DAYS=7
 ```
+
+The lifetime price is not a permanent public plan. It is hidden and blocked by
+the backend unless `LIFETIME_OFFER_ENABLED=true`. When enabled, it is available
+only for the configured number of days after a user's Pro trial ends. Keep the
+flag off unless you intentionally run a limited founding-customer promotion.
 
 ---
 

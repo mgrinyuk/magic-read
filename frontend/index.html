@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260618" />
+  <link rel="stylesheet" href="style.css?v=20260618.1" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
 </head>
@@ -75,7 +75,7 @@
           <div id="planPicker" class="plan-picker" hidden>
             <button type="button" class="plan-option" data-price-type="monthly">Monthly — $6.99/mo</button>
             <button type="button" class="plan-option" data-price-type="annual">Annual — $49/yr (save 41%)</button>
-            <button type="button" class="plan-option" data-price-type="lifetime">Lifetime — $89 one-time</button>
+            <button type="button" class="plan-option" data-price-type="lifetime" data-i18n="lifetimeOffer" hidden>Founding lifetime — $89 once</button>
           </div>
 
           <button id="logoutBtn" type="button" data-i18n="logout" hidden>
@@ -192,11 +192,11 @@
               <span class="ob-dot ob-dot-on"></span>
               <span class="ob-dot"></span>
             </div>
-            <h2>Choose languages</h2>
-            <p class="subtle">You can change these later in settings.</p>
+            <h2 data-i18n="chooseLanguages">Choose languages</h2>
+            <p class="subtle" data-i18n="changeLanguagesLater">You can change these later in settings.</p>
             <div class="onboarding-lang-grid">
               <div class="onboarding-lang-row">
-                <label class="onboarding-lang-label" for="onboardingTargetLang">I speak</label>
+                <label class="onboarding-lang-label" for="onboardingTargetLang" data-i18n="iSpeak">I speak</label>
                 <select id="onboardingTargetLang" class="language-select onboarding-select">
                   <option value="en">English</option>
                   <option value="ru">Русский</option>
@@ -209,7 +209,7 @@
                 </select>
               </div>
               <div class="onboarding-lang-row">
-                <label class="onboarding-lang-label" for="onboardingSourceLang">I'm learning</label>
+                <label class="onboarding-lang-label" for="onboardingSourceLang" data-i18n="imLearning">I'm learning</label>
                 <select id="onboardingSourceLang" class="language-select onboarding-select">
                   <option value="zh">Chinese</option>
                   <option value="ru">Russian</option>
@@ -222,7 +222,7 @@
                 </select>
               </div>
             </div>
-            <button id="onboardingContinueBtn" class="primary-btn onboarding-continue-btn">Continue</button>
+            <button id="onboardingContinueBtn" class="primary-btn onboarding-continue-btn" data-i18n="continue">Continue</button>
           </div>
 
           <!-- Step 2: Trial start -->
@@ -235,25 +235,25 @@
               <div class="ob-trial-spark">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg>
               </div>
-              <h2>Try Pro free<br>for 7 days</h2>
-              <p class="subtle">Create a free account to activate your trial. No payment method required, and you will not be charged automatically.</p>
+              <h2 data-i18n="trialHeadline">Try Pro free for 7 days</h2>
+              <p class="subtle" data-i18n="trialHint">Create a free account to activate your trial. No payment method required, and you will not be charged automatically.</p>
               <ul class="ob-include-list">
                 <li class="ob-include-row">
                   <span class="ob-include-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
-                  Unlimited pronunciation checks
+                  <span data-i18n="trialUnlimitedPronunciation">Unlimited pronunciation checks</span>
                 </li>
                 <li class="ob-include-row">
                   <span class="ob-include-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
-                  Videos with smart captions
+                  <span data-i18n="trialSmartCaptions">Videos with smart captions</span>
                 </li>
                 <li class="ob-include-row">
                   <span class="ob-include-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
-                  All flashcard decks &amp; calligraphy export
+                  <span data-i18n="trialAllDecks">All flashcard decks &amp; calligraphy export</span>
                 </li>
               </ul>
             </div>
-            <button id="onboardingStartBtn" class="primary-btn onboarding-continue-btn">Create free account</button>
-            <button id="onboardingExploreBtn" class="text-link-btn onboarding-explore-btn" type="button">Explore with free limits</button>
+            <button id="onboardingStartBtn" class="primary-btn onboarding-continue-btn" data-i18n="trialCreateAccount">Create free account</button>
+            <button id="onboardingExploreBtn" class="text-link-btn onboarding-explore-btn" type="button" data-i18n="trialExploreFree">Explore with free limits</button>
           </div>
 
         </div>
@@ -662,7 +662,7 @@
         <div id="acctPlanPicker" class="acct-plan-picker" hidden>
           <button class="plan-option" type="button" data-price-type="monthly">Monthly — $6.99/mo</button>
           <button class="plan-option" type="button" data-price-type="annual">Annual — $49/yr (save 41%)</button>
-          <button class="plan-option" type="button" data-price-type="lifetime">Lifetime — $89 one-time</button>
+          <button class="plan-option" type="button" data-price-type="lifetime" data-i18n="lifetimeOffer" hidden>Founding lifetime — $89 once</button>
         </div>
 
         <div class="acct-menu">
@@ -871,7 +871,7 @@
     <div class="auth-card">
 
       <div class="auth-right">
-        <h2 id="authTitleText">Welcome back</h2>
+        <h2 id="authTitleText" data-i18n="loginTitle">Welcome back</h2>
         <p id="authHintText" class="subtle" data-i18n="loginHint">
           Log in or create an account to continue.
         </p>
@@ -1007,7 +1007,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260618.2"></script>
+  <script type="module" src="app.js?v=20260618.5"></script>
 
   <footer class="footer">
     <div>
