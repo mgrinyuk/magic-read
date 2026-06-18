@@ -4395,3 +4395,17 @@ body.is-logged-in .top-ui-language {
   background: linear-gradient(95deg, var(--primary), var(--primary-soft));
   color: #fff;
 }
+.hd-action {
+  position: relative;
+}
+.hd-action-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan-ink);
+  background: rgba(10,180,214,.12);
+  padding: 2px 9px;
+  border-radius: 999px;
+}

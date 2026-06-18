@@ -1474,6 +1474,8 @@ function renderHomeScreen() {
   if (spokenEl)    spokenEl.textContent    = fmt(userPlan.wordsSpoken);
   if (practicedEl) practicedEl.textContent = fmt(userPlan.wordsPracticed);
 
+  updateHomeCardsBadge();
+
   // Resume card — show only when text is loaded in the reader
   const resumeEl    = document.getElementById("homeResume");
   const resumeTitle = document.getElementById("homeResumeTitle");
@@ -4190,7 +4192,13 @@ async function loadFlashcardsFromStorage() {
         sentence,
         sentence_pinyin,
         translation,
-        lang
+        lang,
+        srs_ease,
+        srs_interval,
+        srs_due,
+        srs_reps,
+        srs_lapses,
+        srs_last_reviewed
       )
     `)
     .eq("user_id", user.id)
@@ -4212,11 +4220,18 @@ async function loadFlashcardsFromStorage() {
       sentence: card.sentence,
       sentencePinyin: card.sentence_pinyin,
       translation: card.translation,
-      lang: card.lang
+      lang: card.lang,
+      srs_ease: card.srs_ease,
+      srs_interval: card.srs_interval,
+      srs_due: card.srs_due,
+      srs_reps: card.srs_reps,
+      srs_lapses: card.srs_lapses,
+      srs_last_reviewed: card.srs_last_reviewed
     }))
   }));
 
   await ensureDefaultDeck();
+  updateHomeCardsBadge();
 }
 
 async function ensureDefaultDeck() {
@@ -4257,8 +4272,35 @@ function getCurrentDeck() {
   return flashcardDecks.find(deck => deck.id === currentDeckId) || null;
 }
 
+function isDueCard(card) {
+  if (!card.srs_due) return true; // never reviewed → always due
+  return card.srs_due <= new Date().toISOString().slice(0, 10);
+}
+
+function getDueCount() {
+  return flashcardDecks.reduce(
+    (sum, deck) => sum + deck.cards.filter(isDueCard).length,
+    0
+  );
+}
+
+function updateHomeCardsBadge() {
+  const badge = document.getElementById("homeCardsDue");
+  if (!badge) return;
+  const due = getDueCount();
+  if (due > 0) {
+    badge.textContent = `${due} due`;
+    badge.hidden = false;
+  } else {
+    badge.hidden = true;
+  }
+}
+
 function getCurrentCards() {
-  return getCurrentDeck()?.cards || [];
+  const cards = getCurrentDeck()?.cards || [];
+  const due    = cards.filter(isDueCard);
+  const future = cards.filter(c => !isDueCard(c));
+  return [...due, ...future];
 }
 
 async function addFlashcard(cardData) {
@@ -4311,7 +4353,13 @@ async function addFlashcard(cardData) {
     sentence: data.sentence,
     sentencePinyin: data.sentence_pinyin,
     translation: data.translation,
-    lang: data.lang
+    lang: data.lang,
+    srs_ease: null,
+    srs_interval: null,
+    srs_due: null,
+    srs_reps: 0,
+    srs_lapses: 0,
+    srs_last_reviewed: null
   });
 
   renderDeckSelector();
@@ -4374,11 +4422,20 @@ async function renderFlashcards() {
   deckEl.hidden = false;
 
   const t = getT();
-  counterEl.textContent = `${deck?.name || t.deck} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
+  const dueNow = cards.filter(isDueCard).length;
+  const dueLabel = dueNow > 0 ? ` · ${dueNow} due` : "";
+  counterEl.textContent = `${deck?.name || t.deck}${dueLabel} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
   if (wordBackEl) wordBackEl.textContent = card.word || "";
   if (translationEl) translationEl.textContent = cleanTranslation(card.translation);
+
+  // Update SRS button labels to show the projected interval for this specific card.
+  const fmtDays = d => d === 1 ? "1 day" : `${d} days`;
+  const setSmall = (id, text) => { const s = document.getElementById(id)?.querySelector("small"); if (s) s.textContent = text; };
+  setSmall("srsAgainBtn", fmtDays(computeNextSRS(card, "again").srs_interval));
+  setSmall("srsGoodBtn",  fmtDays(computeNextSRS(card, "good").srs_interval));
+  setSmall("srsEasyBtn",  fmtDays(computeNextSRS(card, "easy").srs_interval));
 
   flashcardFlipped = false;
   cardEl.classList.remove("is-flipped");
@@ -4883,10 +4940,76 @@ document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async
   }
 });
 
-// TODO §7: SRS backend fields (ease, interval, due_date) — schedule via /api/srs-review
-function scheduleCard(rating) {
+// SM-2 simplified: computes the next SRS state from the current card state + rating.
+function computeNextSRS(card, rating) {
+  const ease     = card.srs_ease     ?? 2.5;
+  const interval = card.srs_interval ?? 0;
+  const reps     = card.srs_reps     ?? 0;
+  const lapses   = card.srs_lapses   ?? 0;
+
+  let newEase = ease, newInterval, newReps, newLapses;
+
+  if (rating === "again") {
+    newLapses   = lapses + 1;
+    newReps     = 0;
+    newInterval = 1;
+    newEase     = Math.max(1.3, ease - 0.2);
+  } else if (rating === "good") {
+    newLapses   = lapses;
+    newReps     = reps + 1;
+    newInterval = newReps === 1 ? 2 : newReps === 2 ? 6 : Math.round(interval * ease);
+    newEase     = ease;
+  } else { // easy
+    newLapses   = lapses;
+    newReps     = reps + 1;
+    newInterval = newReps === 1 ? 6 : newReps === 2 ? 15 : Math.round(interval * ease * 1.3);
+    newEase     = Math.min(2.5, ease + 0.15);
+  }
+
+  const due = new Date();
+  due.setDate(due.getDate() + newInterval);
+  const today = new Date().toISOString().slice(0, 10);
+
+  return {
+    srs_ease:          Math.round(newEase * 100) / 100,
+    srs_interval:      newInterval,
+    srs_due:           due.toISOString().slice(0, 10),
+    srs_reps:          newReps,
+    srs_lapses:        newLapses,
+    srs_last_reviewed: today
+  };
+}
+
+async function scheduleCard(rating) {
   recordActivity("words_practiced", 1);
+
+  const sorted = getCurrentCards();
+  const card = sorted[currentFlashcardIndex];
+  if (!card) { goToNextFlashcard(); return; }
+
+  const next = computeNextSRS(card, rating);
+
+  // Optimistically update in-memory card (deck.cards holds the originals).
+  const deck = getCurrentDeck();
+  if (deck) {
+    const orig = deck.cards.find(c => c.id === card.id);
+    if (orig) Object.assign(orig, next);
+  }
+
+  // Persist to Supabase — fire and forget (failure doesn't block navigation).
+  supabase.from("flashcards").update({
+    srs_ease:          next.srs_ease,
+    srs_interval:      next.srs_interval,
+    srs_due:           next.srs_due,
+    srs_reps:          next.srs_reps,
+    srs_lapses:        next.srs_lapses,
+    srs_last_reviewed: next.srs_last_reviewed
+  }).eq("id", card.id).then(({ error }) => {
+    if (error) console.error("[SRS] update error:", error.message);
+  });
+
   goToNextFlashcard();
+  updateHomeCardsBadge();
 }
 
 document.getElementById("srsAgainBtn")?.addEventListener("click", () => scheduleCard("again"));
