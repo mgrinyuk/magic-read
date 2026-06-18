@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20260618" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
 </head>
@@ -235,8 +235,8 @@
               <div class="ob-trial-spark">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg>
               </div>
-              <h2>Your 7-day Pro<br>trial starts now</h2>
-              <p class="subtle">Full access for 7 days — no charge until it ends.</p>
+              <h2>Try Pro free<br>for 7 days</h2>
+              <p class="subtle">Create a free account to activate your trial. No payment method required, and you will not be charged automatically.</p>
               <ul class="ob-include-list">
                 <li class="ob-include-row">
                   <span class="ob-include-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
@@ -252,7 +252,8 @@
                 </li>
               </ul>
             </div>
-            <button id="onboardingStartBtn" class="primary-btn onboarding-continue-btn">Start learning</button>
+            <button id="onboardingStartBtn" class="primary-btn onboarding-continue-btn">Create free account</button>
+            <button id="onboardingExploreBtn" class="text-link-btn onboarding-explore-btn" type="button">Explore with free limits</button>
           </div>
 
         </div>
@@ -870,8 +871,8 @@
     <div class="auth-card">
 
       <div class="auth-right">
-        <h2 id="authTitleText">Create your free account</h2>
-        <p class="subtle" data-i18n="loginHint">
+        <h2 id="authTitleText">Welcome back</h2>
+        <p id="authHintText" class="subtle" data-i18n="loginHint">
           Log in or create an account to continue.
         </p>
 
@@ -940,7 +941,7 @@
         <button id="signUpBtn" data-i18n="createAccount" class="auth-secondary-btn">
           Create account
         </button>
-        <p class="auth-switch-text">
+        <p id="authSwitchText" class="auth-switch-text">
           Already have an account?
           <button id="switchToLoginBtn" type="button">
             Log in
@@ -1006,7 +1007,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=20260618.2"></script>
 
   <footer class="footer">
     <div>

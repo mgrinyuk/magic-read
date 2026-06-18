@@ -1053,6 +1053,7 @@ async function checkAuth() {
   if (data.session) {
     document.body.classList.add("is-logged-in");
     document.body.classList.remove("is-logged-out");
+    document.body.classList.remove("auth-active");
 
     if (authScreen) authScreen.hidden = true;
     if (landingHow) landingHow.hidden = false;
@@ -1079,11 +1080,20 @@ function openAuthFromOverlay(mode = "signup") {
   if (overlay) overlay.hidden = true;
 
   if (authScreen) authScreen.hidden = false;
+  document.body.classList.add("auth-active");
 
   authMode = mode;
+  const authTitleText = document.getElementById("authTitleText");
+  const authHintText = document.getElementById("authHintText");
+  const authSwitchText = document.getElementById("authSwitchText");
+  const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
 
   if (mode === "signup") {
     if (authNameGroup) authNameGroup.hidden = false;
+    if (authTitleText) authTitleText.textContent = "Create your free account";
+    if (authHintText) authHintText.textContent = "Start your 7-day Pro trial. No payment method required.";
+    if (authSwitchText) authSwitchText.hidden = false;
+    if (forgotPasswordBtn) forgotPasswordBtn.hidden = true;
 
     if (loginBtn) loginBtn.hidden = true;
     if (signUpBtn) {
@@ -1099,6 +1109,10 @@ function openAuthFromOverlay(mode = "signup") {
 
   if (mode === "login") {
     if (authNameGroup) authNameGroup.hidden = true;
+    if (authTitleText) authTitleText.textContent = "Welcome back";
+    if (authHintText) authHintText.textContent = "Log in to continue your practice.";
+    if (authSwitchText) authSwitchText.hidden = true;
+    if (forgotPasswordBtn) forgotPasswordBtn.hidden = false;
 
     if (loginBtn) loginBtn.hidden = false;
     if (signUpBtn) {
@@ -1368,7 +1382,6 @@ updatePasswordBtn?.addEventListener("click", async () => {
 
 const TAB_BY_SCREEN = {
   "screen-home":       "home",
-  "screen-main":       "read",
   "screen-flashcards": "cards",
   "screen-video":      "video",
   "screen-writing":    null,
@@ -1385,15 +1398,20 @@ function showScreen(screen) {
 
   screen.classList.add("active");
   sessionStorage.setItem("activeScreenId", screen.id);
+  document.body.classList.toggle("product-active", screen.id !== "screen-onboarding");
 
   const appTabBar = document.getElementById("appTabBar");
   if (appTabBar) {
     appTabBar.hidden = screen.id === "screen-onboarding";
-    const activeTab = TAB_BY_SCREEN[screen.id] ?? null;
+    const activeTab = screen.id === "screen-main"
+      ? (appMode === "reading" ? "read" : "speak")
+      : (TAB_BY_SCREEN[screen.id] ?? null);
     appTabBar.querySelectorAll(".sonic-tab").forEach(t =>
       t.classList.toggle("active", t.dataset.tab === activeTab)
     );
   }
+
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 profileMenuBtn?.addEventListener("click", () => {
@@ -1536,9 +1554,25 @@ document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
   if (picker) picker.hidden = !picker.hidden;
 });
 
-document.getElementById("acctManageSubBtn")?.addEventListener("click", () => {
-  // TODO §7: replace with real Stripe billing portal URL from backend
-  window.open("https://billing.stripe.com/p/login/test_stub", "_blank");
+document.getElementById("acctManageSubBtn")?.addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+
+  try {
+    const response = await fetchWithAuth(`${API_BASE}/api/create-billing-portal-session`, {
+      method: "POST"
+    });
+    const data = await response.json();
+    if (!response.ok || !data?.url) {
+      showToast(data?.error || "Could not open subscription settings.", "error");
+      return;
+    }
+    window.location.href = data.url;
+  } catch {
+    showToast("Could not open subscription settings.", "error");
+  } finally {
+    button.disabled = false;
+  }
 });
 
 document.getElementById("acctPersonalDataBtn")?.addEventListener("click", () => {
@@ -1597,9 +1631,10 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
 
 // Home dashboard action tile clicks
 document.querySelectorAll("[data-hd-target]").forEach(btn => {
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     const target = btn.dataset.hdTarget;
     if (target === "speak" || target === "read") {
+      await activateReaderMode(target === "read" ? "reading" : "pronunciation");
       showScreen(screenMain);
     } else if (target === "cards") {
       showScreen(screenFlashcards);
@@ -1629,6 +1664,7 @@ document.getElementById("homeResume")?.addEventListener("click", async () => {
 
   showMagicLoadingOverlay();
   try {
+    await activateReaderMode(activity === "reading" ? "reading" : "pronunciation");
     if (item_id.startsWith("lib_")) {
       await loadLibraryText(item_id.slice(4));
     } else {
@@ -1654,12 +1690,13 @@ document.getElementById("homeResume")?.addEventListener("click", async () => {
 
 // Bottom tab bar navigation
 document.querySelectorAll(".sonic-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
+  tab.addEventListener("click", async () => {
     const t = tab.dataset.tab;
     if (t === "home") {
       renderHomeScreen();
       showScreen(screenHome);
     } else if (t === "read" || t === "speak") {
+      await activateReaderMode(t === "read" ? "reading" : "pronunciation");
       showScreen(screenMain);
     } else if (t === "cards") {
       showScreen(screenFlashcards);
@@ -1682,6 +1719,8 @@ document.querySelectorAll(".sonic-tab").forEach(tab => {
     e.preventDefault();
     stopAllTTS();
     stopRecognition();
+    document.body.classList.remove("auth-active");
+    if (authScreen) authScreen.hidden = true;
     showOnboardingStepA();
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
@@ -1697,6 +1736,38 @@ const homeBackBtn = document.getElementById("homeBackBtn");
 
 let appMode = "pronunciation";
 let pendingMode = "pronunciation";
+
+function updateModeCopy() {
+  const heading = document.querySelector("#startComposerArea .start-copy h1");
+  const hint = document.querySelector("#startComposerArea .start-copy .subtle");
+
+  if (appMode === "reading") {
+    if (heading) heading.textContent = "Read and understand any text";
+    if (hint) hint.textContent = "Paste an article, story, or lesson to get audio, translation, and reading exercises.";
+    if (createBtn) createBtn.textContent = "Start reading";
+  } else {
+    if (heading) heading.textContent = "Practice pronunciation with your own texts";
+    if (hint) hint.textContent = "Paste homework, dialogue, or exam text and get sentence-by-sentence speaking feedback.";
+    if (createBtn) createBtn.textContent = "Start speaking";
+  }
+}
+
+async function activateReaderMode(mode) {
+  appMode = mode === "reading" ? "reading" : "pronunciation";
+  pendingMode = appMode;
+  updateModeCopy();
+
+  if (currentText && currentSentences.length) {
+    if (appMode === "reading") {
+      await showImportedText(currentText);
+      await buildClozeExercise(currentSentences);
+    } else if (!container?.querySelector(".card")) {
+      await renderCards(currentSentences);
+    }
+  }
+
+  applyMode();
+}
 
 function syncOnboardingToMain() {
   if (onboardingSourceLangEl && sourceLangSelect) {
@@ -1749,6 +1820,10 @@ function restoreActiveScreen() {
   }
 
   if (savedId === "screen-home") renderHomeScreen();
+  if (savedId === "screen-main") {
+    updateModeCopy();
+    applyMode();
+  }
   showScreen(target);
 }
 
@@ -1762,6 +1837,15 @@ document.getElementById("onboardingContinueBtn")?.addEventListener("click", () =
 });
 
 document.getElementById("onboardingStartBtn")?.addEventListener("click", () => {
+  if (document.body.classList.contains("is-logged-in")) {
+    renderHomeScreen();
+    showScreen(screenHome);
+    return;
+  }
+  openAuthFromOverlay("signup");
+});
+
+document.getElementById("onboardingExploreBtn")?.addEventListener("click", () => {
   renderHomeScreen();
   showScreen(screenHome);
 });
@@ -1783,16 +1867,19 @@ document.getElementById("googleAuthBtn")?.addEventListener("click", async () => 
 function applyMode() {
   const cardsSection = document.getElementById("cardsSection");
   const readingExercise = document.getElementById("readingExercise");
+  const wordOrderExercise = document.getElementById("wordOrderExercise");
   const hasText = !!(currentSentences && currentSentences.length);
 
   if (appMode === "reading") {
     if (cardsSection) cardsSection.hidden = true;
     if (fullTextPanel) fullTextPanel.hidden = !hasText;
     if (readingExercise) readingExercise.hidden = !hasText;
+    if (wordOrderExercise) wordOrderExercise.hidden = true;
   } else {
     if (cardsSection) cardsSection.hidden = false;
     if (readingExercise) readingExercise.hidden = true;
     if (fullTextPanel) fullTextPanel.hidden = true;
+    if (wordOrderExercise) wordOrderExercise.hidden = !hasText;
   }
 }
 
@@ -2227,7 +2314,7 @@ async function startReadingFromText(text) {
     hideMagicLoadingOverlay();
     if (createBtn) {
       createBtn.disabled = false;
-      createBtn.textContent = getT().start || "Start";
+      updateModeCopy();
     }
   }
 }
@@ -2931,7 +3018,7 @@ async function renderCards(sentences) {
 
           <div class="card-action-row">
             <button class="tts-btn card-primary-btn">${escapeHtml(t.listen)}</button>
-            <button class="record-btn card-primary-btn" hidden>${escapeHtml(t.yourTurn)}</button>
+            <button class="record-btn card-primary-btn">${escapeHtml(t.yourTurn || "Speak now")}</button>
 
             <div class="card-more">
               <button class="more-btn" type="button" aria-label="More">⋯</button>

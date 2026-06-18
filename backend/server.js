@@ -805,6 +805,42 @@ app.post("/api/create-checkout-session", extractUser, requireUser, async (req, r
   }
 });
 
+app.post("/api/create-billing-portal-session", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ error: "Billing is not configured.", code: "NOT_CONFIGURED" });
+    }
+
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", req.user.id)
+      .maybeSingle();
+
+    if (profileErr) {
+      console.error("[Stripe] portal profile lookup error:", profileErr.message);
+      return res.status(500).json({ error: "Could not open subscription settings." });
+    }
+    if (!profile?.stripe_customer_id) {
+      return res.status(404).json({
+        error: "No paid subscription is connected to this account yet.",
+        code: "NO_BILLING_CUSTOMER"
+      });
+    }
+
+    const origin = req.headers.origin || "https://magic-read.onrender.com";
+    const session = await stripe.billingPortal.sessions.create({
+      customer: profile.stripe_customer_id,
+      return_url: origin
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error("[Stripe] create-billing-portal-session error:", error.message);
+    res.status(500).json({ error: "Could not open subscription settings." });
+  }
+});
+
 
 /* -----------------------------
    PLAN & QUOTAS

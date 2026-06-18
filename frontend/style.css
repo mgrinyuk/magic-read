@@ -516,6 +516,17 @@ h1 {
   width: 100%;
 }
 
+body.product-active .marketing-section,
+body.product-active > .footer {
+  display: none !important;
+}
+
+body.auth-active .landing-page,
+body.auth-active .marketing-section,
+body.auth-active > .footer {
+  display: none !important;
+}
+
 .landing-hero {
   margin: 60px 0 80px;
 }
@@ -2050,17 +2061,31 @@ body.is-logged-in .top-ui-language {
 
   .workspace-tabs {
     width: 100%;
-    overflow-x: auto;
-    display: flex;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
     padding: 6px;
     margin-bottom: 18px;
+    border-radius: 18px;
   }
 
   .workspace-tab {
-    flex: 0 0 auto;
+    width: 100%;
     font-size: 0.9rem;
     padding: 9px 13px;
+    text-align: center;
+  }
+
+  body.product-active .app-shell .main {
+    padding-top: 10px;
+  }
+
+  body.product-active .home-back-btn {
+    margin: 0 12px 10px;
+  }
+
+  body.product-active #readerStart {
+    border-radius: 22px 22px 0 0;
   }
 
   #fullTextPanel .workspace-head {
@@ -3250,6 +3275,13 @@ body.is-logged-in .top-ui-language {
   gap: 12px;
   font-size: 15px;
   font-weight: 500;
+}
+
+.onboarding-explore-btn {
+  align-self: center;
+  margin: 12px auto 0;
+  padding: 8px 12px;
+  text-align: center;
 }
 .ob-include-check {
   width: 24px;
