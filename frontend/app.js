@@ -5499,36 +5499,42 @@ function renderCaptions(captions, lang) {
         ${cap.translation ? `<div class="vid-tr">${escapeHtml(cap.translation)}</div>` : ""}
         <div class="vid-line-acts">
           <button class="vid-replay-btn" type="button" data-cap-index="${i}" aria-label="Replay line">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-play"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-play"/></svg>
+            Listen
           </button>
           <button class="vid-speak-btn" type="button" data-cap-index="${i}" aria-label="Speak this line">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+            Speak this line
           </button>
         </div>
         <div class="vid-result-box" hidden></div>
       </div>`;
   }).join("");
 
-  // Line tap → seek; word tap → popup
+  function replayCapLine(cap) {
+    if (!vidPlayer) return;
+    clearTimeout(vidReplayTimer);
+    vidPlayer.seekTo(cap.start, true);
+    vidPlayer.playVideo();
+    vidReplayTimer = setTimeout(() => {
+      if (vidPlayer?.getPlayerState() === 1) vidPlayer.pauseVideo();
+    }, cap.dur * 1000);
+  }
+
+  // Line tap → seek and play; word tap → replay line + popup
   capList.querySelectorAll(".vid-line").forEach((lineEl, i) => {
     const cap = captions[i];
     if (!cap) return;
 
-    // Tap line → seek to start of line
+    // Tap line → seek to start of line and play
     lineEl.addEventListener("click", () => {
-      vidPlayer?.seekTo(cap.start, true);
+      replayCapLine(cap);
     });
 
-    // Replay line — seek the YouTube player to this line's start and auto-pause at its end
+    // Replay line button
     lineEl.querySelector(".vid-replay-btn")?.addEventListener("click", e => {
       e.stopPropagation();
-      if (!vidPlayer) return;
-      clearTimeout(vidReplayTimer);
-      vidPlayer.seekTo(cap.start, true);
-      vidPlayer.playVideo();
-      vidReplayTimer = setTimeout(() => {
-        if (vidPlayer?.getPlayerState() === 1) vidPlayer.pauseVideo();
-      }, cap.dur * 1000);
+      replayCapLine(cap);
     });
 
     // Speak this line — full Azure pronunciation scoring, same flow as the reader
@@ -5551,29 +5557,28 @@ function renderCaptions(captions, lang) {
       if (wasPlaying) vidPlayer.playVideo();
     });
 
-    // Chinese ruby tokens
+    // Chinese ruby tokens — replay line in video + show translate/save popup
     lineEl.querySelectorAll(".vid-ruby").forEach(tokenEl => {
       tokenEl.addEventListener("click", e => {
         e.stopPropagation();
         unlockAudioForMobile();
         const word = tokenEl.dataset.word;
-        const py   = tokenEl.dataset.pinyin;
         document.querySelectorAll(".vid-ruby.sel").forEach(el => el.classList.remove("sel"));
         tokenEl.classList.add("sel");
-        sourceLangSelect.value = videoLang; // align popup's lang with video
-        playGoogleTTS(word, videoLang);
+        sourceLangSelect.value = videoLang;
+        replayCapLine(cap);
         showWordPopup(tokenEl, word, cap.text, "", true).catch(console.error);
       });
     });
 
-    // Non-Chinese word spans
+    // Non-Chinese word spans — replay line in video + show translate/save popup
     lineEl.querySelectorAll(".vid-word").forEach(wordEl => {
       wordEl.addEventListener("click", e => {
         e.stopPropagation();
         unlockAudioForMobile();
         const word = wordEl.dataset.word;
         sourceLangSelect.value = videoLang;
-        playGoogleTTS(word, videoLang);
+        replayCapLine(cap);
         showWordPopup(wordEl, word, cap.text, "", true).catch(console.error);
       });
     });

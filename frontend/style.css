@@ -4778,21 +4778,24 @@ body.is-logged-in .top-ui-language {
 .vid-capwrap {
   display: flex;
   flex-direction: column;
-  padding: 4px 0 16px;
+  gap: 10px;
+  padding: 8px 0 24px;
 }
 .vid-line {
-  border-left: 2px solid transparent;
-  padding: 7px 6px 7px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 14px 16px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
-.vid-line.past { opacity: 0.38; }
+.vid-line.past { opacity: 0.45; }
 .vid-line.current {
-  background: rgba(10,180,214,.07);
-  border-left-color: var(--primary, #0ab4d6);
+  border-color: rgba(229, 38, 126, 0.4);
+  box-shadow: 0 0 0 3px rgba(229, 38, 126, 0.07);
   opacity: 1;
 }
-.vid-line:hover:not(.current) { background: var(--surface); }
+.vid-line:hover:not(.current) { background: var(--surface-2); }
 
 /* Chinese ruby layout */
 .vid-han {
@@ -4842,44 +4845,48 @@ body.is-logged-in .top-ui-language {
 
 /* Translation line */
 .vid-tr {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-soft);
-  margin-top: 3px;
-  line-height: 1.45;
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
-/* Per-line actions — icon-only buttons, visible only on the active line */
+/* Per-line actions — pill buttons, visible only on the active line */
 .vid-line-acts {
   display: none;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 8px;
+  margin-top: 12px;
 }
 .vid-line.current .vid-line-acts { display: flex; }
 
 .vid-replay-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 11px;
   border: 1px solid var(--border);
   background: var(--surface);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
+  cursor: pointer;
   font-family: inherit;
 }
 .vid-replay-btn:hover { background: var(--surface-2); }
 
 .vid-speak-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 11px;
   border: none;
   background: linear-gradient(95deg, var(--primary), var(--primary-soft));
-  display: grid;
-  place-items: center;
-  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
   color: #fff;
+  cursor: pointer;
   font-family: inherit;
 }
 .vid-speak-btn:disabled { opacity: 0.6; cursor: not-allowed; }
