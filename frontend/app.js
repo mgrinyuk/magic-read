@@ -5346,6 +5346,7 @@ let videoLang      = "";     // caption language (e.g. "zh")
 let vidSlowOn      = false;
 let vidPinyinOn    = true;
 let vidHighlightId = null;   // setInterval handle for line highlighting
+let vidReplayTimer = null;   // setTimeout handle for auto-pause after replay
 
 // ── YouTube IFrame API ──────────────────────────────────
 
@@ -5453,9 +5454,12 @@ function highlightCurrentLine(t) {
     if (isCurrent) activeEl = el;
   });
   if (activeEl) {
-    const rect = activeEl.getBoundingClientRect();
-    if (rect.top < 80 || rect.bottom > window.innerHeight - 80) {
-      activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    const scrollEl = document.querySelector(".vid-scroll");
+    if (scrollEl) {
+      const lineRect   = activeEl.getBoundingClientRect();
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const offset     = (lineRect.top + lineRect.height / 2) - (scrollRect.top + scrollRect.height / 2);
+      if (Math.abs(offset) > 80) scrollEl.scrollBy({ top: offset, behavior: "smooth" });
     }
   }
 }
@@ -5494,13 +5498,11 @@ function renderCaptions(captions, lang) {
         ${hanHTML}
         ${cap.translation ? `<div class="vid-tr">${escapeHtml(cap.translation)}</div>` : ""}
         <div class="vid-line-acts">
-          <button class="vid-listen-btn" type="button" data-cap-index="${i}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
-            Listen
+          <button class="vid-replay-btn" type="button" data-cap-index="${i}" aria-label="Replay line">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-play"/></svg>
           </button>
-          <button class="vid-speak-btn" type="button" data-cap-index="${i}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
-            Speak
+          <button class="vid-speak-btn" type="button" data-cap-index="${i}" aria-label="Speak this line">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
           </button>
         </div>
         <div class="vid-result-box" hidden></div>
@@ -5517,10 +5519,16 @@ function renderCaptions(captions, lang) {
       vidPlayer?.seekTo(cap.start, true);
     });
 
-    // Listen button
-    lineEl.querySelector(".vid-listen-btn")?.addEventListener("click", e => {
+    // Replay line — seek the YouTube player to this line's start and auto-pause at its end
+    lineEl.querySelector(".vid-replay-btn")?.addEventListener("click", e => {
       e.stopPropagation();
-      playGoogleTTS(cap.text, videoLang);
+      if (!vidPlayer) return;
+      clearTimeout(vidReplayTimer);
+      vidPlayer.seekTo(cap.start, true);
+      vidPlayer.playVideo();
+      vidReplayTimer = setTimeout(() => {
+        if (vidPlayer?.getPlayerState() === 1) vidPlayer.pauseVideo();
+      }, cap.dur * 1000);
     });
 
     // Speak this line — full Azure pronunciation scoring, same flow as the reader
@@ -5698,11 +5706,13 @@ function initVideoScreen() {
 
   back5Btn?.addEventListener("click", () => {
     if (!vidPlayer) return;
+    clearTimeout(vidReplayTimer);
     vidPlayer.seekTo(Math.max(0, vidPlayer.getCurrentTime() - 5), true);
   });
 
   ppBtn?.addEventListener("click", () => {
     if (!vidPlayer) return;
+    clearTimeout(vidReplayTimer);
     const state = vidPlayer.getPlayerState();
     if (state === 1) vidPlayer.pauseVideo();
     else             vidPlayer.playVideo();
@@ -5719,6 +5729,7 @@ function initVideoScreen() {
   scrubber?.addEventListener("touchstart", () => { if (scrubber) scrubber._seeking = true; }, { passive: true });
   scrubber?.addEventListener("input", () => {
     if (!vidPlayer) return;
+    clearTimeout(vidReplayTimer);
     const dur = vidPlayer.getDuration() || 0;
     vidPlayer.seekTo((Number(scrubber.value) / 1000) * dur, true);
   });

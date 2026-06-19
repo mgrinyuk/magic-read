@@ -1746,33 +1746,47 @@ textarea:focus,
   color: var(--text-muted);
 }
 
-.flashcard-play-btn {
-  position: static;
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border: none;
-  border-radius: 50%;
-  background: var(--text);
-  color: var(--yellow);
-  font-size: 1.1rem;
-  cursor: pointer;
+.fc-audio-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 2px 0 6px;
 }
 
-.flashcard-back .flashcard-play-btn {
-  align-self: flex-start;
-  width: 38px;
-  height: 38px;
-  background: var(--surface-soft);
-  color: var(--text-soft);
+.flashcard-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 11px;
   border: 1px solid var(--border);
-  font-size: 0.95rem;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
 }
+.flashcard-play-btn svg { stroke: var(--cyan-ink); flex: none; }
 
 #flashcardSlowBtn {
-  position: static;
-  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+#flashcardSlowBtn.is-active {
+  background: rgba(10, 180, 214, .12);
+  border-color: rgba(10, 180, 214, .4);
+  color: var(--cyan-ink);
 }
 
 
@@ -2451,10 +2465,14 @@ body.is-logged-in .top-ui-language {
 }
 
 .flashcard-speak-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   align-self: center;
-  margin-top: 4px;
-  padding: 10px 24px;
-  font-size: 0.95rem;
+  margin-top: 2px;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .game-nav-btn:disabled,
@@ -4453,11 +4471,62 @@ body.is-logged-in .top-ui-language {
 
 /* ── Video screen ────────────────────────────────────────── */
 
+/* Video screen — full-height split layout via :has() so other screens are unaffected */
+.app-shell:has(#screen-video.active) {
+  height: calc(100dvh - 72px);
+  overflow: hidden;
+}
+@media (max-width: 640px) {
+  .app-shell:has(#screen-video.active) {
+    height: calc(100dvh - 68px);
+  }
+}
+.app-shell .main:has(#screen-video.active) {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.app-shell .main:has(#screen-video.active) .site-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+#screen-video.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .vid-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Pinned top: url bar + player + transport — stays visible while transcript scrolls */
+.vid-pinned {
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: clamp(12px,3vw,20px) clamp(14px,3.5vw,28px) 24px;
+  padding: clamp(10px,2.5vw,14px) clamp(14px,3.5vw,24px) 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Scrolling transcript area */
+.vid-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  padding: 0 clamp(14px,3.5vw,24px) 32px;
 }
 
 /* URL bar */
@@ -4677,11 +4746,16 @@ body.is-logged-in .top-ui-language {
 }
 
 /* Caption area */
-.vid-caption-area { display: flex; flex-direction: column; gap: 10px; }
+.vid-caption-area { display: flex; flex-direction: column; gap: 0; }
 .vid-cap-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 0 6px;
+  position: sticky;
+  top: 0;
+  background: var(--shell, #f4f5f9);
+  z-index: 2;
 }
 .vid-toggle-btn {
   font-size: 12px;
@@ -4700,35 +4774,32 @@ body.is-logged-in .top-ui-language {
   color: var(--cyan-ink);
 }
 
-/* Caption lines */
+/* Compact continuous transcript */
 .vid-capwrap {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-bottom: 12px;
+  padding: 4px 0 16px;
 }
 .vid-line {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 14px;
-  padding: 13px 15px;
+  border-left: 2px solid transparent;
+  padding: 7px 6px 7px 12px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
 }
-.vid-line.past { opacity: 0.45; }
+.vid-line.past { opacity: 0.38; }
 .vid-line.current {
-  border-color: rgba(229,38,126,.4);
-  box-shadow: 0 0 0 3px rgba(229,38,126,.07);
+  background: rgba(10,180,214,.07);
+  border-left-color: var(--primary, #0ab4d6);
   opacity: 1;
 }
-.vid-line:hover { background: var(--surface-2); }
+.vid-line:hover:not(.current) { background: var(--surface); }
 
 /* Chinese ruby layout */
 .vid-han {
   font-family: 'Noto Sans SC', sans-serif;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 600;
-  line-height: 2.2;
+  line-height: 2.1;
   word-break: break-all;
 }
 .vid-ruby {
@@ -4754,9 +4825,7 @@ body.is-logged-in .top-ui-language {
 .vid-ruby:hover { background: rgba(10,180,214,.1); }
 .vid-ruby.sel { background: rgba(10,180,214,.16); }
 .vid-ruby.sel .vid-zh { color: var(--cyan-ink); }
-.vid-zh {
-  font-family: 'Noto Sans SC', sans-serif;
-}
+.vid-zh { font-family: 'Noto Sans SC', sans-serif; }
 
 /* Non-Chinese word spans */
 .vid-text {
@@ -4775,51 +4844,49 @@ body.is-logged-in .top-ui-language {
 .vid-tr {
   font-size: 13px;
   color: var(--text-soft);
-  margin-top: 6px;
-  line-height: 1.5;
+  margin-top: 3px;
+  line-height: 1.45;
 }
 
-/* Line actions */
+/* Per-line actions — icon-only buttons, visible only on the active line */
 .vid-line-acts {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-.vid-listen-btn {
-  display: inline-flex;
-  align-items: center;
+  display: none;
   gap: 6px;
-  padding: 7px 14px;
-  border-radius: 10px;
+  margin-top: 8px;
+}
+.vid-line.current .vid-line-acts { display: flex; }
+
+.vid-replay-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
+  display: grid;
+  place-items: center;
   cursor: pointer;
+  color: var(--text);
   font-family: inherit;
 }
-.vid-listen-btn:hover { background: var(--surface-2); }
+.vid-replay-btn:hover { background: var(--surface-2); }
 
 .vid-speak-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   border: none;
   background: linear-gradient(95deg, var(--primary), var(--primary-soft));
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
+  display: grid;
+  place-items: center;
   cursor: pointer;
+  color: #fff;
   font-family: inherit;
 }
 .vid-speak-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .vid-result-box {
-  margin-top: 10px;
-  padding: 10px 12px;
+  margin-top: 8px;
+  padding: 8px 10px;
   background: var(--surface-2);
   border-radius: 10px;
   font-size: 13px;

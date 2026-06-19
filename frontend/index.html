@@ -715,76 +715,78 @@
       <section id="screen-video" class="app-screen">
         <div class="vid-body">
 
-          <!-- URL bar -->
-          <div class="vid-urlbar">
-            <span class="vid-yt-logo" aria-hidden="true">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M8 5v14l11-7z"/></svg>
-            </span>
-            <input id="vidUrlInput" class="vid-url-input" type="url" placeholder="Paste YouTube link…" autocomplete="off" spellcheck="false" />
-            <button id="vidLoadBtn" class="vid-go-btn" type="button">Load</button>
-          </div>
+          <!-- Pinned top: URL bar + player + transport (stays in view while transcript scrolls) -->
+          <div class="vid-pinned">
 
-          <!-- Trial video quota chip (trial users only) -->
-          <div id="vidFreeChip" class="vid-free-chip" hidden>
-            <span id="vidFreeChipText"></span>
-          </div>
-
-          <!-- Player -->
-          <div class="vid-player-wrap">
-            <div id="vidPlayerPlaceholder" class="vid-placeholder">
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-video"/></svg>
-              <p class="vid-placeholder-txt">Paste a YouTube link above</p>
+            <div class="vid-urlbar">
+              <span class="vid-yt-logo" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M8 5v14l11-7z"/></svg>
+              </span>
+              <input id="vidUrlInput" class="vid-url-input" type="url" placeholder="Paste YouTube link…" autocomplete="off" spellcheck="false" />
+              <button id="vidLoadBtn" class="vid-go-btn" type="button">Load</button>
             </div>
-            <div id="vidPlayerContainer"></div>
-          </div>
 
-          <!-- Transport (shown after video loads) -->
-          <div id="vidTransport" class="vid-transport" hidden>
-            <button id="vidBack5Btn" class="vid-tbtn" type="button" aria-label="Back 5 seconds">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-back5"/></svg>
-              <span class="vid-tbtn-num">5</span>
-            </button>
-            <button id="vidPlayPauseBtn" class="vid-tbtn vid-tbtn-play" type="button" aria-label="Play / Pause">
-              <svg id="vidPlayPauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use id="vidPlayPauseUse" href="#sonic-i-play"/></svg>
-            </button>
-            <button id="vidSlowBtn" class="vid-tbtn" type="button" aria-label="Slow mode (0.75×)">
-              <span aria-hidden="true" style="font-size:17px;line-height:1">🐢</span>
-            </button>
-            <div class="vid-scrub">
-              <input id="vidScrubber" class="vid-scrubber-input" type="range" min="0" max="1000" value="0" step="1" />
-              <span id="vidTimeDisplay" class="vid-time">0:00 / 0:00</span>
+            <div id="vidFreeChip" class="vid-free-chip" hidden>
+              <span id="vidFreeChipText"></span>
             </div>
-          </div>
 
-          <!-- Loading state -->
-          <div id="vidLoadingState" class="vid-state" hidden>
-            <div class="vid-spinner"></div>
-            <p class="vid-state-txt">Loading captions…</p>
-          </div>
-
-          <!-- No captions state -->
-          <div id="vidNoCapState" class="vid-state vid-nocap" hidden>
-            <div class="vid-nocap-icon">📭</div>
-            <p class="vid-nocap-title">No captions found</p>
-            <p class="vid-nocap-sub">This video has no captions in the selected language.</p>
-            <button id="vidTryAnotherBtn" class="vid-nocap-btn" type="button">Try another video</button>
-            <button id="vidAutoGenBtn" class="vid-nocap-btn vid-nocap-btn-pro" type="button">Auto-generate captions (Pro)</button>
-          </div>
-
-          <!-- Service error state (provider outage / rate limit / network failure) -->
-          <div id="vidServiceErrorState" class="vid-state vid-nocap" hidden>
-            <p class="vid-nocap-title">Captions temporarily unavailable</p>
-            <p class="vid-nocap-sub">Something went wrong loading captions. Please try again in a moment.</p>
-            <button id="vidRetryBtn" class="vid-nocap-btn" type="button">Try again</button>
-          </div>
-
-          <!-- Pinyin toggle + caption list (shown after captions load) -->
-          <div id="vidCaptionArea" class="vid-caption-area" hidden>
-            <div class="vid-cap-toolbar">
-              <button id="vidPinyinToggle" class="vid-toggle-btn" type="button">Pinyin</button>
+            <div class="vid-player-wrap">
+              <div id="vidPlayerPlaceholder" class="vid-placeholder">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-video"/></svg>
+                <p class="vid-placeholder-txt">Paste a YouTube link above</p>
+              </div>
+              <div id="vidPlayerContainer"></div>
             </div>
-            <div id="vidCapList" class="vid-capwrap"></div>
-          </div>
+
+            <div id="vidTransport" class="vid-transport" hidden>
+              <button id="vidBack5Btn" class="vid-tbtn" type="button" aria-label="Back 5 seconds">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-back5"/></svg>
+                <span class="vid-tbtn-num">5</span>
+              </button>
+              <button id="vidPlayPauseBtn" class="vid-tbtn vid-tbtn-play" type="button" aria-label="Play / Pause">
+                <svg id="vidPlayPauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use id="vidPlayPauseUse" href="#sonic-i-play"/></svg>
+              </button>
+              <button id="vidSlowBtn" class="vid-tbtn" type="button" aria-label="Slow mode (0.75×)">
+                <span aria-hidden="true" style="font-size:17px;line-height:1">🐢</span>
+              </button>
+              <div class="vid-scrub">
+                <input id="vidScrubber" class="vid-scrubber-input" type="range" min="0" max="1000" value="0" step="1" />
+                <span id="vidTimeDisplay" class="vid-time">0:00 / 0:00</span>
+              </div>
+            </div>
+
+          </div><!-- /.vid-pinned -->
+
+          <!-- Scrolling area: states + transcript -->
+          <div class="vid-scroll">
+
+            <div id="vidLoadingState" class="vid-state" hidden>
+              <div class="vid-spinner"></div>
+              <p class="vid-state-txt">Loading captions…</p>
+            </div>
+
+            <div id="vidNoCapState" class="vid-state vid-nocap" hidden>
+              <div class="vid-nocap-icon">📭</div>
+              <p class="vid-nocap-title">No captions found</p>
+              <p class="vid-nocap-sub">This video has no captions in the selected language.</p>
+              <button id="vidTryAnotherBtn" class="vid-nocap-btn" type="button">Try another video</button>
+              <button id="vidAutoGenBtn" class="vid-nocap-btn vid-nocap-btn-pro" type="button">Auto-generate captions (Pro)</button>
+            </div>
+
+            <div id="vidServiceErrorState" class="vid-state vid-nocap" hidden>
+              <p class="vid-nocap-title">Captions temporarily unavailable</p>
+              <p class="vid-nocap-sub">Something went wrong loading captions. Please try again in a moment.</p>
+              <button id="vidRetryBtn" class="vid-nocap-btn" type="button">Try again</button>
+            </div>
+
+            <div id="vidCaptionArea" class="vid-caption-area" hidden>
+              <div class="vid-cap-toolbar">
+                <button id="vidPinyinToggle" class="vid-toggle-btn" type="button">Pinyin</button>
+              </div>
+              <div id="vidCapList" class="vid-capwrap"></div>
+            </div>
+
+          </div><!-- /.vid-scroll -->
 
         </div>
       </section>
