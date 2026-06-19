@@ -4486,6 +4486,8 @@ body.is-logged-in .top-ui-language {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 .app-shell .main:has(#screen-video.active) .site-container {
   flex: 1;
