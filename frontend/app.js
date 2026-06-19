@@ -5454,13 +5454,7 @@ function highlightCurrentLine(t) {
     if (isCurrent) activeEl = el;
   });
   if (activeEl) {
-    const scrollEl = document.querySelector(".vid-scroll");
-    if (scrollEl) {
-      const lineRect   = activeEl.getBoundingClientRect();
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const offset     = (lineRect.top + lineRect.height / 2) - (scrollRect.top + scrollRect.height / 2);
-      if (Math.abs(offset) > 80) scrollEl.scrollBy({ top: offset, behavior: "smooth" });
-    }
+    activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }
 
