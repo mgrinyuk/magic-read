@@ -20,7 +20,8 @@ export async function fetchTranscript(videoId, preferredLang) {
   const apiKey = process.env.SUPADATA_API_KEY;
   if (!apiKey) throw new CaptionServiceError("SUPADATA_API_KEY is not configured");
 
-  const params = new URLSearchParams({ url: videoId, text: "false", mode: "native" });
+  const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const params = new URLSearchParams({ url: ytUrl, text: "false", mode: "native" });
   if (preferredLang) params.set("lang", preferredLang);
 
   let res;
@@ -36,7 +37,7 @@ export async function fetchTranscript(videoId, preferredLang) {
   // Supadata's docs explicitly state this response costs 1 credit ("costs 1 credit" in the 206 row).
   // The negative cache in the route prevents repeat charges on permanently captionless videos.
   if (res.status === 206) {
-    console.log(`[Supadata] 206 — videoId=${videoId} lang=${preferredLang ?? "default"}: no transcript. Costs 1 credit per Supadata docs.`);
+    console.log(`[Supadata] 206 — ${ytUrl} lang=${preferredLang ?? "default"}: no transcript. Costs 1 credit per Supadata docs.`);
     return null;
   }
   // 404/403 = video is private, deleted, or restricted — treat as no captions (no credit charged)
@@ -47,6 +48,7 @@ export async function fetchTranscript(videoId, preferredLang) {
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    console.error(`[Supadata] ${res.status} — ${ytUrl} lang=${preferredLang ?? "default"}: ${body.slice(0, 200)}`);
     throw new CaptionServiceError(`Transcript provider returned ${res.status}: ${body.slice(0, 200)}`);
   }
 

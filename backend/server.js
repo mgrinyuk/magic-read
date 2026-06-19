@@ -1010,7 +1010,8 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
       console.error("[Captions] provider error:", err.message);
       return res.status(503).json({
         error: "Captions are temporarily unavailable. Please try again later.",
-        code: "CAPTION_SERVICE_ERROR"
+        code: "CAPTION_SERVICE_ERROR",
+        detail: err.message   // temporary — remove once root cause confirmed
       });
     }
 
