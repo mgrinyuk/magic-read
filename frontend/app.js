@@ -1516,6 +1516,54 @@ async function loadRecentProgress() {
   resumeEl.hidden = false;
 }
 
+async function loadVideoHistory() {
+  const wrap = document.getElementById("homeVideoHistory");
+  const list = document.getElementById("homeVideoHistoryList");
+  if (!wrap || !list) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { wrap.hidden = true; return; }
+
+  const { data, error } = await supabase
+    .from("user_progress")
+    .select("item_id, title, updated_at")
+    .eq("user_id", user.id)
+    .eq("activity", "video")
+    .order("updated_at", { ascending: false })
+    .limit(8);
+
+  if (error || !data?.length) { wrap.hidden = true; return; }
+
+  // Deduplicate by video id (keep most recent)
+  const seen = new Set();
+  const videos = data.filter(r => {
+    if (seen.has(r.item_id)) return false;
+    seen.add(r.item_id);
+    return true;
+  });
+
+  list.innerHTML = videos.map(r => {
+    const thumb = `https://img.youtube.com/vi/${encodeURIComponent(r.item_id)}/mqdefault.jpg`;
+    const label = r.title?.replace(/^YouTube:\s*/i, "") || r.item_id;
+    return `
+      <button class="hd-video-item" type="button" data-video-id="${escapeHtml(r.item_id)}">
+        <img class="hd-video-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy">
+        <div class="hd-video-label">${escapeHtml(label)}</div>
+      </button>`;
+  }).join("");
+
+  list.querySelectorAll(".hd-video-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.videoId;
+      showScreen(screenVideo);
+      initVideoScreen();
+      loadVideoById(id);
+    });
+  });
+
+  wrap.hidden = false;
+}
+
 function renderHomeScreen() {
   supabase.auth.getUser().then(({ data }) => {
     const user = data?.user;
@@ -1571,6 +1619,7 @@ function renderHomeScreen() {
   updateHomeCardsBadge();
 
   loadRecentProgress();
+  loadVideoHistory();
 }
 
 document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
@@ -1676,6 +1725,13 @@ document.querySelectorAll("[data-hd-target]").forEach(btn => {
 document.getElementById("homeResume")?.addEventListener("click", async () => {
   if (!_resumeProgress) { showScreen(screenMain); return; }
   const { activity, item_id, position } = _resumeProgress;
+
+  if (activity === "video") {
+    showScreen(screenVideo);
+    initVideoScreen();
+    loadVideoById(item_id);
+    return;
+  }
 
   if (activity === "flashcards") {
     currentDeckId = item_id;
@@ -5462,7 +5518,7 @@ function highlightCurrentLine(t) {
     if (isCurrent) activeEl = el;
   });
   if (activeEl) {
-    activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    activeEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 }
 
@@ -5673,8 +5729,11 @@ async function loadVideoById(videoId) {
     if (capList) capList.classList.toggle("vid-pinyin-off", !vidPinyinOn);
     if (pinyinBtn) pinyinBtn.classList.toggle("on", vidPinyinOn);
 
-    // Save progress
-    saveProgress("video", videoId, { seconds: 0 }, `YouTube: ${videoId}`);
+    // Save progress — fetch real title via YouTube oEmbed (free, no API key)
+    fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&format=json`)
+      .then(r => r.json())
+      .then(d => saveProgress("video", videoId, { seconds: 0 }, d.title || videoId))
+      .catch(() => saveProgress("video", videoId, { seconds: 0 }, videoId));
 
   } catch (err) {
     console.error("[Video] load error:", err.message);
