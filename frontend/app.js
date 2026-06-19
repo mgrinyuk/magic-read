@@ -1077,6 +1077,14 @@ async function checkAuth() {
     if (logoutBtn) logoutBtn.hidden = false;
 
     fetchMyPlan();
+
+    // If the user landed on the onboarding screen (because session wasn't known yet),
+    // redirect them straight to the home dashboard.
+    const activeScreen = document.querySelector(".app-screen.active");
+    if (!activeScreen || activeScreen.id === "screen-onboarding") {
+      renderHomeScreen();
+      showScreen(screenHome);
+    }
   } else {
     document.body.classList.add("is-logged-out");
     document.body.classList.remove("is-logged-in");
