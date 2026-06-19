@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { translateText, translateBatch } from "./services/translateService.js";
+import { fetchTranscript } from "./services/captionService.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -957,42 +958,11 @@ app.post("/api/record-activity", extractUser, requireUser, async (req, res) => {
 
 /* -----------------------------
    VIDEO CAPTIONS
-   Fetches captions from YouTube (human or auto), enriches them with
-   pinyin (Chinese) + translation, caches in public.video_captions.
-   Auth required; returns { captions, source, cached } or { needsGeneration: true }.
+   Fetches captions via Supadata (existing tracks only — AI generation disabled),
+   enriches with pinyin (Chinese) + translation, caches in public.video_captions.
+   Auth required; returns { captions, source, cached }, { needsGeneration: true },
+   or { error, code: "CAPTION_SERVICE_ERROR" } on provider outage.
 ----------------------------- */
-
-// Walk the raw HTML string to extract a balanced JSON object that starts
-// after `marker`, without a regex that can't match nested braces.
-function extractJsonObject(html, marker) {
-  const idx = html.indexOf(marker);
-  if (idx === -1) return null;
-  const start = html.indexOf("{", idx);
-  if (start === -1) return null;
-
-  let depth = 0, inStr = false, esc = false;
-  for (let i = start; i < html.length; i++) {
-    const c = html[i];
-    if (esc)        { esc = false; continue; }
-    if (c === "\\" && inStr) { esc = true;  continue; }
-    if (c === '"')  { inStr = !inStr; continue; }
-    if (inStr)      continue;
-    if (c === "{")  depth++;
-    else if (c === "}") {
-      if (--depth === 0) {
-        try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
-      }
-    }
-  }
-  return null;
-}
-
-// Normalize YouTube language codes to our internal codes (zh-Hans → zh, en-US → en).
-function normYtLang(code) {
-  if (!code) return "";
-  if (code.startsWith("zh")) return "zh";
-  return code.split("-")[0];
-}
 
 app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
   const { videoId, lang, targetLang = "en" } = req.query;
@@ -1006,80 +976,67 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
   }
 
   try {
-    // 1. Cache hit — service-role client bypasses RLS
-    const { data: cached } = await supabaseAdmin
-      .from("video_captions")
-      .select("captions, source")
-      .eq("video_id", videoId)
-      .eq("lang", lang)
-      .maybeSingle();
+    // 1. Positive + negative cache lookups in parallel (both bypass RLS via service-role client).
+    //    Positive: exact (video_id, lang) row with enriched captions.
+    //    Negative: sentinel row (lang "__none__") written when a video yields no usable captions
+    //              anywhere; checked_at stored inside captions JSON for a TTL-based expiry.
+    const NEG_LANG   = "__none__";
+    const NEG_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    const [{ data: cached }, { data: sentinel }] = await Promise.all([
+      supabaseAdmin.from("video_captions").select("captions, source").eq("video_id", videoId).eq("lang", lang).maybeSingle(),
+      supabaseAdmin.from("video_captions").select("captions").eq("video_id", videoId).eq("lang", NEG_LANG).maybeSingle()
+    ]);
 
     if (cached) {
       return res.json({ captions: cached.captions, source: cached.source, cached: true });
     }
 
-    // 2. Fetch the YouTube watch page to discover caption track URLs
-    const ytHeaders = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9"
-    };
-
-    const watchRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, { headers: ytHeaders });
-    if (!watchRes.ok) {
-      return res.status(502).json({ error: "Could not reach YouTube." });
+    if (sentinel?.captions?.no_captions) {
+      const ageMs = Date.now() - new Date(sentinel.captions.checked_at).getTime();
+      if (ageMs < NEG_TTL_MS) {
+        return res.json({ needsGeneration: true });
+      }
+      // Sentinel expired — fall through to Supadata so a video that gained captions can recover
     }
-    const html = await watchRes.text();
 
-    // Try both marker spellings (YouTube has varied this over time)
-    const playerResponse =
-      extractJsonObject(html, "var ytInitialPlayerResponse =") ||
-      extractJsonObject(html, "ytInitialPlayerResponse=");
+    // 2. Fetch existing captions from Supadata (AI generation disabled via mode=native).
+    //    Try the user's learning language first; if unavailable, fall back to the video's default.
+    let transcript;
+    try {
+      transcript = await fetchTranscript(videoId, lang);
+      if (!transcript) transcript = await fetchTranscript(videoId, null);
+    } catch (err) {
+      console.error("[Captions] provider error:", err.message);
+      return res.status(503).json({
+        error: "Captions are temporarily unavailable. Please try again later.",
+        code: "CAPTION_SERVICE_ERROR"
+      });
+    }
 
-    if (!playerResponse) {
+    if (!transcript) {
+      // Write negative cache sentinel so this video doesn't keep burning Supadata credits.
+      // Expires after NEG_TTL_MS — if captions are added later the sentinel will be overwritten.
+      supabaseAdmin
+        .from("video_captions")
+        .upsert({
+          video_id: videoId,
+          lang:     NEG_LANG,
+          source:   "no_captions",
+          captions: { no_captions: true, checked_at: new Date().toISOString() }
+        })
+        .then(({ error }) => { if (error) console.error("[Captions] negative cache write:", error.message); });
       return res.json({ needsGeneration: true });
     }
 
-    const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
-    const targetCode = normYtLang(lang);
+    const { lines: rawLines, language: actualLang } = transcript;
 
-    // Prefer human-made track; fall back to ASR (auto-generated)
-    const human = tracks.find(t => normYtLang(t.languageCode) === targetCode && t.kind !== "asr");
-    const auto  = tracks.find(t => normYtLang(t.languageCode) === targetCode);
-    const track = human ?? auto;
-
-    if (!track) {
-      return res.json({ needsGeneration: true });
-    }
-
-    const source = track.kind === "asr" ? "youtube_auto" : "youtube";
-
-    // 3. Download caption track as JSON3 (YouTube's structured caption format)
-    const captionRes = await fetch(`${track.baseUrl}&fmt=json3`, { headers: ytHeaders });
-    if (!captionRes.ok) {
-      return res.json({ needsGeneration: true });
-    }
-    const captionJson = await captionRes.json();
-
-    const rawLines = (captionJson.events ?? [])
-      .filter(e => e.segs && e.tStartMs !== undefined)
-      .map(e => ({
-        start: e.tStartMs / 1000,
-        dur:   (e.dDurationMs ?? 3000) / 1000,
-        text:  e.segs.map(s => s.utf8 ?? "").join("").replace(/\n/g, " ").trim()
-      }))
-      .filter(l => l.text);
-
-    if (!rawLines.length) {
-      return res.json({ needsGeneration: true });
-    }
-
-    // 4. Enrich: batch-translate all lines in one API call; add pinyin for Chinese
-    const isZh = targetCode === "zh";
-    const srcLang = normYtLang(lang) || lang;
+    // 3. Enrich: batch-translate all lines; add pinyin + tokens for Chinese
+    const isZh = actualLang === "zh" || actualLang.startsWith("zh-");
 
     let translations = rawLines.map(() => "");
     try {
-      translations = await translateBatch(rawLines.map(l => l.text), srcLang, targetLang);
+      translations = await translateBatch(rawLines.map(l => l.text), actualLang, targetLang);
     } catch (err) {
       console.error("[Captions] translation error:", err.message);
     }
@@ -1093,18 +1050,27 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
       };
       if (isZh) {
         out.pinyin = pinyin(line.text, { toneType: "symbol", type: "array" }).join(" ");
-        out.tokens = segmentChineseText(line.text); // [{ word, pinyin }] for tappable words
+        out.tokens = segmentChineseText(line.text);
       }
       return out;
     });
 
-    // 5. Write to cache (fire-and-forget — user already has the response)
+    // 4. Cache under the actual language returned by the provider (fire-and-forget).
+    //    Also cache under the requested lang when we fell back, so repeated requests for the
+    //    same video+requestedLang hit the cache instead of burning another Supadata credit.
     supabaseAdmin
       .from("video_captions")
-      .upsert({ video_id: videoId, lang, source, captions: enriched })
+      .upsert({ video_id: videoId, lang: actualLang, source: "supadata", captions: enriched })
       .then(({ error }) => { if (error) console.error("[Captions] cache write:", error.message); });
 
-    return res.json({ captions: enriched, source, cached: false });
+    if (actualLang !== lang) {
+      supabaseAdmin
+        .from("video_captions")
+        .upsert({ video_id: videoId, lang, source: "supadata", captions: enriched })
+        .then(({ error }) => { if (error) console.error("[Captions] cache write:", error.message); });
+    }
+
+    return res.json({ captions: enriched, source: "supadata", cached: false });
 
   } catch (err) {
     console.error("[Captions] error:", err.message);

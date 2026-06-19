@@ -111,8 +111,7 @@
           </p>
 
           <div class="landing-actions">
-            <button class="primary-btn" type="button"
-              onclick="document.getElementById('screen-main').scrollIntoView({ behavior: 'smooth' })">
+            <button id="heroCtaBtn" class="primary-btn" type="button">
               Start speaking — it's free
             </button>
             <a href="#how-it-works" class="hero-ghost-link">See how it works</a>
@@ -253,7 +252,6 @@
               </ul>
             </div>
             <button id="onboardingStartBtn" class="primary-btn onboarding-continue-btn" data-i18n="trialCreateAccount">Create free account</button>
-            <button id="onboardingExploreBtn" class="text-link-btn onboarding-explore-btn" type="button" data-i18n="trialExploreFree">Explore with free limits</button>
           </div>
 
         </div>
@@ -580,11 +578,19 @@
                     <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
                     <p id="flashcardHardTranslation" class="flashcard-hard-translation" hidden></p>
                     <p id="flashcardSpeakPrompt" class="flashcard-speaking-prompt" hidden></p>
-                    <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">🔊</button>
-                    <button id="flashcardSlowBtn" class="slow-tts-btn toggle-btn" type="button" aria-pressed="false">
-                      <span class="switch" aria-hidden="true"></span><span class="toggle-label" data-i18n="slow">Slow</span>
+                    <div class="fc-audio-row">
+                      <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
+                        Play
+                      </button>
+                      <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" aria-pressed="false">
+                        <span aria-hidden="true">🐢</span><span class="toggle-label" data-i18n="slow">Slow</span>
+                      </button>
+                    </div>
+                    <button id="flashcardSpeakBtn" class="primary-btn flashcard-speak-btn" type="button" hidden>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+                      Say it
                     </button>
-                    <button id="flashcardSpeakBtn" class="primary-btn flashcard-speak-btn" type="button" hidden>Say it 🎤</button>
                   </div>
 
                   <div class="flashcard-face flashcard-back">
@@ -763,6 +769,13 @@
             <p class="vid-nocap-sub">This video has no captions in the selected language.</p>
             <button id="vidTryAnotherBtn" class="vid-nocap-btn" type="button">Try another video</button>
             <button id="vidAutoGenBtn" class="vid-nocap-btn vid-nocap-btn-pro" type="button">Auto-generate captions (Pro)</button>
+          </div>
+
+          <!-- Service error state (provider outage / rate limit / network failure) -->
+          <div id="vidServiceErrorState" class="vid-state vid-nocap" hidden>
+            <p class="vid-nocap-title">Captions temporarily unavailable</p>
+            <p class="vid-nocap-sub">Something went wrong loading captions. Please try again in a moment.</p>
+            <button id="vidRetryBtn" class="vid-nocap-btn" type="button">Try again</button>
           </div>
 
           <!-- Pinyin toggle + caption list (shown after captions load) -->

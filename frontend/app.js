@@ -879,6 +879,12 @@ function renderPlanUI() {
   renderSpeakMeter();
   renderVidFreeChip();
   renderLifetimeOffer();
+
+  // Hide the "lite" wordmark suffix and speak-meter label for paid Pro users.
+  const isLite = !paidPro;
+  document.querySelectorAll(".brand-lite, .speak-meter-lite").forEach(el => {
+    el.hidden = !isLite;
+  });
 }
 
 function renderLifetimeOffer() {
@@ -1850,9 +1856,8 @@ document.getElementById("onboardingStartBtn")?.addEventListener("click", () => {
   openAuthFromOverlay("signup");
 });
 
-document.getElementById("onboardingExploreBtn")?.addEventListener("click", () => {
-  renderHomeScreen();
-  showScreen(screenHome);
+document.getElementById("heroCtaBtn")?.addEventListener("click", () => {
+  openAuthFromOverlay("signup");
 });
 
 document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
@@ -5605,6 +5610,7 @@ async function loadVideoById(videoId) {
   const capArea      = document.getElementById("vidCaptionArea");
   const loadingState = document.getElementById("vidLoadingState");
   const noCapState   = document.getElementById("vidNoCapState");
+  const errState     = document.getElementById("vidServiceErrorState");
 
   // Reset states
   if (placeholder)  placeholder.hidden  = false;
@@ -5612,6 +5618,7 @@ async function loadVideoById(videoId) {
   if (capArea)      capArea.hidden      = true;
   if (loadingState) loadingState.hidden = false;
   if (noCapState)   noCapState.hidden   = true;
+  if (errState)     errState.hidden     = true;
 
   const lang      = sourceLangSelect.value || "zh";
   const targetLang = targetLangSelect.value || "en";
@@ -5629,6 +5636,11 @@ async function loadVideoById(videoId) {
     if (loadingState) loadingState.hidden = true;
     if (placeholder)  placeholder.hidden  = true;
     if (transport)    transport.hidden    = false;
+
+    if (captionData.code === "CAPTION_SERVICE_ERROR") {
+      if (errState) errState.hidden = false;
+      return;
+    }
 
     if (captionData.needsGeneration || !captionData.captions?.length) {
       if (noCapState) noCapState.hidden = false;
@@ -5652,7 +5664,7 @@ async function loadVideoById(videoId) {
   } catch (err) {
     console.error("[Video] load error:", err.message);
     if (loadingState) loadingState.hidden = true;
-    if (noCapState)   noCapState.hidden   = false;
+    if (errState)     errState.hidden     = false;
     showToast("Could not load video. Check your connection.", "error");
   }
 }
@@ -5723,6 +5735,11 @@ function initVideoScreen() {
   tryAgainBtn?.addEventListener("click", () => {
     document.getElementById("vidNoCapState").hidden = true;
     urlInput?.focus();
+  });
+
+  document.getElementById("vidRetryBtn")?.addEventListener("click", () => {
+    document.getElementById("vidServiceErrorState").hidden = true;
+    triggerLoad();
   });
 
   autoGenBtn?.addEventListener("click", () => {
