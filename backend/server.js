@@ -16,6 +16,13 @@ import Papa from "papaparse";
 import Stripe from "stripe";
 import { isLifetimeOfferEligible } from "./lib/planRules.js";
 import { getActivityRpcArgs } from "./lib/activityRules.js";
+import {
+  TBANK_PLANS,
+  createTbankOrderId,
+  parseTbankOrderId,
+  createTbankToken,
+  verifyTbankToken
+} from "./lib/tbank.js";
 
 
 dotenv.config();
@@ -83,6 +90,21 @@ const FREE_MAX_CARDS = Number(process.env.FREE_MAX_CARDS || 100);
 const FREE_VIDEO_TRIAL_LIMIT = Number(process.env.FREE_VIDEO_TRIAL_LIMIT || 3);
 const LIFETIME_OFFER_ENABLED = process.env.LIFETIME_OFFER_ENABLED === "true";
 const LIFETIME_OFFER_WINDOW_DAYS = Number(process.env.LIFETIME_OFFER_WINDOW_DAYS || 7);
+const TBANK_TERMINAL_KEY = process.env.TBANK_TERMINAL_KEY;
+const TBANK_PASSWORD = process.env.TBANK_PASSWORD;
+const TBANK_API_URL = process.env.TBANK_API_URL || "https://securepay.tinkoff.ru/v2";
+const TBANK_NOTIFICATION_URL = process.env.TBANK_NOTIFICATION_URL ||
+  "https://magic-read.onrender.com/api/tbank/notification";
+const TBANK_RETURN_URL = process.env.TBANK_RETURN_URL || "https://magicread.app";
+
+async function isTbankReady() {
+  if (!TBANK_TERMINAL_KEY || !TBANK_PASSWORD) return false;
+  const { error } = await supabaseAdmin
+    .from("tbank_payments")
+    .select("payment_id")
+    .limit(1);
+  return !error;
+}
 
 // Centralized plan resolver. Returns the user's *effective* plan, honoring the
 // 7-day welcome-week trial: a user is treated as 'pro' if they're a paid pro OR
@@ -96,18 +118,36 @@ async function getUserPlan(userId) {
     .maybeSingle();
   if (error) console.error("[Plan] profile lookup error:", error.message);
 
-  const plan = profile?.plan || "free";
+  const { data: paidAccess } = await supabaseAdmin
+    .from("profiles")
+    .select("plan_ends_at, plan_provider")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const storedPlan = profile?.plan || "free";
+  const planEndsAt = paidAccess?.plan_ends_at || null;
+  const paidPlanActive = storedPlan === "pro" &&
+    (!planEndsAt || new Date(planEndsAt) > new Date());
+  const plan = paidPlanActive ? "pro" : "free";
   const trialEndsAt = profile?.trial_ends_at || null;
   const trialActive =
-    plan !== "pro" && !!trialEndsAt && new Date(trialEndsAt) > new Date();
-  const effectivePlan = plan === "pro" || trialActive ? "pro" : "free";
+    !paidPlanActive && !!trialEndsAt && new Date(trialEndsAt) > new Date();
+  const effectivePlan = paidPlanActive || trialActive ? "pro" : "free";
   const lifetimeOfferEligible = isLifetimeOfferEligible({
     enabled: LIFETIME_OFFER_ENABLED,
     plan,
     trialEndsAt,
     windowDays: LIFETIME_OFFER_WINDOW_DAYS
   });
-  return { plan, trialEndsAt, trialActive, effectivePlan, lifetimeOfferEligible };
+  return {
+    plan,
+    planEndsAt,
+    planProvider: paidAccess?.plan_provider || null,
+    trialEndsAt,
+    trialActive,
+    effectivePlan,
+    lifetimeOfferEligible
+  };
 }
 
 // Attaches req.user from a Bearer JWT; silently treats invalid tokens as guests.
@@ -284,10 +324,13 @@ app.get("/", (_req, res) => {
 ----------------------------- */
 async function setPlanByCustomer(customerId, plan) {
   if (!customerId) return;
-  const { error } = await supabaseAdmin
+  let { error } = await supabaseAdmin
     .from("profiles")
-    .update({ plan })
+    .update({ plan, plan_ends_at: null, plan_provider: plan === "pro" ? "stripe" : null })
     .eq("stripe_customer_id", customerId);
+  if (error?.message?.includes("plan_ends_at") || error?.message?.includes("plan_provider")) {
+    ({ error } = await supabaseAdmin.from("profiles").update({ plan }).eq("stripe_customer_id", customerId));
+  }
   if (error) console.error(`[Stripe] failed to set plan=${plan} for customer ${customerId}:`, error.message);
 }
 
@@ -316,10 +359,13 @@ app.post("/api/stripe-webhook", express.raw({ type: "application/json" }), async
         if (session.customer) {
           await setPlanByCustomer(session.customer, "pro");
         } else if (session.client_reference_id) {
-          const { error } = await supabaseAdmin
+          let { error } = await supabaseAdmin
             .from("profiles")
-            .update({ plan: "pro" })
+            .update({ plan: "pro", plan_ends_at: null, plan_provider: "stripe" })
             .eq("id", session.client_reference_id);
+          if (error?.message?.includes("plan_ends_at") || error?.message?.includes("plan_provider")) {
+            ({ error } = await supabaseAdmin.from("profiles").update({ plan: "pro" }).eq("id", session.client_reference_id));
+          }
           if (error) console.error("[Stripe] failed to set pro by user id:", error.message);
         }
         break;
@@ -349,6 +395,7 @@ app.post("/api/stripe-webhook", express.raw({ type: "application/json" }), async
 });
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(globalLimiter);
 
 // parsing texts
@@ -866,6 +913,103 @@ app.post("/api/create-billing-portal-session", extractUser, requireUser, async (
   }
 });
 
+/* -----------------------------
+   T-BANK: RUSSIAN CARDS + SBP
+   Creates a hosted payment and grants time-limited Pro access only after a
+   signed CONFIRMED notification. Amounts are in kopecks.
+----------------------------- */
+app.post("/api/tbank/create-payment", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!(await isTbankReady())) {
+      return res.status(503).json({
+        error: "T-Bank payments are not ready. Complete the Supabase migration first.",
+        code: "NOT_CONFIGURED"
+      });
+    }
+
+    const { plan: planName } = req.body || {};
+    const plan = TBANK_PLANS[planName];
+    if (!plan) {
+      return res.status(400).json({ error: "Invalid T-Bank plan.", code: "INVALID_PLAN" });
+    }
+
+    const orderId = createTbankOrderId(req.user.id, planName);
+    const payload = {
+      TerminalKey: TBANK_TERMINAL_KEY,
+      Amount: plan.amount,
+      OrderId: orderId,
+      Description: plan.description,
+      CustomerKey: req.user.id,
+      PayType: "O",
+      Language: "ru",
+      NotificationURL: TBANK_NOTIFICATION_URL,
+      SuccessURL: `${TBANK_RETURN_URL}/?tbank=success`,
+      FailURL: `${TBANK_RETURN_URL}/?tbank=failed`,
+      DATA: { Email: req.user.email || "" }
+    };
+    payload.Token = createTbankToken(payload, TBANK_PASSWORD);
+
+    const response = await fetch(`${TBANK_API_URL}/Init`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000)
+    });
+    const data = await response.json();
+
+    if (!response.ok || data.Success !== true || !data.PaymentURL) {
+      console.error("[T-Bank] Init failed:", data.ErrorCode, data.Message, data.Details);
+      return res.status(502).json({
+        error: data.Message || data.Details || "Could not start T-Bank payment.",
+        code: "TBANK_INIT_FAILED"
+      });
+    }
+
+    res.json({ url: data.PaymentURL, paymentId: data.PaymentId, orderId });
+  } catch (error) {
+    console.error("[T-Bank] create-payment error:", error.message);
+    res.status(502).json({ error: "Could not start T-Bank payment." });
+  }
+});
+
+app.post("/api/tbank/notification", async (req, res) => {
+  const payload = req.body || {};
+
+  if (!TBANK_TERMINAL_KEY || !TBANK_PASSWORD) {
+    return res.status(503).send("T-Bank is not configured");
+  }
+  if (String(payload.TerminalKey || "") !== TBANK_TERMINAL_KEY ||
+      !verifyTbankToken(payload, TBANK_PASSWORD)) {
+    console.warn("[T-Bank] Rejected notification with invalid token.");
+    return res.status(403).send("INVALID TOKEN");
+  }
+
+  if (String(payload.Status || "").toUpperCase() !== "CONFIRMED") {
+    return res.type("text/plain").send("OK");
+  }
+
+  const order = parseTbankOrderId(payload.OrderId);
+  const amount = Number(payload.Amount);
+  if (!order || amount !== order.plan.amount || !payload.PaymentId) {
+    console.warn("[T-Bank] Rejected notification with invalid order or amount.");
+    return res.status(400).send("INVALID ORDER");
+  }
+
+  const { error } = await supabaseAdmin.rpc("apply_tbank_payment", {
+    p_user_id: order.userId,
+    p_payment_id: String(payload.PaymentId),
+    p_order_id: String(payload.OrderId),
+    p_plan_code: order.planName,
+    p_amount: amount
+  });
+  if (error) {
+    console.error("[T-Bank] apply payment error:", error.message);
+    return res.status(500).send("RETRY");
+  }
+
+  return res.type("text/plain").send("OK");
+});
+
 
 /* -----------------------------
    PLAN & QUOTAS
@@ -877,7 +1021,15 @@ app.post("/api/create-billing-portal-session", extractUser, requireUser, async (
 app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { plan, trialEndsAt, trialActive, effectivePlan, lifetimeOfferEligible } = await getUserPlan(userId);
+    const {
+      plan,
+      planEndsAt,
+      planProvider,
+      trialEndsAt,
+      trialActive,
+      effectivePlan,
+      lifetimeOfferEligible
+    } = await getUserPlan(userId);
     const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 
     const [textRes, pronRes, statsRes, videoRes] = await Promise.all([
@@ -888,12 +1040,16 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
     ]);
 
     const stats = statsRes.data || {};
+    const tbankAvailable = await isTbankReady();
     res.json({
       plan,
       effectivePlan,
+      planEndsAt,
+      planProvider,
       trialEndsAt,
       trialActive,
       lifetimeOfferEligible,
+      tbankAvailable,
       textUsedToday: textRes.data?.count || 0,
       pronouncedToday: pronRes.data?.count || 0,
       videosOpened: videoRes.data?.opens || 0,

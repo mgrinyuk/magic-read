@@ -28,7 +28,13 @@ const POLISH_KEYS = [
   "trialUnlimitedPronunciation",
   "trialSmartCaptions",
   "trialAllDecks",
-  "lifetimeOffer"
+  "lifetimeOffer",
+  "tbankPaymentLabel",
+  "tbankMonthly",
+  "tbankAnnual",
+  "tbankPaymentPending",
+  "tbankPaymentFailed",
+  "redirecting"
 ];
 
 test("all supported languages include the polished flow copy", () => {
@@ -60,4 +66,13 @@ test("lifetime offer controls are localized and hidden by default", async () => 
     assert.match(control, /data-i18n="lifetimeOffer"/);
     assert.match(control, /\shidden(?:\s|>)/);
   }
+});
+
+test("both upgrade pickers expose T-Bank month and year options", async () => {
+  const html = await fs.readFile(new URL("../../frontend/index.html", import.meta.url), "utf8");
+  const monthly = html.match(/data-tbank-plan="monthly"/g) || [];
+  const annual = html.match(/data-tbank-plan="annual"/g) || [];
+
+  assert.equal(monthly.length, 2);
+  assert.equal(annual.length, 2);
 });

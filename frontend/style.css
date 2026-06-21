@@ -270,6 +270,29 @@ h1 {
   cursor: default;
 }
 
+.tbank-plan-label {
+  margin: 8px 4px 2px;
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.plan-picker .plan-option.tbank-plan-option,
+.acct-plan-picker .plan-option.tbank-plan-option,
+.upgrade-plan-btn.tbank-upgrade-btn {
+  border-color: #e4c300;
+  background: #ffdd2d;
+  color: #1c1c1c;
+}
+
+.plan-picker .plan-option.tbank-plan-option:hover,
+.acct-plan-picker .plan-option.tbank-plan-option:hover,
+.upgrade-plan-btn.tbank-upgrade-btn:hover {
+  background: #f4d322;
+}
+
 /* Welcome-week banner below the header */
 .welcome-week-banner {
   display: flex;

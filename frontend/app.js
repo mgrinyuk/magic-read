@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260618.2";
+import { UI_TEXT } from "./ui-text.js?v=20260621.1";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -772,6 +772,9 @@ let userPlan = {
   effectivePlan: "free",
   trialActive: false,
   trialEndsAt: null,
+  planEndsAt: null,
+  planProvider: null,
+  tbankAvailable: false,
   lifetimeOfferEligible: false,
   textUsedToday: 0,
   pronouncedToday: 0,
@@ -879,6 +882,7 @@ function renderPlanUI() {
   renderSpeakMeter();
   renderVidFreeChip();
   renderLifetimeOffer();
+  renderTbankOptions();
 
   // Hide the "lite" wordmark suffix and speak-meter label for paid Pro users.
   const isLite = !paidPro;
@@ -890,6 +894,12 @@ function renderPlanUI() {
 function renderLifetimeOffer() {
   document.querySelectorAll('[data-price-type="lifetime"]').forEach(option => {
     option.hidden = !userPlan.lifetimeOfferEligible;
+  });
+}
+
+function renderTbankOptions() {
+  document.querySelectorAll("[data-tbank-plan], .tbank-plan-label").forEach(element => {
+    element.hidden = !userPlan.tbankAvailable;
   });
 }
 
@@ -1020,6 +1030,15 @@ function showUpgradePrompt(code) {
         <button class="upgrade-plan-btn upgrade-plan-secondary" data-price-type="monthly" type="button">
           Monthly — $6.99/mo
         </button>
+        ${userPlan.tbankAvailable ? `
+          <div class="tbank-plan-label">${escapeHtml(getT().tbankPaymentLabel || "Russian card or SBP")}</div>
+          <button class="upgrade-plan-btn tbank-upgrade-btn" data-tbank-plan="annual" type="button">
+            ${escapeHtml(getT().tbankAnnual || "1 year — 9,000 ₽")}
+          </button>
+          <button class="upgrade-plan-btn upgrade-plan-secondary tbank-upgrade-btn" data-tbank-plan="monthly" type="button">
+            ${escapeHtml(getT().tbankMonthly || "1 month — 1,000 ₽")}
+          </button>
+        ` : ""}
       </div>
       <button class="upgrade-modal-cta" data-price-type="annual" type="button">Upgrade to Pro</button>
       ${msg.reassurance ? `<p class="upgrade-modal-reset">${escapeHtml(msg.reassurance)}</p>` : ""}
@@ -1034,6 +1053,12 @@ function showUpgradePrompt(code) {
     btn.addEventListener("click", () => {
       close();
       startPlanCheckout(btn.dataset.priceType, null);
+    });
+  });
+  overlay.querySelectorAll("[data-tbank-plan]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      close();
+      startTbankCheckout(btn.dataset.tbankPlan, null);
     });
   });
 
@@ -1295,14 +1320,59 @@ async function startPlanCheckout(priceType, clickedBtn) {
   options.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
 }
 
+async function startTbankCheckout(plan, clickedBtn) {
+  const options = Array.from(document.querySelectorAll("[data-tbank-plan]"));
+  const labels = options.map(button => button.textContent);
+  options.forEach(button => { button.disabled = true; });
+  if (clickedBtn) clickedBtn.textContent = getT().redirecting || "Redirecting…";
+
+  try {
+    const response = await fetchWithAuth(`${API_BASE}/api/tbank/create-payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan })
+    });
+    const data = await response.json();
+    if (response.ok && data?.url) {
+      window.location.href = data.url;
+      return;
+    }
+    showToast(data?.error || "Could not start T-Bank payment.", "error");
+  } catch (error) {
+    console.error("T-Bank checkout failed:", error);
+    showToast("Could not start T-Bank payment.", "error");
+  }
+
+  options.forEach((button, index) => {
+    button.disabled = false;
+    button.textContent = labels[index];
+  });
+}
+
 document.querySelectorAll("#planPicker .plan-option, #acctPlanPicker .plan-option").forEach(btn => {
+  if (btn.dataset.tbankPlan) return;
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     startPlanCheckout(btn.dataset.priceType, btn);
   });
 });
 
-checkAuth();
+document.querySelectorAll("[data-tbank-plan]").forEach(btn => {
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    startTbankCheckout(btn.dataset.tbankPlan, btn);
+  });
+});
+
+checkAuth().then(() => {
+  const paymentStatus = new URLSearchParams(window.location.search).get("tbank");
+  if (paymentStatus === "success") {
+    showToast(getT().tbankPaymentPending || "Payment received. Pro access will appear shortly.", "success");
+    setTimeout(fetchMyPlan, 2000);
+  } else if (paymentStatus === "failed") {
+    showToast(getT().tbankPaymentFailed || "Payment was not completed.", "error");
+  }
+});
 
 /* -----------------------------
    PASSWORD RESET
@@ -1463,7 +1533,10 @@ function renderAccountScreen() {
     if (pillEl) {
       const paidPro = userPlan.plan === "pro";
       if (paidPro) {
-        pillEl.textContent = "Pro";
+        const paidUntil = userPlan.planEndsAt
+          ? new Date(userPlan.planEndsAt).toLocaleDateString()
+          : null;
+        pillEl.textContent = paidUntil ? `Pro · ${paidUntil}` : "Pro";
       } else if (userPlan.trialActive) {
         const days = trialDaysLeft();
         pillEl.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
