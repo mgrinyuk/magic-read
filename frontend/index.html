@@ -35,6 +35,9 @@
   <symbol id="sonic-i-pause"    viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
   <symbol id="sonic-i-back5"    viewBox="0 0 24 24"><path d="M11 7L6 12l5 5"/><path d="M6 12h8a4 4 0 0 1 0 8h-1"/></symbol>
   <symbol id="sonic-i-vol"      viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
+  <symbol id="sonic-i-retry"    viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="sonic-i-plus"     viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="sonic-i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
 </svg>
   <header class="app-header">
     <a class="brand" href="#">
@@ -509,6 +512,97 @@
         </section>
 
         <section id="wordOrderExercise" class="workspace-card word-order-exercise" hidden></section>
+      </section>
+
+      <!-- ===================== SPEAK · SPOTLIGHT (practice) ===================== -->
+      <section id="screen-speak-practice" class="app-screen">
+        <div class="sp-body">
+          <div class="sp-row">
+            <button class="sp-iconbtn" id="spBackBtn" type="button" aria-label="Back">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+            </button>
+            <div class="sp-counter">Sentence <b id="spNum">1</b> of <span id="spTotal">1</span></div>
+            <div class="sp-lang-pill" id="spLangPill">中文</div>
+          </div>
+          <div class="sp-segments" id="spSegments"></div>
+
+          <div class="sp-sentence">
+            <div class="sp-zh zh" id="spZh"></div>
+            <div class="sp-py" id="spPy"></div>
+            <div class="sp-en" id="spEn"></div>
+          </div>
+
+          <div class="sp-stage">
+            <div class="sp-confetti" id="spConfetti" hidden></div>
+
+            <!-- mic (idle / listening / recording) -->
+            <div id="spMicGroup" class="sp-mic-group">
+              <div class="sp-mic is-idle" id="spMic">
+                <div class="sp-fill"></div>
+                <svg class="sp-mic-ic" width="62" height="62" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+              </div>
+              <div class="sp-mic-label" id="spMicLabel">Tap to speak</div>
+              <button class="sp-listen-btn" id="spListenBtn" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--cyan)" aria-hidden="true"><use href="#sonic-i-play"/></svg> Listen first
+              </button>
+            </div>
+
+            <!-- score ring (after recording) -->
+            <div id="spResult" class="sp-result" hidden>
+              <div class="sp-ring-wrap">
+                <svg width="212" height="212" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="52" stroke="var(--surface-2)" stroke-width="11" fill="none"/>
+                  <circle id="spRing" class="sp-ring-arc" cx="60" cy="60" r="52" stroke-width="11" fill="none" stroke-linecap="round"/>
+                </svg>
+                <div class="sp-ring-center">
+                  <div class="sp-ring-score" id="spRingScore"></div>
+                  <div class="sp-ring-cap">Pronunciation</div>
+                </div>
+              </div>
+              <div class="sp-verdict"><span class="sp-dot" id="spDot"></span><span class="sp-msg" id="spMsg"></span></div>
+              <button class="sp-details-toggle" id="spDetailsToggle" type="button"><span>See details </span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevdown"/></svg></button>
+              <div class="sp-metrics" id="spMetrics">
+                <div class="sp-metric"><b id="spMAcc"></b><span>Accuracy</span></div>
+                <div class="sp-metric"><b id="spMFlu"></b><span>Fluency</span></div>
+                <div class="sp-metric"><b id="spMComp"></b><span>Complete</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sp-actions" id="spActions" hidden>
+          <button class="sp-btn sp-btn-ghost" id="spRetryBtn" type="button">Try again</button>
+          <button class="sp-btn sp-btn-cyan sp-wide" id="spPrimaryBtn" type="button">Next sentence</button>
+        </div>
+      </section>
+
+      <!-- ===================== SPEAK · SPOTLIGHT (complete) ===================== -->
+      <section id="screen-speak-complete" class="app-screen">
+        <div class="sp-complete-body">
+          <div class="sp-confetti" id="spcConfetti" style="top:30%"></div>
+          <div class="sp-eyebrow">Text complete</div>
+          <div class="sp-h1" style="margin-top:8px;text-align:center">Nicely done!</div>
+          <div class="sp-sub" style="margin-top:8px;text-align:center">You spoke all <span id="spcTotal">4</span> sentences out loud.</div>
+
+          <div class="sp-ring-wrap sp-ring-big" style="margin-top:24px">
+            <svg width="220" height="220" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" stroke="var(--surface-2)" stroke-width="11" fill="none"/>
+              <circle id="spcRing" class="sp-ring-arc" cx="60" cy="60" r="52" stroke-width="11" fill="none" stroke-linecap="round"/>
+            </svg>
+            <div class="sp-ring-center">
+              <div class="sp-ring-score" id="spcScore"></div>
+              <div class="sp-ring-cap">Overall</div>
+            </div>
+          </div>
+
+          <div class="sp-recap" id="spcRecap"></div>
+          <div class="sp-recap-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> Tap a sentence to practise it again</div>
+
+          <div class="sp-complete-cta">
+            <button class="sp-btn sp-btn-primary" id="spcNewBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-plus"/></svg> Paste another text</button>
+            <button class="sp-btn sp-btn-ghost" id="spcLibraryBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg> Choose from Library</button>
+          </div>
+        </div>
       </section>
 
       <section id="screen-flashcards" class="app-screen">

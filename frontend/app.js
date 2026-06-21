@@ -449,6 +449,8 @@ const screenWriting = document.getElementById("screen-writing");
 const screenOnboarding = document.getElementById("screen-onboarding");
 const screenAccount = document.getElementById("screen-account");
 const screenVideo = document.getElementById("screen-video");
+const screenSpeakPractice = document.getElementById("screen-speak-practice");
+const screenSpeakComplete = document.getElementById("screen-speak-complete");
 
 const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
@@ -1475,12 +1477,14 @@ updatePasswordBtn?.addEventListener("click", async () => {
 ----------------------------- */
 
 const TAB_BY_SCREEN = {
-  "screen-home":       "home",
-  "screen-flashcards": "cards",
-  "screen-video":      "video",
-  "screen-writing":    null,
-  "screen-onboarding": null,
-  "screen-account":    null,
+  "screen-home":            "home",
+  "screen-flashcards":      "cards",
+  "screen-video":           "video",
+  "screen-speak-practice":  "speak",
+  "screen-speak-complete":  "speak",
+  "screen-writing":         null,
+  "screen-onboarding":      null,
+  "screen-account":         null,
 };
 
 function showScreen(screen) {
@@ -1830,12 +1834,21 @@ document.getElementById("homeResume")?.addEventListener("click", async () => {
       }
     }
     const sentenceIdx = position?.sentence ?? 0;
-    if (sentenceIdx > 0) {
-      const cards = container?.querySelectorAll(".card");
-      const target = cards?.[sentenceIdx];
-      if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    if (activity === "speaking") {
+      // startReadingFromText already launched the spotlight — jump to the saved sentence.
+      if (sentenceIdx > 0 && sentenceIdx < spState.sentences.length) {
+        spState.idx = sentenceIdx;
+        spState.phase = "idle";
+        spRenderPractice();
+      }
+    } else {
+      if (sentenceIdx > 0) {
+        const cards = container?.querySelectorAll(".card");
+        const target = cards?.[sentenceIdx];
+        if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+      }
+      showScreen(screenMain);
     }
-    showScreen(screenMain);
   } finally {
     hideMagicLoadingOverlay();
   }
@@ -1905,13 +1918,14 @@ async function activateReaderMode(mode) {
   pendingMode = appMode;
   updateModeCopy();
 
-  if (currentText && currentSentences.length) {
-    if (appMode === "reading") {
-      await showImportedText(currentText);
-      await buildClozeExercise(currentSentences);
-    } else if (!container?.querySelector(".card")) {
-      await renderCards(currentSentences);
-    }
+  if (currentText && currentSentences.length && appMode === "reading") {
+    await showImportedText(currentText);
+    await buildClozeExercise(currentSentences);
+  } else if (appMode === "pronunciation") {
+    // Pronunciation practice no longer renders in-page cards — the composer is
+    // the whole setup screen; "Start speaking" launches the spotlight flow.
+    if (startComposerArea) startComposerArea.hidden = false;
+    if (inputText) inputText.hidden = false;
   }
 
   applyMode();
@@ -1964,6 +1978,16 @@ function restoreActiveScreen() {
     } else {
       showOnboardingStepA();
     }
+    return;
+  }
+
+  // Spotlight screens hold no persisted text after a reload — send the user
+  // back to the speak setup composer instead of an empty practice screen.
+  if (savedId === "screen-speak-practice" || savedId === "screen-speak-complete") {
+    appMode = "pronunciation";
+    updateModeCopy();
+    applyMode();
+    showScreen(screenMain);
     return;
   }
 
@@ -2023,10 +2047,12 @@ function applyMode() {
     if (readingExercise) readingExercise.hidden = !hasText;
     if (wordOrderExercise) wordOrderExercise.hidden = true;
   } else {
-    if (cardsSection) cardsSection.hidden = false;
+    // Pronunciation: the setup screen is just the composer — practice happens
+    // on the dedicated spotlight screen, so hide all in-page reader panels.
+    if (cardsSection) cardsSection.hidden = true;
     if (readingExercise) readingExercise.hidden = true;
     if (fullTextPanel) fullTextPanel.hidden = true;
-    if (wordOrderExercise) wordOrderExercise.hidden = !hasText;
+    if (wordOrderExercise) wordOrderExercise.hidden = true;
   }
 }
 
@@ -2437,23 +2463,21 @@ async function startReadingFromText(text) {
     inputText.value = cleanText;
     if (startComposerArea) startComposerArea.hidden = true;
 
+    if (fullTextTranslation) fullTextTranslation.textContent = "";
+    if (textLibraryPanel) textLibraryPanel.hidden = true;
+    if (savedTextsPanel) savedTextsPanel.hidden = true;
+    trackGuest("fullTextsGenerated");
+
     if (appMode === "reading") {
       // Read the whole text, then practise with a fill-the-gap exercise.
       await showImportedText(cleanText);
       await buildClozeExercise(sentences);
+      applyMode();
+      fullTextPanel?.scrollIntoView({ behavior: "smooth" });
     } else {
-      // Pronunciation: jump straight to sentence-by-sentence practice cards.
-      await renderCards(sentences);
+      // Pronunciation: launch the one-sentence-at-a-time "spotlight" flow.
+      startSpotlight(sentences);
     }
-    applyMode();
-    trackGuest("fullTextsGenerated");
-
-    if (fullTextTranslation) fullTextTranslation.textContent = "";
-      if (textLibraryPanel) textLibraryPanel.hidden = true;
-    if (savedTextsPanel) savedTextsPanel.hidden = true;
-
-    const scrollTarget = appMode === "reading" ? fullTextPanel : document.getElementById("cardsSection");
-    scrollTarget?.scrollIntoView({ behavior: "smooth" });
   } catch (error) {
     console.error("Start reading error:", error);
     showToast("Could not start reading.", "error");
@@ -2465,6 +2489,411 @@ async function startReadingFromText(text) {
     }
   }
 }
+
+/* ============================================================================
+   SPEAK · SPOTLIGHT  — one-sentence-at-a-time pronunciation flow.
+   Setup (composer on #screen-main) → #screen-speak-practice → #screen-speak-complete.
+   ============================================================================ */
+
+const SP_LANG_LABELS = {
+  zh: "中文", ru: "RU", tr: "TR", en: "EN", de: "DE",
+  es: "ES", fr: "FR", hy: "HY", ka: "KA", ja: "日本語"
+};
+const SP_RING_C = 326.7; // ring circumference (r=52)
+
+const spState = {
+  sentences: [],
+  lang: "zh",
+  idx: 0,
+  phase: "idle",          // idle | listening | recording | done
+  fromComplete: false,
+  results: [],            // per-sentence { score, accuracy, fluency, completeness, words:[{text,status}] } | null
+  meta: [],               // per-sentence { pinyin, en } cache
+  recording: false,
+};
+
+function spColor(score) { return score >= 85 ? "#16A34A" : score >= 70 ? "#E0A106" : "#DC2626"; }
+function spMessage(score) {
+  return score >= 95 ? "Native-like!" : score >= 85 ? "Sounds clean!" : score >= 70 ? "Almost there" : "Keep going";
+}
+
+// Map Azure's assessment JSON → the shape the spotlight UI renders.
+function spMapAzure(result) {
+  const round = (n) => Math.round(Number(n) || 0);
+  const words = (result.words || [])
+    .filter((w) => (w.errorType || "None") !== "Insertion")
+    .map((w) => {
+      let status = "good";
+      if (w.errorType && w.errorType !== "None") status = "bad";
+      else if (w.accuracy != null) status = w.accuracy >= 85 ? "good" : w.accuracy >= 70 ? "ok" : "bad";
+      return { text: w.word || "", status };
+    });
+  return {
+    score: round(result.pronunciation ?? result.accuracy),
+    accuracy: round(result.accuracy),
+    fluency: round(result.fluency),
+    completeness: round(result.completeness),
+    words,
+  };
+}
+
+function startSpotlight(sentences) {
+  spState.sentences = sentences;
+  spState.lang = sourceLangSelect.value || "zh";
+  spState.idx = 0;
+  spState.phase = "idle";
+  spState.fromComplete = false;
+  spState.results = sentences.map(() => null);
+  spState.meta = sentences.map(() => ({ pinyin: "", en: "" }));
+  spRenderPractice();
+  showScreen(screenSpeakPractice);
+}
+
+function spInitOnce() {
+  if (spInitOnce._done) return;
+  spInitOnce._done = true;
+
+  document.getElementById("spBackBtn")?.addEventListener("click", () => {
+    stopAllTTS(); stopRecognition();
+    showScreen(screenMain);
+  });
+  document.getElementById("spMic")?.addEventListener("click", spOnMicTap);
+  document.getElementById("spListenBtn")?.addEventListener("click", spOnListen);
+  document.getElementById("spDetailsToggle")?.addEventListener("click", spToggleDetails);
+  document.getElementById("spRetryBtn")?.addEventListener("click", spRetryCurrent);
+  document.getElementById("spPrimaryBtn")?.addEventListener("click", spOnPrimary);
+  document.getElementById("spcNewBtn")?.addEventListener("click", spNewText);
+  document.getElementById("spcLibraryBtn")?.addEventListener("click", () => {
+    spNewText();
+    document.getElementById("openLibraryBtn")?.click();
+  });
+}
+
+function spRenderMic() {
+  const mic = document.getElementById("spMic");
+  const label = document.getElementById("spMicLabel");
+  if (!mic) return;
+  mic.className = "sp-mic " + (spState.phase === "recording" ? "is-recording"
+    : spState.phase === "listening" ? "is-listening" : "is-idle");
+  if (label) {
+    label.textContent = spState.phase === "recording" ? "Listening…"
+      : spState.phase === "listening" ? "Playing audio…" : "Tap to speak";
+  }
+}
+
+async function spRenderPractice() {
+  const s = spState.sentences[spState.idx];
+  if (!s) return;
+  const done = spState.phase === "done";
+  const res = spState.results[spState.idx];
+
+  document.getElementById("spNum").textContent = spState.idx + 1;
+  document.getElementById("spTotal").textContent = spState.sentences.length;
+  const langPill = document.getElementById("spLangPill");
+  if (langPill) {
+    langPill.textContent = SP_LANG_LABELS[spState.lang] || spState.lang.toUpperCase();
+    langPill.classList.toggle("zh", spState.lang === "zh");
+  }
+
+  // segment progress
+  document.getElementById("spSegments").innerHTML = spState.sentences
+    .map((_, i) => `<i class="${i < spState.idx ? "done" : i === spState.idx ? "cur" : ""}"></i>`)
+    .join("");
+
+  // sentence — coloured per-word once scored, otherwise clickable plain words
+  const zh = document.getElementById("spZh");
+  if (done && res && res.words && res.words.length) {
+    zh.innerHTML = res.words
+      .map((w) => `<span class="sp-word w-${w.status} ${`sp-${w.status}`}" data-word="${escapeHtml(w.text)}">${escapeHtml(w.text)}</span>`)
+      .join("");
+  } else {
+    zh.innerHTML = spBuildClickableTokens(s, spState.lang);
+  }
+  spAttachWordTaps(zh, s);
+
+  // toggle mic vs result
+  document.getElementById("spMicGroup").hidden = done;
+  document.getElementById("spResult").hidden = !done;
+  document.getElementById("spActions").hidden = !done;
+  spRenderMic();
+
+  // pinyin + english (lazy, cached)
+  spLoadMeta(spState.idx);
+
+  if (done && res) {
+    const scoreEl = document.getElementById("spRingScore");
+    scoreEl.innerHTML = res.score + "<s>%</s>";
+    scoreEl.style.color = spColor(res.score);
+    const ring = document.getElementById("spRing");
+    ring.setAttribute("stroke", spColor(res.score));
+    ring.style.strokeDashoffset = SP_RING_C;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ring.style.strokeDashoffset = (SP_RING_C * (1 - res.score / 100)).toFixed(1);
+    }));
+    document.getElementById("spDot").style.background = spColor(res.score);
+    const msg = document.getElementById("spMsg");
+    msg.textContent = spMessage(res.score);
+    msg.style.color = spColor(res.score);
+    document.getElementById("spMAcc").textContent = res.accuracy;
+    document.getElementById("spMFlu").textContent = res.fluency;
+    document.getElementById("spMComp").textContent = res.completeness;
+    // collapse details by default
+    document.getElementById("spMetrics").classList.remove("show");
+    const tog = document.getElementById("spDetailsToggle");
+    tog.classList.remove("open");
+    tog.querySelector("span").textContent = "See details ";
+    document.getElementById("spPrimaryBtn").textContent = spState.fromComplete
+      ? "Back to summary"
+      : (spState.idx >= spState.sentences.length - 1 ? "Finish text" : "Next sentence");
+  }
+}
+
+// Build clickable word/character spans for the unscored sentence.
+function spBuildClickableTokens(sentence, lang) {
+  if (lang === "zh" || lang === "ja") {
+    return [...sentence]
+      .map((ch) => /\s/.test(ch)
+        ? ch
+        : `<span class="sp-word" data-word="${escapeHtml(ch)}">${escapeHtml(ch)}</span>`)
+      .join("");
+  }
+  return sentence.split(/(\s+)/)
+    .map((tok) => tok.trim()
+      ? `<span class="sp-word" data-word="${escapeHtml(tok)}">${escapeHtml(tok)}</span>`
+      : escapeHtml(tok))
+    .join("");
+}
+
+// Word tap → translate/save popup (reuses the reader's popup).
+function spAttachWordTaps(container, sentence) {
+  container.querySelectorAll(".sp-word").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const word = el.dataset.word;
+      if (!word) return;
+      sourceLangSelect.value = spState.lang;
+      showWordPopup(el, word, sentence, "", true).catch(console.error);
+    });
+  });
+}
+
+// Lazy-load pinyin (zh) + a short translation for the current sentence.
+async function spLoadMeta(idx) {
+  const s = spState.sentences[idx];
+  const meta = spState.meta[idx];
+  const pyEl = document.getElementById("spPy");
+  const enEl = document.getElementById("spEn");
+  if (!s || !meta) return;
+
+  // pinyin
+  if (spState.lang === "zh") {
+    if (meta.pinyin) { pyEl.textContent = meta.pinyin; }
+    else {
+      pyEl.textContent = "";
+      try { meta.pinyin = await getPinyinForText(s); }
+      catch { meta.pinyin = ""; }
+      if (spState.idx === idx) pyEl.textContent = meta.pinyin;
+    }
+  } else {
+    pyEl.textContent = "";
+  }
+
+  // translation
+  if (meta.en) { enEl.textContent = meta.en; }
+  else {
+    enEl.textContent = "";
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sentence: s, sourceLang: spState.lang, targetLang: targetLangSelect.value || "en" }),
+      });
+      const data = await res.json();
+      meta.en = res.ok ? (data.translation || "") : "";
+    } catch { meta.en = ""; }
+    if (spState.idx === idx) enEl.textContent = meta.en;
+  }
+}
+
+/* INTEGRATION #1 — record + score the current sentence. */
+async function spOnMicTap() {
+  if (spState.recording || spState.phase === "recording") return;
+  unlockAudioForMobile();
+  stopAllTTS();
+  spState.recording = true;
+  spState.phase = "recording";
+  spRenderMic();
+
+  const sentence = spState.sentences[spState.idx];
+  const azureLang = mapToSpeechLang(spState.lang);
+
+  try {
+    const azure = await assessChunk(sentence, azureLang);
+    if (azure && azure.result) {
+      spApplyScore(spMapAzure(azure.result));
+      recordActivity("words_spoken", (azure.result.words || []).length || 1);
+      fetchMyPlan();
+      return;
+    }
+    // Azure unavailable / errored — fall back to browser SpeechRecognition.
+    const err = azure && azure.error;
+    if (err && err.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); spResetMic(); return; }
+    await spFallbackRecognition(sentence);
+  } catch (e) {
+    console.error("[Spotlight] scoring error:", e);
+    showToast("Could not score your speech. Try again.", "error");
+    spResetMic();
+  }
+}
+
+// Legacy browser scoring (guests / Azure not configured). No per-word data.
+function spFallbackRecognition(sentence) {
+  return new Promise((resolve) => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { showToast("Speech scoring isn't available in this browser.", "error"); spResetMic(); resolve(); return; }
+    const rec = new SR();
+    const lang = mapToSpeechLang(spState.lang);
+    rec.lang = lang; rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.onresult = (event) => {
+      const transcript = event.results[0][0].transcript || "";
+      const { score } = compareText(sentence, transcript, lang);
+      const tokens = spState.lang === "zh" || spState.lang === "ja"
+        ? [...sentence].filter((c) => !/\s/.test(c))
+        : sentence.split(/\s+/).filter(Boolean);
+      spApplyScore({
+        score, accuracy: score, fluency: score, completeness: 100,
+        words: tokens.map((t) => ({ text: t, status: score >= 85 ? "good" : score >= 70 ? "ok" : "bad" })),
+      });
+      resolve();
+    };
+    rec.onerror = () => { showToast("I didn't catch that. Try again.", "error"); spResetMic(); resolve(); };
+    try { rec.start(); } catch { spResetMic(); resolve(); }
+  });
+}
+
+function spResetMic() {
+  spState.recording = false;
+  spState.phase = "idle";
+  spRenderMic();
+}
+
+/* INTEGRATION #2 — feed a normalised result in. */
+function spApplyScore(result) {
+  spState.recording = false;
+  spState.results[spState.idx] = result;
+  spState.phase = "done";
+  spRenderPractice();
+  spFireConfetti("spConfetti", result.score >= 85);
+  saveProgress("speaking", currentTextId, { sentence: spState.idx }, currentTextTitle);
+}
+
+/* INTEGRATION #1b — Listen (Google TTS). */
+async function spOnListen() {
+  if (spState.phase === "recording") return;
+  unlockAudioForMobile();
+  spState.phase = "listening";
+  spRenderMic();
+  const sentence = spState.sentences[spState.idx];
+  const done = () => { if (spState.phase === "listening") { spState.phase = "idle"; spRenderMic(); } };
+  try { await playGoogleTTS(sentence, spState.lang, done); }
+  catch { done(); }
+}
+
+function spToggleDetails() {
+  const m = document.getElementById("spMetrics");
+  const t = document.getElementById("spDetailsToggle");
+  const open = m.classList.toggle("show");
+  t.classList.toggle("open", open);
+  t.querySelector("span").textContent = open ? "Hide details " : "See details ";
+}
+
+function spRetryCurrent() { spState.phase = "idle"; spRenderPractice(); }
+
+function spOnPrimary() {
+  if (spState.fromComplete) {
+    spState.fromComplete = false;
+    spRenderComplete();
+    showScreen(screenSpeakComplete);
+    return;
+  }
+  if (spState.idx >= spState.sentences.length - 1) {
+    spRenderComplete();
+    showScreen(screenSpeakComplete);
+    spFireConfetti("spcConfetti", true);
+    return;
+  }
+  spState.idx++;
+  spState.phase = "idle";
+  spRenderPractice();
+  document.querySelector("#screen-speak-practice .sp-body")?.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function spRetrySentence(i) {
+  spState.idx = i;
+  spState.phase = "idle";
+  spState.fromComplete = true;
+  spRenderPractice();
+  showScreen(screenSpeakPractice);
+}
+
+function spNewText() {
+  stopAllTTS(); stopRecognition();
+  spState.phase = "idle";
+  spState.fromComplete = false;
+  if (startComposerArea) startComposerArea.hidden = false;
+  if (inputText) inputText.hidden = false;
+  showScreen(screenMain);
+}
+
+function spRenderComplete() {
+  const scored = spState.results.map((r, i) => (r ? r.score : 0));
+  const counted = scored.filter((_, i) => spState.results[i]);
+  const overall = counted.length ? Math.round(counted.reduce((a, b) => a + b, 0) / counted.length) : 0;
+  document.getElementById("spcTotal").textContent = spState.sentences.length;
+  const scoreEl = document.getElementById("spcScore");
+  scoreEl.innerHTML = overall + "<s>%</s>";
+  scoreEl.style.color = spColor(overall);
+  const ring = document.getElementById("spcRing");
+  ring.setAttribute("stroke", spColor(overall));
+  ring.style.strokeDashoffset = SP_RING_C;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ring.style.strokeDashoffset = (SP_RING_C * (1 - overall / 100)).toFixed(1);
+  }));
+
+  document.getElementById("spcRecap").innerHTML = spState.sentences.map((_, i) => {
+    const r = spState.results[i];
+    const sc = r ? r.score : null;
+    const label = sc == null ? "–" : sc;
+    const col = sc == null ? "var(--text-dim)" : spColor(sc);
+    return `
+      <button type="button" data-sp-retry="${i}">
+        <div class="sp-chip" style="color:${col}">${label}
+          <div class="sp-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg></div>
+        </div>
+        <small>Sent ${i + 1}</small>
+      </button>`;
+  }).join("");
+  document.querySelectorAll("#spcRecap [data-sp-retry]").forEach((btn) => {
+    btn.addEventListener("click", () => spRetrySentence(Number(btn.dataset.spRetry)));
+  });
+}
+
+function spFireConfetti(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!on) { el.hidden = true; el.innerHTML = ""; return; }
+  const cols = ["#E5267E", "#0AB4D6", "#16A34A", "#E0A106"];
+  el.innerHTML = Array.from({ length: 14 }, (_, i) => {
+    const ang = (i / 14) * Math.PI * 2, d = 64 + ((i * 37) % 46);
+    const tx = (Math.cos(ang) * d).toFixed(1), ty = (Math.sin(ang) * d).toFixed(1);
+    return `<i style="border-radius:${i % 2 ? "999px" : "3px"};background:${cols[i % 4]};--tx:${tx}px;--ty:${ty}px;animation-delay:${(i % 5) * 0.03}s"></i>`;
+  }).join("");
+  el.hidden = false;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.hidden = true; el.innerHTML = ""; }, 1300);
+}
+
+spInitOnce();
 
 createBtn?.addEventListener("click", async () => {
   // Gate text processing for signed-in users (guests are unlimited). Free users
