@@ -47,8 +47,8 @@ For the selected internet shop and virtual terminal:
 
 ## 4. Products
 
-- Month: `1,000 ₽`, grants 30 days.
-- Year: `9,000 ₽`, grants 365 days.
+- Month: `600 ₽`, grants 30 days.
+- Year: `5,000 ₽`, grants 365 days.
 - Payments are one-time. There is no automatic renewal or unapproved charge.
 
 Repeated notifications are safe: one T-Bank `PaymentId` can extend access only

@@ -12,8 +12,8 @@ import {
 const userId = "123e4567-e89b-12d3-a456-426614174000";
 
 test("T-Bank prices are stored in kopecks", () => {
-  assert.equal(TBANK_PLANS.monthly.amount, 100000);
-  assert.equal(TBANK_PLANS.annual.amount, 900000);
+  assert.equal(TBANK_PLANS.monthly.amount, 60000);
+  assert.equal(TBANK_PLANS.annual.amount, 500000);
 });
 
 test("T-Bank order id round-trips the user and plan", () => {
@@ -29,7 +29,7 @@ test("T-Bank order id round-trips the user and plan", () => {
 test("T-Bank token ignores nested objects and verifies without exposing the password", () => {
   const payload = {
     TerminalKey: "demo",
-    Amount: 100000,
+    Amount: 60000,
     OrderId: "order-1",
     DATA: { Email: "learner@example.com" }
   };

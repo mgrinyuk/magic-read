@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 
 export const TBANK_PLANS = Object.freeze({
-  monthly: { code: "m", amount: 100000, days: 30, description: "Magic Read Pro — 1 month" },
-  annual: { code: "y", amount: 900000, days: 365, description: "Magic Read Pro — 1 year" }
+  monthly: { code: "m", amount: 60000, days: 30, description: "Magic Read Pro — 1 month" },
+  annual: { code: "y", amount: 500000, days: 365, description: "Magic Read Pro — 1 year" }
 });
 
 const PLAN_BY_CODE = Object.freeze(

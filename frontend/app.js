@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260621.1";
+import { UI_TEXT } from "./ui-text.js?v=20260621.2";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -1033,10 +1033,10 @@ function showUpgradePrompt(code) {
         ${userPlan.tbankAvailable ? `
           <div class="tbank-plan-label">${escapeHtml(getT().tbankPaymentLabel || "Russian card or SBP")}</div>
           <button class="upgrade-plan-btn tbank-upgrade-btn" data-tbank-plan="annual" type="button">
-            ${escapeHtml(getT().tbankAnnual || "1 year — 9,000 ₽")}
+            ${escapeHtml(getT().tbankAnnual || "1 year — 5,000 ₽")}
           </button>
           <button class="upgrade-plan-btn upgrade-plan-secondary tbank-upgrade-btn" data-tbank-plan="monthly" type="button">
-            ${escapeHtml(getT().tbankMonthly || "1 month — 1,000 ₽")}
+            ${escapeHtml(getT().tbankMonthly || "1 month — 600 ₽")}
           </button>
         ` : ""}
       </div>

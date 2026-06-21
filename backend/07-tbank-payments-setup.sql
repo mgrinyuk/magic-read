@@ -37,9 +37,9 @@ declare
   v_interval interval;
   v_unlimited boolean;
 begin
-  if p_plan_code = 'monthly' and p_amount = 100000 then
+  if p_plan_code = 'monthly' and p_amount = 60000 then
     v_interval := interval '30 days';
-  elsif p_plan_code = 'annual' and p_amount = 900000 then
+  elsif p_plan_code = 'annual' and p_amount = 500000 then
     v_interval := interval '365 days';
   else
     raise exception 'Invalid T-Bank plan or amount';
