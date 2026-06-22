@@ -456,6 +456,20 @@ const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
 const container = document.getElementById("cardsContainer");
 
+// Live "~N sentences · about Xm" hint under the composer (spotlight setup look).
+function updateComposerHint() {
+  const hint = document.getElementById("composerHint");
+  if (!hint || !inputText) return;
+  const text = (inputText.value || "").trim();
+  if (!text) { hint.hidden = true; return; }
+  const parts = text.split(/[.!?。！？\n]+/).map(s => s.trim()).filter(Boolean);
+  const n = Math.max(1, parts.length);
+  const mins = Math.max(1, Math.round((n * 20) / 60)); // ~20s of practice per sentence
+  hint.textContent = `~${n} sentence${n === 1 ? "" : "s"} · about ${mins} min`;
+  hint.hidden = false;
+}
+inputText?.addEventListener("input", updateComposerHint);
+
 const editTextBtn = document.getElementById("editTextBtn");
 const replaceTextBtn = document.getElementById("replaceTextBtn");
 const globalSlowBtn = document.getElementById("globalSlowBtn");
