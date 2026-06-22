@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260622.1";
+import { UI_TEXT } from "./ui-text.js?v=20260622.3";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -451,6 +451,8 @@ const screenAccount = document.getElementById("screen-account");
 const screenVideo = document.getElementById("screen-video");
 const screenSpeakPractice = document.getElementById("screen-speak-practice");
 const screenSpeakComplete = document.getElementById("screen-speak-complete");
+const screenReadReader = document.getElementById("screen-read-reader");
+const screenReadExercise = document.getElementById("screen-read-exercise");
 
 const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
@@ -1496,6 +1498,8 @@ const TAB_BY_SCREEN = {
   "screen-video":           "video",
   "screen-speak-practice":  "speak",
   "screen-speak-complete":  "speak",
+  "screen-read-reader":     "read",
+  "screen-read-exercise":   "read",
   "screen-writing":         null,
   "screen-onboarding":      null,
   "screen-account":         null,
@@ -2032,15 +2036,10 @@ async function activateReaderMode(mode) {
   pendingMode = appMode;
   updateModeCopy();
 
-  if (currentText && currentSentences.length && appMode === "reading") {
-    await showImportedText(currentText);
-    await buildClozeExercise(currentSentences);
-  } else if (appMode === "pronunciation") {
-    // Pronunciation practice no longer renders in-page cards — the composer is
-    // the whole setup screen; "Start speaking" launches the spotlight flow.
-    if (startComposerArea) startComposerArea.hidden = false;
-    if (inputText) inputText.hidden = false;
-  }
+  // Both modes now use the composer as their setup screen; the actual
+  // experience launches on its own screen ("Start reading"/"Start speaking").
+  if (startComposerArea) startComposerArea.hidden = false;
+  if (inputText) inputText.hidden = false;
 
   applyMode();
 }
@@ -2105,6 +2104,15 @@ function restoreActiveScreen() {
     return;
   }
 
+  // Reader screens likewise hold no persisted passage after a reload.
+  if (savedId === "screen-read-reader" || savedId === "screen-read-exercise") {
+    appMode = "reading";
+    updateModeCopy();
+    applyMode();
+    showScreen(screenMain);
+    return;
+  }
+
   if (savedId === "screen-home") renderHomeScreen();
   if (savedId === "screen-main") {
     updateModeCopy();
@@ -2155,19 +2163,12 @@ function applyMode() {
   const wordOrderExercise = document.getElementById("wordOrderExercise");
   const hasText = !!(currentSentences && currentSentences.length);
 
-  if (appMode === "reading") {
-    if (cardsSection) cardsSection.hidden = true;
-    if (fullTextPanel) fullTextPanel.hidden = !hasText;
-    if (readingExercise) readingExercise.hidden = !hasText;
-    if (wordOrderExercise) wordOrderExercise.hidden = true;
-  } else {
-    // Pronunciation: the setup screen is just the composer — practice happens
-    // on the dedicated spotlight screen, so hide all in-page reader panels.
-    if (cardsSection) cardsSection.hidden = true;
-    if (readingExercise) readingExercise.hidden = true;
-    if (fullTextPanel) fullTextPanel.hidden = true;
-    if (wordOrderExercise) wordOrderExercise.hidden = true;
-  }
+  // Both modes use the composer as setup; practice/reading happen on dedicated
+  // screens, so the in-page reader panels stay hidden on #screen-main.
+  if (cardsSection) cardsSection.hidden = true;
+  if (readingExercise) readingExercise.hidden = true;
+  if (fullTextPanel) fullTextPanel.hidden = true;
+  if (wordOrderExercise) wordOrderExercise.hidden = true;
 }
 
 /* -----------------------------
@@ -2429,6 +2430,7 @@ function checkCloze() {
     score.textContent = `${correct} / ${slots.length}`;
     score.classList.toggle("all-correct", correct === slots.length);
   }
+  if (correct === slots.length && typeof rdOnClozeComplete === "function") rdOnClozeComplete();
 }
 
 function revealCloze() {
@@ -2631,11 +2633,8 @@ async function startReadingFromText(text) {
     trackGuest("fullTextsGenerated");
 
     if (appMode === "reading") {
-      // Read the whole text, then practise with a fill-the-gap exercise.
-      await showImportedText(cleanText);
-      await buildClozeExercise(sentences);
-      applyMode();
-      fullTextPanel?.scrollIntoView({ behavior: "smooth" });
+      // Reading: launch the dedicated flowing-passage reader screen.
+      startReader(cleanText, sentences);
     } else {
       // Pronunciation: launch the one-sentence-at-a-time "spotlight" flow.
       startSpotlight(sentences);
@@ -3056,6 +3055,378 @@ function spFireConfetti(id, on) {
 }
 
 spInitOnce();
+
+/* ============================================================================
+   READER · FLOWING PASSAGE  — dedicated reading screens.
+   Setup (composer on #screen-main) → #screen-read-reader → #screen-read-exercise.
+   ============================================================================ */
+
+const R = {
+  text: "",
+  lang: "zh",
+  paras: [],        // [{ text, sents:[{ text, gi }], en:"" }]
+  sentences: [],    // flat [{ text }] in render order; gi = global index
+  idx: -1,
+  playing: false,
+  playSession: 0,
+  pinyin: false,
+  trans: false,
+};
+let rdOnClozeComplete = null; // completion hook fired from checkCloze
+const rdExState = { view: "menu", done: { order: false, choice: false } };
+
+function startReader(text, sentences) {
+  R.text = text;
+  R.lang = sourceLangSelect.value || "zh";
+  R.idx = -1;
+  R.playing = false;
+  R.pinyin = false;
+  R.trans = false;
+  rdBuildParagraphs(text, sentences);
+  rdRenderPassage();
+  rdUpdateToolbar();
+  rdUpdateDock();
+  showScreen(screenReadReader);
+  document.querySelector("#screen-read-reader .rd-surface")?.scrollTo({ top: 0 });
+}
+
+// Build paragraphs (blank-line, else single-newline, else whole text) → sentences.
+function rdBuildParagraphs(text, sentences) {
+  let chunks = text.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+  if (chunks.length <= 1) chunks = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  if (!chunks.length) chunks = [text.trim()];
+
+  R.paras = [];
+  R.sentences = [];
+  let gi = 0;
+  for (const chunk of chunks) {
+    const sents = (chunk.match(/[^.!?。！？]+[.!?。！？]*/g) || [chunk])
+      .map(s => s.trim()).filter(Boolean)
+      .map(s => ({ text: s, gi: gi++ }));
+    R.paras.push({ text: chunk, sents, en: "" });
+    sents.forEach(s => R.sentences.push(s));
+  }
+  // Fallback: if our split produced nothing useful, use the server sentences.
+  if (!R.sentences.length && sentences?.length) {
+    R.paras = [{ text, sents: sentences.map((t, i) => ({ text: t, gi: i })), en: "" }];
+    R.sentences = R.paras[0].sents;
+  }
+}
+
+async function rdSegment(sentence) {
+  let words = segmentCache.get(sentence);
+  if (!words) {
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/segment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: sentence })
+      });
+      const data = await res.json();
+      words = res.ok ? (data.words || []) : [];
+      if (segmentCache.size >= 100) segmentCache.delete(segmentCache.keys().next().value);
+      segmentCache.set(sentence, words);
+    } catch { words = []; }
+  }
+  return words;
+}
+
+function rdWordHTML(word, py) {
+  if (/^[，。！？；：、“”‘’（）()\[\]{}…,.!?;:\s]+$/.test(word)) {
+    return `<span class="rd-punc">${escapeHtml(word)}</span>`;
+  }
+  return `<span class="rd-word" data-word="${escapeHtml(word)}" data-pinyin="${escapeHtml(py || "")}">` +
+    `<small>${escapeHtml(py || "")}</small><span class="rd-hz">${escapeHtml(word)}</span></span>`;
+}
+
+async function rdRenderPassage() {
+  const han = document.getElementById("rdHan");
+  if (!han) return;
+  han.innerHTML = `<p class="rd-loading">Loading…</p>`;
+
+  const isZh = R.lang === "zh";
+  const paraHTML = [];
+  for (const pa of R.paras) {
+    const sentHTML = [];
+    for (const s of pa.sents) {
+      let inner;
+      if (isZh) {
+        const words = await rdSegment(s.text);
+        inner = words.length
+          ? words.map(w => rdWordHTML(w.word, w.pinyin)).join("")
+          : escapeHtml(s.text);
+      } else {
+        inner = s.text.split(/(\s+)/).map(tok =>
+          tok.trim()
+            ? rdWordHTML(tok, "")
+            : escapeHtml(tok)
+        ).join("");
+      }
+      sentHTML.push(`<span class="rd-sent" data-i="${s.gi}">${inner}</span>`);
+    }
+    paraHTML.push(`<div class="rd-para">${sentHTML.join(" ")}<div class="rd-trans">${escapeHtml(pa.en || "")}</div></div>`);
+  }
+  han.innerHTML = paraHTML.join("");
+  han.classList.toggle("show-pinyin", R.pinyin);
+  han.classList.toggle("show-trans", R.trans);
+
+  // Word tap → reuse the reader's translate/save popup.
+  han.querySelectorAll(".rd-word").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const word = el.dataset.word;
+      if (!word) return;
+      const sentEl = el.closest(".rd-sent");
+      const sentText = sentEl ? R.sentences.find(s => String(s.gi) === sentEl.dataset.i)?.text || "" : "";
+      sourceLangSelect.value = R.lang;
+      showWordPopup(el, word, sentText, "", true).catch(console.error);
+    });
+  });
+  rdUpdateHighlight();
+}
+
+function rdUpdateToolbar() {
+  const title = currentTextTitle || (R.lang === "zh" ? "阅读" : "Reading");
+  const titleEl = document.getElementById("rdTitle");
+  const subEl = document.getElementById("rdSub");
+  if (titleEl) titleEl.textContent = title;
+  if (subEl) subEl.textContent = `${R.sentences.length} sentence${R.sentences.length === 1 ? "" : "s"}`;
+  document.getElementById("rdPinyinPill")?.classList.toggle("on", R.pinyin);
+  document.getElementById("rdTransPill")?.classList.toggle("on", R.trans);
+  // Pinyin pill only meaningful for Chinese.
+  const pinyinPill = document.getElementById("rdPinyinPill");
+  if (pinyinPill) pinyinPill.style.display = R.lang === "zh" ? "" : "none";
+  const voiceName = document.getElementById("rdVoiceName");
+  if (voiceName) voiceName.textContent = (getSelectedVoice(R.lang) ? "Voice ✓" : "Voice");
+}
+
+function rdUpdateDock() {
+  const total = R.sentences.length;
+  const cur = R.idx < 0 ? 0 : R.idx + 1;
+  const prog = document.getElementById("rdProgress");
+  if (prog) prog.style.width = total ? `${(cur / total) * 100}%` : "0%";
+  const label = document.getElementById("rdSentLabel");
+  if (label) label.textContent = `${cur} / ${total} sentences`;
+  const speed = document.getElementById("rdSpeed");
+  if (speed) speed.textContent = ttsSlowMode ? "0.85×" : "1.0×";
+  document.getElementById("rdSlowPill")?.classList.toggle("on", ttsSlowMode);
+  const useEl = document.getElementById("rdPlayUse");
+  if (useEl) useEl.setAttribute("href", R.playing ? "#sonic-i-pause" : "#sonic-i-play");
+}
+
+function rdUpdateHighlight() {
+  document.querySelectorAll("#rdHan .rd-sent").forEach(el =>
+    el.classList.toggle("active", Number(el.dataset.i) === R.idx));
+  const active = document.querySelector("#rdHan .rd-sent.active");
+  if (active && R.playing) active.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function rdStopPlay() {
+  R.playing = false;
+  R.playSession++;
+  stopAllTTS();
+  rdUpdateDock();
+}
+
+async function rdPlayFrom(i) {
+  const session = ++R.playSession;
+  R.playing = true;
+  rdUpdateDock();
+
+  const playOne = async (idx) => {
+    if (session !== R.playSession) return;
+    if (idx >= R.sentences.length) { R.playing = false; R.idx = R.sentences.length - 1; rdUpdateDock(); rdUpdateHighlight(); return; }
+    R.idx = idx;
+    rdUpdateDock();
+    rdUpdateHighlight();
+    const clean = await prepareTTSInput(R.sentences[idx].text, R.lang);
+    if (session !== R.playSession) return;
+    const el = document.querySelector(`#rdHan .rd-sent[data-i="${idx}"]`);
+    await playGoogleTTS(clean, R.lang, () => {
+      if (session === R.playSession) playOne(idx + 1);
+    }, el);
+  };
+  playOne(i);
+}
+
+function rdTogglePlay() {
+  unlockAudioForMobile();
+  if (R.playing) { rdStopPlay(); return; }
+  let start = R.idx;
+  if (start < 0 || start >= R.sentences.length - 1) start = 0;
+  rdPlayFrom(start);
+}
+
+let _rdInited = false;
+function rdInitOnce() {
+  if (_rdInited) return;
+  _rdInited = true;
+
+  document.getElementById("rdBackBtn")?.addEventListener("click", () => {
+    rdStopPlay();
+    showScreen(screenMain);
+  });
+  document.getElementById("rdPlayBtn")?.addEventListener("click", rdTogglePlay);
+  document.getElementById("rdSlowPill")?.addEventListener("click", () => {
+    toggleSlowMode();
+    rdUpdateDock();
+    if (R.playing) rdPlayFrom(R.idx < 0 ? 0 : R.idx);
+  });
+  document.getElementById("rdVoicePill")?.addEventListener("click", () => {
+    sourceLangSelect.value = R.lang;
+    openVoicePicker();
+  });
+  document.getElementById("rdPinyinPill")?.addEventListener("click", () => {
+    R.pinyin = !R.pinyin;
+    document.getElementById("rdHan")?.classList.toggle("show-pinyin", R.pinyin);
+    document.getElementById("rdPinyinPill")?.classList.toggle("on", R.pinyin);
+  });
+  document.getElementById("rdTransPill")?.addEventListener("click", () => rdToggleTrans());
+  document.getElementById("rdBookmarkBtn")?.addEventListener("click", () => {
+    document.getElementById("saveTextBtn")?.click();
+    document.getElementById("rdBookmarkBtn")?.classList.add("on");
+  });
+  document.getElementById("rdPracticeBtn")?.addEventListener("click", () => {
+    rdStopPlay();
+    rdExState.view = "menu";
+    rdExState.done = { order: false, choice: false };
+    rdRenderExercise();
+    showScreen(screenReadExercise);
+  });
+  document.getElementById("rdExBackBtn")?.addEventListener("click", () => {
+    if (rdExState.view === "menu" || rdExState.view === "done") {
+      showScreen(screenReadReader);
+    } else {
+      rdExState.view = "menu";
+      rdRenderExercise();
+    }
+  });
+}
+rdInitOnce();
+
+async function rdToggleTrans() {
+  R.trans = !R.trans;
+  document.getElementById("rdTransPill")?.classList.toggle("on", R.trans);
+  const han = document.getElementById("rdHan");
+  han?.classList.toggle("show-trans", R.trans);
+  if (!R.trans) return;
+  // Lazy-load + cache each paragraph translation.
+  for (let p = 0; p < R.paras.length; p++) {
+    const pa = R.paras[p];
+    if (pa.en) continue;
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sentence: pa.text, sourceLang: R.lang, targetLang: targetLangSelect.value || "en" })
+      });
+      const data = await res.json();
+      pa.en = res.ok ? (data.translation || "") : "";
+    } catch { pa.en = ""; }
+    const transEl = han?.querySelectorAll(".rd-para")[p]?.querySelector(".rd-trans");
+    if (transEl) transEl.textContent = pa.en;
+  }
+}
+
+/* ---- Exercises: menu → reuse existing builders → celebration ---- */
+// The cloze/word-order panels are borrowed from #screen-main. Park them back
+// there (hidden) before we reset #rdExBody so innerHTML changes don't delete them.
+function rdParkExercisePanels() {
+  const main = document.getElementById("screen-main");
+  ["readingExercise", "wordOrderExercise"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement?.id === "rdExBody") {
+      el.hidden = true;
+      main?.appendChild(el);
+    }
+  });
+}
+
+function rdRenderExercise() {
+  const body = document.getElementById("rdExBody");
+  if (!body) return;
+  rdParkExercisePanels();
+  const nDone = (rdExState.done.order ? 1 : 0) + (rdExState.done.choice ? 1 : 0);
+  const stepLabel = document.getElementById("rdExStepLabel");
+  if (stepLabel) {
+    stepLabel.textContent = rdExState.view === "done" ? "Both complete"
+      : rdExState.view === "order" ? "Type 1 · Word order"
+      : rdExState.view === "choice" ? "Type 2 · Missing word"
+      : `${nDone} of 2 completed`;
+  }
+  const seg = (done, active) => done ? "var(--good)" : active ? "var(--primary)" : "var(--border)";
+  const s0 = document.getElementById("rdExSeg0");
+  const s1 = document.getElementById("rdExSeg1");
+  if (s0) s0.style.background = seg(rdExState.done.order, rdExState.view === "order");
+  if (s1) s1.style.background = seg(rdExState.done.choice, rdExState.view === "choice");
+
+  if (rdExState.view === "menu") { rdRenderExMenu(body); return; }
+  if (rdExState.view === "done") { rdRenderExDone(body); return; }
+
+  // Host the matching existing exercise panel inside the body and run its builder.
+  const hostId = rdExState.view === "order" ? "wordOrderExercise" : "readingExercise";
+  const panel = document.getElementById(hostId);
+  body.innerHTML = "";
+  if (panel) {
+    panel.hidden = false;
+    body.appendChild(panel);
+  }
+  if (rdExState.view === "order") {
+    buildWordOrderExercise(R.sentences.map(s => s.text), () => {
+      rdExState.done.order = true;
+      setTimeout(() => { rdExState.view = rdExState.done.choice ? "done" : "menu"; rdRenderExercise(); }, 900);
+    });
+  } else {
+    rdOnClozeComplete = () => {
+      if (rdExState.done.choice) return;
+      rdExState.done.choice = true;
+      showToast("Exercise complete!", "success");
+      setTimeout(() => { rdExState.view = rdExState.done.order ? "done" : "menu"; rdRenderExercise(); }, 900);
+    };
+    buildClozeExercise(R.sentences.map(s => s.text));
+  }
+}
+
+function rdRenderExMenu(body) {
+  const card = (kind, icon, tag, title, desc, hue) => {
+    const done = rdExState.done[kind];
+    return `<button class="rd-menucard ${done ? "done" : ""}" data-rd-ex="${kind}" type="button">
+      <div class="rd-menuicon" style="background:${hue}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#${icon}"/></svg></div>
+      <div class="rd-menutext"><div class="rd-menutag">${tag}</div><div class="rd-menutitle">${title}</div><div class="rd-menudesc">${desc}</div></div>
+      <span class="rd-menuchev ${done ? "done" : ""}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#${done ? "sonic-i-check" : "sonic-i-right"}"/></svg></span>
+    </button>`;
+  };
+  body.innerHTML = `
+    <div class="rd-ex-h">Choose an exercise</div>
+    <div class="rd-ex-sub">Two ways to practise the text you just read.</div>
+    ${card("order", "sonic-i-order", "Type 1", "Put the words in order", "Rebuild a scrambled sentence tile by tile.", "linear-gradient(135deg,#E5267E,#FF4D9D)")}
+    ${card("choice", "sonic-i-cloze", "Type 2", "Choose the missing word", "Pick the word that completes the sentence.", "linear-gradient(135deg,#0AB4D6,#0E7490)")}
+  `;
+  body.querySelectorAll("[data-rd-ex]").forEach(btn => {
+    btn.addEventListener("click", () => { rdExState.view = btn.dataset.rdEx; rdRenderExercise(); });
+  });
+}
+
+function rdRenderExDone(body) {
+  body.innerHTML = `
+    <div class="rd-done">
+      <div class="rd-confetti" id="rdConfetti"></div>
+      <div class="rd-done-badge"><svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg></div>
+      <div class="rd-done-title">Exercises complete!</div>
+      <div class="rd-done-sub">Nice work — you ordered the sentence and filled the blank correctly.</div>
+      <div class="rd-done-cta">
+        <button class="sp-btn sp-btn-primary" id="rdDoneBack" type="button">Back to reading</button>
+        <button class="sp-btn sp-btn-ghost" id="rdDoneRetry" type="button">Try again</button>
+      </div>
+    </div>`;
+  spFireConfetti("rdConfetti", true);
+  document.getElementById("rdDoneBack")?.addEventListener("click", () => showScreen(screenReadReader));
+  document.getElementById("rdDoneRetry")?.addEventListener("click", () => {
+    rdExState.done = { order: false, choice: false };
+    rdExState.view = "menu";
+    rdRenderExercise();
+  });
+}
 
 createBtn?.addEventListener("click", async () => {
   // Gate text processing for signed-in users (guests are unlimited). Free users
@@ -3892,7 +4263,7 @@ async function renderCards(sentences) {
    WORD ORDER EXERCISE
 ----------------------------- */
 
-function buildWordOrderExercise(sentences) {
+function buildWordOrderExercise(sentences, onComplete) {
   const section = document.getElementById("wordOrderExercise");
   if (!section || !sentences.length) return;
 
@@ -3912,6 +4283,7 @@ function buildWordOrderExercise(sentences) {
   function renderStep(idx) {
     if (idx >= picks.length) {
       section.innerHTML = '<p class="wo-done">All done! ✓</p>';
+      onComplete?.();
       return;
     }
     const sentence = picks[idx];

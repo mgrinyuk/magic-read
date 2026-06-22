@@ -38,6 +38,11 @@
   <symbol id="sonic-i-retry"    viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
   <symbol id="sonic-i-plus"     viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="sonic-i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="sonic-i-check"    viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></symbol>
+  <symbol id="sonic-i-right"    viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="sonic-i-arrow"    viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="sonic-i-order"    viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"/></symbol>
+  <symbol id="sonic-i-cloze"    viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
 </svg>
   <header class="app-header">
     <a class="brand" href="#">
@@ -634,6 +639,68 @@
             <button class="sp-btn sp-btn-ghost" id="spcLibraryBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg> Choose from Library</button>
           </div>
         </div>
+      </section>
+
+      <!-- ===================== READER · FLOWING PASSAGE ===================== -->
+      <section id="screen-read-reader" class="app-screen">
+        <div class="rd-appbar">
+          <button class="rd-iconbtn" id="rdBackBtn" type="button" aria-label="Back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+          </button>
+          <div class="rd-ttl"><b id="rdTitle">Reading</b><span id="rdSub"></span></div>
+          <button class="rd-iconbtn" id="rdBookmarkBtn" type="button" aria-label="Save this text">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-bookmark"/></svg>
+          </button>
+        </div>
+
+        <div class="rd-toolbar">
+          <button class="rd-pill" id="rdPinyinPill" type="button">拼 Pinyin</button>
+          <button class="rd-pill" id="rdTransPill" type="button">译 Translate</button>
+          <button class="rd-pill" id="rdVoicePill" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
+            <span id="rdVoiceName">Voice</span>
+          </button>
+        </div>
+
+        <div class="rd-surface">
+          <div class="rd-han" id="rdHan"></div>
+          <div class="rd-practice-wrap">
+            <button class="rd-practice-btn" id="rdPracticeBtn" type="button">
+              Practice what you read
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-arrow"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="rd-dock">
+          <button class="rd-playbtn" id="rdPlayBtn" type="button" aria-label="Play / Pause">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" stroke="none" aria-hidden="true"><use id="rdPlayUse" href="#sonic-i-play"/></svg>
+          </button>
+          <div class="rd-dock-mid">
+            <div class="rd-progress"><i id="rdProgress"></i></div>
+            <div class="rd-dock-meta">
+              <span id="rdSentLabel">0 / 0 sentences</span>
+              <span id="rdSpeed">1.0×</span>
+            </div>
+          </div>
+          <button class="rd-pill rd-slow" id="rdSlowPill" type="button"><span aria-hidden="true" style="font-size:16px;line-height:1">🐢</span> Slow</button>
+        </div>
+      </section>
+
+      <!-- ===================== READER · EXERCISES ===================== -->
+      <section id="screen-read-exercise" class="app-screen">
+        <div class="rd-appbar">
+          <button class="rd-iconbtn" id="rdExBackBtn" type="button" aria-label="Back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+          </button>
+          <div class="rd-ttl"><b>Practice</b><span id="rdExStepLabel">0 of 2 completed</span></div>
+          <div style="width:40px"></div>
+        </div>
+        <div class="rd-ex-segs">
+          <div id="rdExSeg0" class="rd-ex-seg"></div>
+          <div id="rdExSeg1" class="rd-ex-seg"></div>
+        </div>
+        <div class="rd-ex-body" id="rdExBody"></div>
       </section>
 
       <section id="screen-flashcards" class="app-screen">
