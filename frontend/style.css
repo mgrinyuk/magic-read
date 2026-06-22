@@ -4312,7 +4312,7 @@ body.is-logged-in.dashboard-active .top-ui-language {
 
 /* The composer's per-text language pickers are hidden — language is chosen on
    the dashboard. The selects remain in the DOM as the source of truth. */
-#screen-main .composer-footer .language-switcher { display: none; }
+#screen-main .composer-footer .language-switcher { display: none !important; }
 .hd-avatar {
   width: 52px;
   height: 52px;

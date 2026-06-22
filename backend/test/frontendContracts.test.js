@@ -78,12 +78,15 @@ test("both upgrade pickers expose T-Bank month and year options", async () => {
 });
 
 test("signed-in language picker is visible only on the dashboard", async () => {
-  const [app, css] = await Promise.all([
+  const [app, css, html] = await Promise.all([
     fs.readFile(new URL("../../frontend/app.js", import.meta.url), "utf8"),
-    fs.readFile(new URL("../../frontend/style.css", import.meta.url), "utf8")
+    fs.readFile(new URL("../../frontend/style.css", import.meta.url), "utf8"),
+    fs.readFile(new URL("../../frontend/index.html", import.meta.url), "utf8")
   ]);
 
   assert.match(app, /classList\.toggle\("dashboard-active", screen\.id === "screen-home"\)/);
   assert.match(css, /body\.is-logged-in \.top-ui-language\s*\{\s*display: none !important;/);
   assert.match(css, /body\.is-logged-in\.dashboard-active \.top-ui-language\s*\{\s*display: block !important;/);
+  assert.match(css, /#screen-main \.composer-footer \.language-switcher\s*\{\s*display: none !important;/);
+  assert.doesNotMatch(html, /class="header-language-controls language-switcher"/);
 });
