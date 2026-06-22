@@ -1824,6 +1824,7 @@ function renderHomeScreen() {
 
   updateHomeCardsBadge();
 
+  syncHomeLangControls();
   loadRecentProgress();
   loadVideoHistory();
 }
@@ -2485,6 +2486,54 @@ sourceLangSelect?.addEventListener("change", () => {
   loadTextLibrary();
 });
 
+/* -----------------------------
+   LEARNING LANGUAGE (global, set from the dashboard)
+   The composer's #sourceLang / #targetLang selects stay the source of truth
+   (read in many places); the dashboard control mirrors into them and we
+   persist the choice so it survives reloads.
+----------------------------- */
+const homeSourceLang = document.getElementById("homeSourceLang");
+const homeTargetLang = document.getElementById("homeTargetLang");
+
+function applyStoredLearningLangs() {
+  const src = localStorage.getItem("magicread_source_lang");
+  const tgt = localStorage.getItem("magicread_target_lang");
+  if (src && sourceLangSelect) sourceLangSelect.value = src;
+  if (tgt && targetLangSelect) targetLangSelect.value = tgt;
+  syncHomeLangControls();
+}
+
+function syncHomeLangControls() {
+  if (homeSourceLang && sourceLangSelect) homeSourceLang.value = sourceLangSelect.value;
+  if (homeTargetLang && targetLangSelect) homeTargetLang.value = targetLangSelect.value;
+}
+
+homeSourceLang?.addEventListener("change", () => {
+  if (!sourceLangSelect) return;
+  sourceLangSelect.value = homeSourceLang.value;
+  localStorage.setItem("magicread_source_lang", homeSourceLang.value);
+  sourceLangSelect.dispatchEvent(new Event("change"));
+  updateLanguageBasedUI();
+});
+
+homeTargetLang?.addEventListener("change", () => {
+  if (!targetLangSelect) return;
+  targetLangSelect.value = homeTargetLang.value;
+  localStorage.setItem("magicread_target_lang", homeTargetLang.value);
+});
+
+// Keep the dashboard control + storage in step when language changes elsewhere
+// (composer, onboarding, resume).
+sourceLangSelect?.addEventListener("change", () => {
+  localStorage.setItem("magicread_source_lang", sourceLangSelect.value);
+  syncHomeLangControls();
+});
+targetLangSelect?.addEventListener("change", () => {
+  localStorage.setItem("magicread_target_lang", targetLangSelect.value);
+  syncHomeLangControls();
+});
+
+applyStoredLearningLangs();
 updateLanguageBasedUI();
 
 /* -----------------------------

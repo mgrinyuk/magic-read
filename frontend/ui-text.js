@@ -73,6 +73,7 @@ export const UI_TEXT = {
     tbankPaymentFailed: "Payment was not completed.",
     redirecting: "Redirecting…",
     saveText: "Save text",
+    iAmLearning: "I'm learning",
     savedTexts: "My texts",
     savedTextsTitle: "My texts",
 
@@ -243,6 +244,7 @@ export const UI_TEXT = {
     tbankPaymentFailed: "Платёж не был завершён.",
     redirecting: "Переходим к оплате…",
     saveText: "Сохранить текст",
+    iAmLearning: "Я учу",
     savedTexts: "Мои тексты",
     savedTextsTitle: "Мои тексты",
 
@@ -384,6 +386,7 @@ export const UI_TEXT = {
     tbankPaymentFailed: "付款未完成。",
     redirecting: "正在跳转…",
     saveText: "保存文本",
+    iAmLearning: "我在学",
     savedTexts: "我的文本",
     savedTextsTitle: "我的文本",
 
@@ -525,6 +528,7 @@ export const UI_TEXT = {
     tbankPaymentFailed: "Ödeme tamamlanmadı.",
     redirecting: "Yönlendiriliyor…",
     saveText: "Metni kaydet",
+    iAmLearning: "Öğreniyorum",
     savedTexts: "Metinlerim",
     savedTextsTitle: "Metinlerim",
 
@@ -666,6 +670,7 @@ tbankPaymentPending: "Zahlung erhalten. Pro wird in Kürze aktiviert.",
 tbankPaymentFailed: "Die Zahlung wurde nicht abgeschlossen.",
 redirecting: "Weiterleitung…",
 saveText: "Text speichern",
+    iAmLearning: "Ich lerne",
 savedTexts: "Meine Texte",
 savedTextsTitle: "Meine Texte",
 
@@ -807,6 +812,7 @@ tbankPaymentPending: "Pago recibido. El acceso Pro aparecerá en breve.",
 tbankPaymentFailed: "El pago no se completó.",
 redirecting: "Redirigiendo…",
 saveText: "Guardar texto",
+    iAmLearning: "Estoy aprendiendo",
 savedTexts: "Mis textos",
 savedTextsTitle: "Mis textos",
 
@@ -948,6 +954,7 @@ tbankPaymentPending: "Paiement reçu. L’accès Pro sera bientôt activé.",
 tbankPaymentFailed: "Le paiement n’a pas été finalisé.",
 redirecting: "Redirection…",
 saveText: "Sauvegarder le texte",
+    iAmLearning: "J'apprends",
 savedTexts: "Mes textes",
 savedTextsTitle: "Mes textes",
 
@@ -1089,6 +1096,7 @@ tbankPaymentPending: "支払いを受け付けました。まもなくProが有�
 tbankPaymentFailed: "支払いは完了しませんでした。",
 redirecting: "移動しています…",
 saveText: "テキストを保存",
+    iAmLearning: "学習中の言語",
 savedTexts: "マイテキスト",
 savedTextsTitle: "マイテキスト",
 
