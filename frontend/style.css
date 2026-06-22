@@ -5136,3 +5136,28 @@ body.is-logged-in .top-ui-language {
 .sp-recap small { font-size: 12px; font-weight: 700; color: var(--text-dim); }
 .sp-recap-hint { font-size: 13px; font-weight: 600; color: var(--text-dim); margin-top: 14px; display: flex; align-items: center; gap: 6px; }
 .sp-complete-cta { margin-top: auto; width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 12px; padding: 24px 0; }
+
+/* ======================================================================
+   ACCOUNT · subscription status card
+   ====================================================================== */
+.acct-sub-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 18px);
+  padding: 18px 20px;
+  margin: 0 0 16px;
+  box-shadow: var(--shadow-soft);
+}
+.acct-sub-loading { color: var(--text-soft); font-size: 14px; }
+.acct-sub-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.acct-sub-title { font-size: 17px; font-weight: 800; color: var(--text); }
+.acct-sub-line { font-size: 14px; color: var(--text-soft); line-height: 1.55; }
+.acct-sub-line b { color: var(--text); font-weight: 700; }
+.acct-sub-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.acct-sub-act { flex: 1; min-width: 150px; }
+.acct-sub-secondary {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-soft);
+}
+.acct-sub-secondary:hover { background: var(--surface-2); color: var(--text); }

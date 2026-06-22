@@ -914,6 +914,173 @@ app.post("/api/create-billing-portal-session", extractUser, requireUser, async (
 });
 
 /* -----------------------------
+   SUBSCRIPTION STATUS / UPGRADE / CANCEL
+   In-app management so users see their tier + dates and can upgrade
+   (monthly -> annual) or cancel without leaving the app. Stripe is the source
+   of truth for tier/dates; T-Bank Pro is one-time/time-limited (no renewal).
+----------------------------- */
+
+// Return the user's most relevant Stripe subscription, or null. Prefers an
+// active/trialing/past_due sub; otherwise the most recent one.
+async function getActiveStripeSubscription(customerId) {
+  if (!stripe || !customerId) return null;
+  const { data: subs } = await stripe.subscriptions.list({
+    customer: customerId,
+    status: "all",
+    limit: 10
+  });
+  if (!subs || !subs.length) return null;
+  const live = subs.find((s) => ["active", "trialing", "past_due"].includes(s.status));
+  return live || subs[0];
+}
+
+// Map a subscription's price id to our tier label.
+function stripeTierFromSub(sub) {
+  const priceId = sub?.items?.data?.[0]?.price?.id;
+  if (priceId && priceId === process.env.STRIPE_PRICE_ANNUAL) return "annual";
+  if (priceId && priceId === process.env.STRIPE_PRICE_MONTHLY) return "monthly";
+  return null;
+}
+
+const toISO = (unixSeconds) =>
+  unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
+
+app.get("/api/subscription-status", extractUser, requireUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { plan, planEndsAt, planProvider, trialActive } = await getUserPlan(userId);
+    const active = plan === "pro" || trialActive;
+
+    const base = {
+      active,
+      provider: planProvider,
+      tier: null,
+      purchasedAt: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      canUpgradeToAnnual: false,
+      cancelable: false
+    };
+
+    if (plan !== "pro") {
+      // Free or trial-only: nothing to manage.
+      return res.json(base);
+    }
+
+    if (planProvider === "stripe") {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("id", userId)
+        .maybeSingle();
+      const sub = await getActiveStripeSubscription(profile?.stripe_customer_id);
+      if (sub) {
+        const tier = stripeTierFromSub(sub);
+        return res.json({
+          ...base,
+          tier,
+          purchasedAt: toISO(sub.start_date || sub.created),
+          currentPeriodEnd: toISO(sub.current_period_end),
+          cancelAtPeriodEnd: !!sub.cancel_at_period_end,
+          canUpgradeToAnnual: tier === "monthly" && !sub.cancel_at_period_end,
+          cancelable: !sub.cancel_at_period_end
+        });
+      }
+      // Pro via Stripe but no subscription = one-time lifetime purchase.
+      return res.json({ ...base, tier: "lifetime" });
+    }
+
+    if (planProvider === "tbank") {
+      const { data: payment } = await supabaseAdmin
+        .from("tbank_payments")
+        .select("plan_code, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const tier = payment?.plan_code || null;
+      return res.json({
+        ...base,
+        tier,
+        purchasedAt: payment?.created_at || null,
+        currentPeriodEnd: planEndsAt,
+        canUpgradeToAnnual: tier !== "annual"
+      });
+    }
+
+    // Pro with no provider = directly granted (comp/manual). No self-serve billing.
+    return res.json({ ...base, tier: null });
+  } catch (error) {
+    console.error("[Stripe] subscription-status error:", error.message);
+    res.status(500).json({ error: "Could not load subscription status." });
+  }
+});
+
+app.post("/api/upgrade-to-annual", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: "Billing is not configured.", code: "NOT_CONFIGURED" });
+    if (!process.env.STRIPE_PRICE_ANNUAL) {
+      return res.status(503).json({ error: "Annual plan is not configured.", code: "NOT_CONFIGURED" });
+    }
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", req.user.id)
+      .maybeSingle();
+    const sub = await getActiveStripeSubscription(profile?.stripe_customer_id);
+    if (!sub) return res.status(404).json({ error: "No active Stripe subscription to upgrade.", code: "NO_SUBSCRIPTION" });
+    if (stripeTierFromSub(sub) === "annual") {
+      return res.status(400).json({ error: "You're already on the annual plan.", code: "ALREADY_ANNUAL" });
+    }
+    const itemId = sub.items.data[0].id;
+    await stripe.subscriptions.update(sub.id, {
+      items: [{ id: itemId, price: process.env.STRIPE_PRICE_ANNUAL }],
+      proration_behavior: "create_prorations"
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("[Stripe] upgrade-to-annual error:", error.message);
+    res.status(500).json({ error: "Could not upgrade your plan." });
+  }
+});
+
+app.post("/api/cancel-subscription", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: "Billing is not configured.", code: "NOT_CONFIGURED" });
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", req.user.id)
+      .maybeSingle();
+    const sub = await getActiveStripeSubscription(profile?.stripe_customer_id);
+    if (!sub) return res.status(404).json({ error: "No active Stripe subscription to cancel.", code: "NO_SUBSCRIPTION" });
+    const updated = await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
+    res.json({ ok: true, endsAt: toISO(updated.current_period_end) });
+  } catch (error) {
+    console.error("[Stripe] cancel-subscription error:", error.message);
+    res.status(500).json({ error: "Could not cancel your subscription." });
+  }
+});
+
+app.post("/api/resume-subscription", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: "Billing is not configured.", code: "NOT_CONFIGURED" });
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", req.user.id)
+      .maybeSingle();
+    const sub = await getActiveStripeSubscription(profile?.stripe_customer_id);
+    if (!sub) return res.status(404).json({ error: "No subscription to resume.", code: "NO_SUBSCRIPTION" });
+    const updated = await stripe.subscriptions.update(sub.id, { cancel_at_period_end: false });
+    res.json({ ok: true, renewsAt: toISO(updated.current_period_end) });
+  } catch (error) {
+    console.error("[Stripe] resume-subscription error:", error.message);
+    res.status(500).json({ error: "Could not resume your subscription." });
+  }
+});
+
+/* -----------------------------
    T-BANK: RUSSIAN CARDS + SBP
    Creates a hosted payment and grants time-limited Pro access only after a
    signed CONFIRMED notification. Amounts are in kopecks.

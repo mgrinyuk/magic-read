@@ -1561,6 +1561,121 @@ function renderAccountScreen() {
       langLabel.textContent = langNames[uiLangEl?.value] || "English";
     }
   });
+
+  renderSubscriptionSection();
+}
+
+// Status-driven billing card: shows tier + dates and the right actions
+// (upgrade / cancel / resume / extend) for the user's provider.
+async function renderSubscriptionSection() {
+  const card = document.getElementById("acctSubStatus");
+  const upgradeRow = document.getElementById("acctUpgradeRow");
+  const picker = document.getElementById("acctPlanPicker");
+  if (!card) return;
+
+  // Free / trial users: keep the buy flow, no status card.
+  if (userPlan.plan !== "pro") {
+    card.hidden = true;
+    return;
+  }
+  if (upgradeRow) upgradeRow.hidden = true;
+  if (picker) picker.hidden = true;
+
+  card.hidden = false;
+  card.innerHTML = `<div class="acct-sub-loading">Loading subscription…</div>`;
+
+  let s;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/subscription-status`);
+    s = await res.json();
+    if (!res.ok) throw new Error(s?.error || "status failed");
+  } catch {
+    card.innerHTML = `<div class="acct-sub-title">Pro access active</div>
+      <div class="acct-sub-line">For billing questions, email help@magicread.app.</div>`;
+    return;
+  }
+
+  const fmt = (iso) => iso ? new Date(iso).toLocaleDateString() : null;
+  const tierLabel = { monthly: "Monthly", annual: "Annual", lifetime: "Lifetime" }[s.tier] || "Pro";
+  const purchased = fmt(s.purchasedAt);
+  const periodEnd = fmt(s.currentPeriodEnd);
+
+  const lines = [];
+  if (purchased) lines.push(`<div class="acct-sub-line">Started <b>${purchased}</b></div>`);
+
+  let actionsHtml = "";
+
+  if (s.provider === "stripe") {
+    if (s.tier === "lifetime") {
+      lines.push(`<div class="acct-sub-line">Lifetime access — never expires.</div>`);
+    } else if (s.cancelAtPeriodEnd) {
+      if (periodEnd) lines.push(`<div class="acct-sub-line">Pro until <b>${periodEnd}</b> — won't renew.</div>`);
+      actionsHtml = `<button class="plan-option acct-sub-act" data-sub-action="resume">Resume subscription</button>`;
+    } else {
+      if (periodEnd) lines.push(`<div class="acct-sub-line">Renews <b>${periodEnd}</b></div>`);
+      const up = s.canUpgradeToAnnual
+        ? `<button class="plan-option acct-sub-act" data-sub-action="upgrade-stripe">Upgrade to annual</button>` : "";
+      actionsHtml = up + `<button class="plan-option acct-sub-secondary acct-sub-act" data-sub-action="cancel">Cancel subscription</button>`;
+    }
+  } else if (s.provider === "tbank") {
+    if (periodEnd) lines.push(`<div class="acct-sub-line">Pro until <b>${periodEnd}</b> · Russian card / SBP · renews manually.</div>`);
+    if (s.canUpgradeToAnnual) {
+      actionsHtml = `<button class="plan-option acct-sub-act" data-sub-action="upgrade-tbank">Extend to annual — 5,000 ₽</button>`;
+    }
+  } else {
+    lines.push(`<div class="acct-sub-line">Your Pro access is active. For billing questions, email help@magicread.app.</div>`);
+  }
+
+  card.innerHTML = `
+    <div class="acct-sub-head">
+      <span class="acct-sub-title">Pro · ${tierLabel}</span>
+    </div>
+    ${lines.join("")}
+    ${actionsHtml ? `<div class="acct-sub-actions">${actionsHtml}</div>` : ""}
+  `;
+
+  card.querySelectorAll("[data-sub-action]").forEach((btn) => {
+    btn.addEventListener("click", () => handleSubAction(btn.dataset.subAction, btn));
+  });
+}
+
+async function handleSubAction(action, btn) {
+  if (action === "upgrade-tbank") { startTbankCheckout("annual", btn); return; }
+
+  if (action === "cancel") {
+    const ok = await showConfirm("Cancel your subscription? You'll keep Pro until the end of your current billing period. No refund is issued for the remaining time.");
+    if (!ok) return;
+  }
+  if (action === "upgrade-stripe") {
+    const ok = await showConfirm("Switch to the annual plan now? You'll be charged the annual price (prorated for time already paid) and save vs. monthly.");
+    if (!ok) return;
+  }
+
+  const endpoint = {
+    "upgrade-stripe": "/api/upgrade-to-annual",
+    "cancel": "/api/cancel-subscription",
+    "resume": "/api/resume-subscription"
+  }[action];
+  if (!endpoint) return;
+
+  btn.disabled = true;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}${endpoint}`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) { showToast(data?.error || "Something went wrong. Try again.", "error"); return; }
+    const messages = {
+      "upgrade-stripe": "You're now on the annual plan.",
+      "cancel": "Subscription canceled. Pro stays active until your period ends.",
+      "resume": "Subscription resumed — it will renew as normal."
+    };
+    showToast(messages[action], "success");
+    await fetchMyPlan();
+    renderSubscriptionSection();
+  } catch {
+    showToast("Something went wrong. Try again.", "error");
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 document.getElementById("acctBackBtn")?.addEventListener("click", () => {
@@ -1704,26 +1819,9 @@ document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
   if (picker) picker.hidden = !picker.hidden;
 });
 
-document.getElementById("acctManageSubBtn")?.addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  button.disabled = true;
-
-  try {
-    const response = await fetchWithAuth(`${API_BASE}/api/create-billing-portal-session`, {
-      method: "POST"
-    });
-    const data = await response.json();
-    if (!response.ok || !data?.url) {
-      showToast(data?.error || "Could not open subscription settings.", "error");
-      return;
-    }
-    window.location.href = data.url;
-  } catch {
-    showToast("Could not open subscription settings.", "error");
-  } finally {
-    button.disabled = false;
-  }
-});
+// Subscription management lives in the status card rendered by
+// renderSubscriptionSection() (see above); the old single "Manage subscription"
+// row / Stripe-portal handler was replaced by it.
 
 document.getElementById("acctPersonalDataBtn")?.addEventListener("click", () => {
   showToast("Personal data settings coming soon.", "info");
