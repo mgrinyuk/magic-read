@@ -1511,6 +1511,7 @@ function showScreen(screen) {
   screen.classList.add("active");
   sessionStorage.setItem("activeScreenId", screen.id);
   document.body.classList.toggle("product-active", screen.id !== "screen-onboarding");
+  document.body.classList.toggle("dashboard-active", screen.id === "screen-home");
 
   const appTabBar = document.getElementById("appTabBar");
   if (appTabBar) {

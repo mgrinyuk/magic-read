@@ -1942,8 +1942,15 @@ body.is-logged-in #logoutBtn {
   display: flex !important;
 }
 
-body.is-logged-in .profile-menu,
+body.is-logged-in .profile-menu {
+  display: block !important;
+}
+
 body.is-logged-in .top-ui-language {
+  display: none !important;
+}
+
+body.is-logged-in.dashboard-active .top-ui-language {
   display: block !important;
 }
 
