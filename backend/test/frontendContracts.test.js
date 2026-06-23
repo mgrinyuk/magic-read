@@ -135,6 +135,8 @@ test("reader polish keeps sentence-only playback and controls", async () => {
   assert.match(css, /\.rd-han\s*\{[^}]*font-size: 28px;/);
   assert.match(html, /id="rdPrevSentBtn"/);
   assert.match(html, /id="rdNextSentBtn"/);
+  assert.match(html, /Tap turtle twice for 0\.75×/);
+  assert.match(html, /title="Tap once for 0\.85×, twice for 0\.75×"/);
   assert.match(app, /function rdPausePlay\(\)/);
   assert.match(app, /function rdResumePlay\(\)/);
   assert.match(app, /function rdJumpSentence\(delta\)/);
@@ -142,4 +144,21 @@ test("reader polish keeps sentence-only playback and controls", async () => {
   assert.match(app, /return ttsSpeedMode === 2 \? 0\.75 : ttsSpeedMode === 1 \? 0\.85 : 1\.0;/);
   assert.match(app, /showWordPopup\(el, word, sentText, "", false\)/);
   assert.doesNotMatch(app, /playGoogleTTS\(clean, R\.lang,[\s\S]{0,180}, el\)/);
+});
+
+test("reader exercises scale with sentence count up to five", async () => {
+  const [app, css] = await Promise.all([
+    fs.readFile(new URL("../../frontend/app.js", import.meta.url), "utf8"),
+    fs.readFile(new URL("../../frontend/style.css", import.meta.url), "utf8")
+  ]);
+
+  assert.match(app, /function rdExerciseTargetCount\(\)/);
+  assert.match(app, /return Math\.min\(5, Math\.max\(0, R\.sentences\.length\)\);/);
+  assert.match(app, /function rdBuildExerciseItems\(\)/);
+  assert.match(app, /\.slice\(0, target\)/);
+  assert.match(app, /Array\.from\(\{ length: Math\.max\(total, 1\) \}/);
+  assert.match(app, /Exercise \$\{rdExState\.idx \+ 1\} of \$\{rdExState\.items\.length\}/);
+  assert.doesNotMatch(app, /function rdRenderExerciseLegacy/);
+  assert.match(css, /\.rd-ex-seg\.done\s*\{\s*background: var\(--good\);/);
+  assert.match(css, /\.rd-ex-seg\.active\s*\{\s*background: var\(--primary\);/);
 });

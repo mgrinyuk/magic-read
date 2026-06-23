@@ -3091,6 +3091,8 @@ function startReader(text, sentences) {
   rdEx2.sent = ""; rdEx2.opts = []; rdEx2.choice = null; rdEx2.fb = null;
   rdExState.done = { order: false, choice: false };
   rdExState.view = "menu";
+  rdExState.items = [];
+  rdExState.idx = 0;
   const bm = document.getElementById("rdBookmarkBtn");
   bm?.classList.toggle("on", !!currentTextId && !String(currentTextId).startsWith("lib_"));
   rdBuildParagraphs(text, sentences);
@@ -3414,21 +3416,22 @@ function rdInitOnce() {
   });
   document.getElementById("rdPracticeBtn")?.addEventListener("click", () => {
     rdStopPlay();
-    rdExState.view = "menu";
-    rdExState.done = { order: false, choice: false };
+    rdStartExerciseSession();
     rdRenderExercise();
     showScreen(screenReadExercise);
   });
   document.getElementById("rdExBackBtn")?.addEventListener("click", () => {
-    if (rdExState.view === "menu" || rdExState.view === "done") {
-      showScreen(screenReadReader);
-    } else {
-      rdExState.view = "menu";
-      rdRenderExercise();
-    }
+    showScreen(screenReadReader);
   });
 }
 rdInitOnce();
+
+function rdStartExerciseSession() {
+  rdExState.view = "exercise";
+  rdExState.idx = 0;
+  rdExState.items = rdBuildExerciseItems();
+  if (!rdExState.items.length) rdExState.view = "empty";
+}
 
 async function rdToggleTrans() {
   R.trans = !R.trans;
@@ -3454,28 +3457,205 @@ async function rdToggleTrans() {
   }
 }
 
-/* ---- Exercises: menu → self-contained order/cloze → celebration ---- */
+/* ---- Exercises: sequential sentence-based practice ---- */
+function rdExerciseTargetCount() {
+  return Math.min(5, Math.max(0, R.sentences.length));
+}
+
+function rdShuffleItems(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function rdCreateOrderExercise(sentence, index) {
+  const toks = rdEx1Tokens(sentence);
+  if (toks.length < 2) return null;
+  const target = toks.slice(0, 8);
+  let bank = target.map((t, i) => ({ id: i, t })).sort(() => Math.random() - 0.5);
+  if (bank.map(b => b.t).join("") === target.join("") && bank.length > 1) [bank[0], bank[1]] = [bank[1], bank[0]];
+  return {
+    type: "order",
+    sentence,
+    index,
+    target,
+    slots: new Array(target.length).fill(null),
+    bank,
+    fb: null
+  };
+}
+
+function rdCreateClozeExercise(sentence, index) {
+  const toks = rdEx1Tokens(sentence);
+  if (toks.length < 4) return null;
+  const ansIdx = Math.min(toks.length - 1, Math.max(1, Math.round(toks.length * 0.6)));
+  const answer = toks[ansIdx];
+  const joiner = (R.lang === "zh" || R.lang === "ja") ? "" : " ";
+  const display = toks.map((t, i) => i === ansIdx ? "___" : t).join(joiner);
+  const pool = [...new Set(R.sentences.flatMap(s => rdEx1Tokens(s.text)).filter(t => t !== answer && t.length === answer.length))];
+  const distractors = rdShuffleItems(pool).slice(0, 3);
+  let opts = [{ t: answer }, ...distractors.map(t => ({ t }))];
+  while (opts.length < 2) opts.push({ t: answer + "?" });
+  opts = rdShuffleItems(opts);
+  return {
+    type: "choice",
+    sentence,
+    index,
+    sent: display,
+    answer: opts.findIndex(o => o.t === answer),
+    opts,
+    choice: null,
+    fb: null
+  };
+}
+
+function rdBuildExerciseItems() {
+  const target = rdExerciseTargetCount();
+  const candidates = R.sentences
+    .map((s, i) => ({ text: s.text, i, tokens: rdEx1Tokens(s.text) }))
+    .filter(s => s.tokens.length >= 2)
+    .slice(0, target);
+
+  return candidates.map((s, pos) => {
+    const preferChoice = pos % 2 === 1;
+    return (preferChoice ? rdCreateClozeExercise(s.text, pos) : rdCreateOrderExercise(s.text, pos)) ||
+      rdCreateOrderExercise(s.text, pos) ||
+      rdCreateClozeExercise(s.text, pos);
+  }).filter(Boolean);
+}
+
+function rdCompleteCurrentExercise(wordsRead = 1) {
+  const item = rdExState.items[rdExState.idx];
+  if (item) item.done = true;
+  recordActivity("words_read", wordsRead);
+  setTimeout(() => {
+    if (rdExState.idx >= rdExState.items.length - 1) {
+      rdExState.view = "done";
+    } else {
+      rdExState.idx += 1;
+    }
+    rdRenderExercise();
+  }, 800);
+}
+
+function rdSkipCurrentExercise() {
+  if (rdExState.idx >= rdExState.items.length - 1) {
+    rdExState.view = "done";
+  } else {
+    rdExState.idx += 1;
+  }
+  rdRenderExercise();
+}
+
 function rdRenderExercise() {
   const body = document.getElementById("rdExBody");
   if (!body) return;
-  const nDone = (rdExState.done.order ? 1 : 0) + (rdExState.done.choice ? 1 : 0);
+  if (!rdExState.items.length && rdExState.view !== "empty") rdStartExerciseSession();
+
+  const total = rdExState.items.length;
+  const current = Math.min(total, rdExState.idx + 1);
   const stepLabel = document.getElementById("rdExStepLabel");
   if (stepLabel) {
-    stepLabel.textContent = rdExState.view === "done" ? "Both complete"
-      : rdExState.view === "order" ? "Type 1 · Word order"
-      : rdExState.view === "choice" ? "Type 2 · Missing word"
-      : `${nDone} of 2 completed`;
+    stepLabel.textContent = rdExState.view === "done" ? `${total} of ${total} completed`
+      : rdExState.view === "empty" ? "No exercises available"
+      : `${current} of ${total} completed`;
   }
-  const seg = (done, active) => done ? "var(--good)" : active ? "var(--primary)" : "var(--border)";
-  const s0 = document.getElementById("rdExSeg0");
-  const s1 = document.getElementById("rdExSeg1");
-  if (s0) s0.style.background = seg(rdExState.done.order, rdExState.view === "order");
-  if (s1) s1.style.background = seg(rdExState.done.choice, rdExState.view === "choice");
 
-  if (rdExState.view === "menu") { rdRenderExMenu(body); return; }
+  const segWrap = document.querySelector(".rd-ex-segs");
+  if (segWrap) {
+    segWrap.innerHTML = Array.from({ length: Math.max(total, 1) }, (_, i) => {
+      const done = rdExState.view === "done" || i < rdExState.idx || rdExState.items[i]?.done;
+      const active = rdExState.view !== "done" && i === rdExState.idx;
+      return `<div class="rd-ex-seg ${done ? "done" : ""} ${active ? "active" : ""}"></div>`;
+    }).join("");
+  }
+
+  if (rdExState.view === "empty") {
+    body.innerHTML = '<p class="rd-loading" style="padding:12px">Not enough text for this exercise.</p>';
+    return;
+  }
   if (rdExState.view === "done") { rdRenderExDone(body); return; }
-  if (rdExState.view === "order") { rdRenderExOrder(body); return; }
-  if (rdExState.view === "choice") { rdRenderExCloze(body); return; }
+
+  const item = rdExState.items[rdExState.idx];
+  if (!item) { rdExState.view = "done"; rdRenderExercise(); return; }
+  if (item.type === "choice") { rdRenderSequentialCloze(body, item); return; }
+  rdRenderSequentialOrder(body, item);
+}
+
+function rdRenderSequentialOrder(body, item) {
+  const slots = item.slots.map((id, pos) =>
+    id == null ? `<span class="rd-slot empty" data-slot="${pos}"></span>`
+      : `<button class="rd-slot" data-slot="${pos}" type="button">${escapeHtml(item.bank.find(b => b.id === id)?.t || "")}</button>`).join("");
+  const bank = item.bank.map(b => `<button class="rd-chip${item.slots.includes(b.id) ? " used" : ""}" data-bank-id="${b.id}" type="button">${escapeHtml(b.t)}</button>`).join("");
+  const fb = item.fb ? `<div class="rd-exfb ${item.fb === "correct" ? "ok" : "no"}">${item.fb === "correct" ? "太好了！Correct order." : "Not quite — tap a tile to send it back."}</div>` : "";
+  body.innerHTML = `
+    <div class="rd-excard">
+      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise ${rdExState.idx + 1} of ${rdExState.items.length}</span><span class="rd-extitle">Put the words in order</span></div>
+      <p class="rd-exdesc">Rebuild the scrambled sentence.</p>
+      <div class="rd-slots${item.fb === "wrong" ? " wrong" : ""}">${slots}</div>
+      <div class="rd-bank">${bank}</div>
+      ${fb}
+      <div class="rd-exrow">
+        <button class="rd-excheck" id="rdExCheck" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> Check</button>
+        <button class="rd-exskip" id="rdExSkip" type="button">Skip</button>
+      </div>
+    </div>`;
+
+  body.querySelectorAll(".rd-slot:not(.empty)").forEach(sl => sl.addEventListener("click", () => {
+    item.slots[Number(sl.dataset.slot)] = null; item.fb = null; rdRenderSequentialOrder(body, item);
+  }));
+  body.querySelectorAll(".rd-chip").forEach(ch => ch.addEventListener("click", () => {
+    const id = Number(ch.dataset.bankId);
+    const i = item.slots.indexOf(null);
+    if (i < 0 || item.slots.includes(id)) return;
+    item.slots[i] = id; item.fb = null; rdRenderSequentialOrder(body, item);
+  }));
+  document.getElementById("rdExCheck")?.addEventListener("click", () => {
+    const placed = item.slots.map(id => id == null ? null : item.bank.find(b => b.id === id)?.t);
+    const ok = JSON.stringify(placed) === JSON.stringify(item.target);
+    item.fb = ok ? "correct" : "wrong";
+    rdRenderSequentialOrder(body, item);
+    if (ok) rdCompleteCurrentExercise(item.target.length);
+  });
+  document.getElementById("rdExSkip")?.addEventListener("click", rdSkipCurrentExercise);
+}
+
+function rdRenderSequentialCloze(body, item) {
+  const blankCol = item.fb === "correct" ? "var(--good)" : item.fb === "wrong" ? "var(--bad)" : "var(--primary)";
+  const blankTxt = item.choice == null ? "＿＿" : item.opts[item.choice].t;
+  const blankHtml = `<span style="display:inline-block;min-width:56px;text-align:center;border-bottom:3px solid ${blankCol};color:${item.choice == null ? "#B9B4C7" : blankCol};font-weight:700;margin:0 2px;padding:0 4px">${escapeHtml(blankTxt)}</span>`;
+  const sentDisplay = escapeHtml(item.sent).replace("___", blankHtml);
+  const opts = item.opts.map((op, i) => {
+    let cls = "rd-opt";
+    if (item.fb && i === item.answer) cls += " correct";
+    else if (item.fb === "wrong" && item.choice === i) cls += " wrong";
+    else if (item.choice === i) cls += " sel";
+    return `<button class="${cls}" data-opt="${i}" type="button"><span class="zh" style="font-size:22px;font-weight:700">${escapeHtml(op.t)}</span></button>`;
+  }).join("");
+  const fb = item.fb ? `<div class="rd-exfb ${item.fb === "correct" ? "ok" : "no"}">${item.fb === "correct" ? "对了！" : "Not quite — try again."}</div>` : "";
+  body.innerHTML = `
+    <div class="rd-excard">
+      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise ${rdExState.idx + 1} of ${rdExState.items.length}</span><span class="rd-extitle">Choose the missing word</span></div>
+      <p class="rd-exdesc">Which word completes the sentence?</p>
+      <div class="rd-cloze-sent zh">${sentDisplay}</div>
+      <div class="rd-opts">${opts}</div>
+      ${fb}
+      <div class="rd-exrow">
+        <button class="rd-excheck" id="rdExCheck" type="button" ${item.choice == null && !item.fb ? "disabled" : ""}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> ${item.fb === "correct" ? "Correct ✓" : "Check"}</button>
+        <button class="rd-exskip" id="rdExSkip" type="button">Skip</button>
+      </div>
+    </div>`;
+
+  body.querySelectorAll(".rd-opt").forEach(btn => btn.addEventListener("click", () => {
+    if (item.fb === "correct") return;
+    item.choice = Number(btn.dataset.opt); item.fb = null; rdRenderSequentialCloze(body, item);
+  }));
+  document.getElementById("rdExCheck")?.addEventListener("click", () => {
+    if (item.choice == null) return;
+    const ok = item.choice === item.answer;
+    item.fb = ok ? "correct" : "wrong";
+    rdRenderSequentialCloze(body, item);
+    if (ok) rdCompleteCurrentExercise(1);
+  });
+  document.getElementById("rdExSkip")?.addEventListener("click", rdSkipCurrentExercise);
 }
 
 /* Word-order (Type 1) — self-contained */

@@ -5311,6 +5311,7 @@ body.is-logged-in.dashboard-active .top-ui-language {
 .rd-dock-meta { display: flex; justify-content: space-between; margin-top: 7px; }
 .rd-dock-meta span { font-size: 12px; color: var(--text-soft); font-weight: 600; }
 .rd-dock-meta span:last-child { color: var(--text-dim); font-weight: 500; }
+.rd-speed-hint { margin-top: 4px; font-size: 11px; color: var(--text-dim); font-weight: 600; }
 .rd-dock .rd-slow { white-space: nowrap; }
 .rd-dock .rd-slow.extra-slow { background: rgba(245,180,0,.22); border-color: rgba(245,180,0,.65); color: var(--amber-ink); }
 .rd-slow-icon { font-size: 16px; line-height: 1; transform-origin: center; }
@@ -5319,6 +5320,8 @@ body.is-logged-in.dashboard-active .top-ui-language {
 /* Reader exercises */
 .rd-ex-segs { display: flex; gap: 7px; padding: 8px clamp(16px,4vw,22px) 0; }
 .rd-ex-seg { flex: 1; height: 6px; border-radius: 4px; background: var(--border); }
+.rd-ex-seg.done { background: var(--good); }
+.rd-ex-seg.active { background: var(--primary); }
 .rd-ex-body { padding: 20px clamp(16px,4vw,22px) 24px; }
 .rd-ex-h { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
 .rd-ex-sub { font-size: 14px; color: var(--text-soft); margin: 6px 0 20px; }
