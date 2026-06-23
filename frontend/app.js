@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260622.5";
+import { UI_TEXT } from "./ui-text.js?v=20260622.6";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -3677,22 +3677,41 @@ function rdSetupRenderSaved(items) {
   list.innerHTML = items.map(t => {
     const glyph = (t.title || "文")[0];
     const sel = rdSetupState.sel.kind === "saved" && String(rdSetupState.sel.id) === String(t.id);
-    return `<button class="rd-savedrow${sel ? " sel" : ""}" data-saved-id="${escapeHtml(t.id)}" type="button">
-      <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
-      <div class="rd-savedrow-body">
-        <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
-        <div class="rd-savedrow-sub">${escapeHtml((t.source_lang || "") + (t.target_lang ? " → " + t.target_lang : ""))}</div>
-      </div>
-      <span class="rd-savedrow-go">Open</span>
-    </button>`;
+    return `<div class="rd-savedrow${sel ? " sel" : ""}" data-saved-id="${escapeHtml(t.id)}">
+      <button class="rd-savedrow-main" data-saved-id="${escapeHtml(t.id)}" type="button">
+        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
+        <div class="rd-savedrow-body">
+          <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
+          <div class="rd-savedrow-sub">${escapeHtml((t.source_lang || "") + (t.target_lang ? " → " + t.target_lang : ""))}</div>
+        </div>
+      </button>
+      <button class="rd-savedrow-del" data-del-id="${escapeHtml(t.id)}" type="button" aria-label="Delete saved text">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-trash"/></svg>
+      </button>
+    </div>`;
   }).join("");
-  list.querySelectorAll(".rd-savedrow").forEach(row => {
-    row.addEventListener("click", () => {
-      const id = row.dataset.savedId;
+  list.querySelectorAll(".rd-savedrow-main").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.savedId;
       const t = items.find(x => String(x.id) === String(id));
       if (!t) return;
       rdSetupState.sel = { kind: "saved", id, title: t.title || "", text: t.text || "", source_lang: t.source_lang, target_lang: t.target_lang };
       list.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.savedId === id));
+      rdSetupUpdateStartLabel();
+    });
+  });
+  list.querySelectorAll(".rd-savedrow-del").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.delId;
+      const confirmed = await showConfirm("Delete this saved text?");
+      if (!confirmed) return;
+      const { error } = await supabase.from("saved_texts").delete().eq("id", id);
+      if (error) { console.error("Delete saved text error:", error); showToast("Could not delete saved text.", "error"); return; }
+      savedTextsCache = null;
+      if (String(rdSetupState.sel.id) === String(id)) rdSetupState.sel = { kind: "library", id: null, title: "" };
+      showToast("Saved text deleted.", "success");
+      rdSetupLoadSaved();
       rdSetupUpdateStartLabel();
     });
   });
