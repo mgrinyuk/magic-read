@@ -5230,7 +5230,7 @@ async function prepareTTSInput(text, lang) {
 
       if (response.ok && data.words) {
         return data.words
-          .map(item => item.word)
+          .map(item => rdWordParts(item).word)
           .join(" ")
           .replace(/\s+([，。！？])/g, "$1 ")
           .trim();
@@ -5282,12 +5282,12 @@ function clearWordHighlights() {
 
 function highlightByCharIndex(container, charIndex) {
   if (!container) return;
-  const units = Array.from(container.querySelectorAll(".word, .hanzi-char"));
+  const units = Array.from(container.querySelectorAll(".word, .hanzi-char, .rd-word"));
   if (!units.length) return;
   units.forEach(u => u.classList.remove("word-speaking"));
   let pos = 0;
   for (const unit of units) {
-    const len = (unit.textContent || "").length;
+    const len = ((unit.querySelector?.(".rd-hz")?.textContent) || unit.textContent || "").length;
     if (charIndex >= pos && charIndex < pos + len) {
       unit.classList.add("word-speaking");
       break;
@@ -5300,11 +5300,16 @@ function highlightWordsSequentially(container, durationMs) {
   if (!container) return;
   clearWordHighlights();
 
-  let words = Array.from(container.querySelectorAll(".word")).filter(el => el.textContent.trim());
+  let words = Array.from(container.querySelectorAll(".rd-word, .word")).filter(el => {
+    const text = el.querySelector?.(".rd-hz")?.textContent || el.textContent || "";
+    return text.trim();
+  });
 
   if (!words.length) {
     words = Array.from(container.querySelectorAll(".hanzi-char")).filter(el => el.textContent.trim());
   }
+
+  if (!words.length && container.closest?.("#rdHan")) return;
 
   if (!words.length) {
     const chars = [...container.textContent].filter(c => c.trim());

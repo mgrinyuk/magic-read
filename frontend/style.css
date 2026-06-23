@@ -5275,6 +5275,7 @@ body.is-logged-in.dashboard-active .top-ui-language {
 .rd-word small { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-dim); font-weight: 600; line-height: 1.1; margin-bottom: 3px; display: none; }
 .rd-han.show-pinyin .rd-word > small { display: block !important; }
 .rd-word .rd-hz { line-height: 1.15; border-radius: 4px; }
+.rd-word.word-speaking .rd-hz { background: var(--yellow) !important; color: var(--text) !important; box-shadow: 0 0 0 2px rgba(255, 106, 43, 0.45); }
 /* Align punctuation with the hanzi row (the bottom of the ruby word boxes),
    not the baseline at the top of the tall word columns. */
 .rd-punc { white-space: pre; display: inline-block; vertical-align: bottom; line-height: 1.15; }

@@ -104,7 +104,12 @@ test("reader pinyin renders as ruby labels above clean hanzi words", async () =>
   assert.match(app, /const rawWord = item\?\.hanzi \|\| item\?\.hz \|\| item\?\.word \|\| "";/);
   assert.match(app, /const \{ word, pinyin \} = rdWordParts\(w\);/);
   assert.match(app, /rdWordHTML\(word, pinyin\)/);
+  assert.match(app, /querySelectorAll\("\.word, \.hanzi-char, \.rd-word"\)/);
+  assert.match(app, /querySelectorAll\("\.rd-word, \.word"\)/);
+  assert.match(app, /if \(!words\.length && container\.closest\?\.\("#rdHan"\)\) return;/);
+  assert.match(app, /\.map\(item => rdWordParts\(item\)\.word\)/);
   assert.match(app, /<small>\$\{escapeHtml\(py \|\| ""\)\}<\/small><span class="rd-hz">\$\{escapeHtml\(word\)\}<\/span><\/span>/);
   assert.match(css, /\.rd-word small\s*\{[^}]*display: none;/);
   assert.match(css, /\.rd-han\.show-pinyin \.rd-word > small\s*\{\s*display: block !important;\s*\}/);
+  assert.match(css, /\.rd-word\.word-speaking \.rd-hz\s*\{/);
 });
