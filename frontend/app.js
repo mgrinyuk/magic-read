@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260622.3";
+import { UI_TEXT } from "./ui-text.js?v=20260622.4";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -453,6 +453,8 @@ const screenSpeakPractice = document.getElementById("screen-speak-practice");
 const screenSpeakComplete = document.getElementById("screen-speak-complete");
 const screenReadReader = document.getElementById("screen-read-reader");
 const screenReadExercise = document.getElementById("screen-read-exercise");
+const screenReadSetup = document.getElementById("screen-read-setup");
+const screenSpeakSetup = document.getElementById("screen-speak-setup");
 
 const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
@@ -1496,8 +1498,10 @@ const TAB_BY_SCREEN = {
   "screen-home":            "home",
   "screen-flashcards":      "cards",
   "screen-video":           "video",
+  "screen-speak-setup":     "speak",
   "screen-speak-practice":  "speak",
   "screen-speak-complete":  "speak",
+  "screen-read-setup":      "read",
   "screen-read-reader":     "read",
   "screen-read-exercise":   "read",
   "screen-writing":         null,
@@ -1901,9 +1905,12 @@ document.querySelectorAll("[data-tool-screen]").forEach(btn => {
 document.querySelectorAll("[data-hd-target]").forEach(btn => {
   btn.addEventListener("click", async () => {
     const target = btn.dataset.hdTarget;
-    if (target === "speak" || target === "read") {
-      await activateReaderMode(target === "read" ? "reading" : "pronunciation");
-      showScreen(screenMain);
+    if (target === "read") {
+      appMode = "reading";
+      openReadSetup();
+    } else if (target === "speak") {
+      appMode = "pronunciation";
+      showScreen(screenSpeakSetup);
     } else if (target === "cards") {
       showScreen(screenFlashcards);
       renderDeckSelector();
@@ -1960,12 +1967,12 @@ document.getElementById("homeResume")?.addEventListener("click", async () => {
         spRenderPractice();
       }
     } else {
-      if (sentenceIdx > 0) {
-        const cards = container?.querySelectorAll(".card");
-        const target = cards?.[sentenceIdx];
-        if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+      // Reading already launched the reader screen — highlight the saved sentence.
+      if (sentenceIdx > 0 && sentenceIdx < R.sentences.length) {
+        R.idx = sentenceIdx;
+        rdUpdateDock();
+        rdUpdateHighlight();
       }
-      showScreen(screenMain);
     }
   } finally {
     hideMagicLoadingOverlay();
@@ -1979,9 +1986,12 @@ document.querySelectorAll(".sonic-tab").forEach(tab => {
     if (t === "home") {
       renderHomeScreen();
       showScreen(screenHome);
-    } else if (t === "read" || t === "speak") {
-      await activateReaderMode(t === "read" ? "reading" : "pronunciation");
-      showScreen(screenMain);
+    } else if (t === "read") {
+      appMode = "reading";
+      openReadSetup();
+    } else if (t === "speak") {
+      appMode = "pronunciation";
+      showScreen(screenSpeakSetup);
     } else if (t === "cards") {
       showScreen(screenFlashcards);
       renderDeckSelector();
@@ -2094,22 +2104,17 @@ function restoreActiveScreen() {
     return;
   }
 
-  // Spotlight screens hold no persisted text after a reload — send the user
-  // back to the speak setup composer instead of an empty practice screen.
-  if (savedId === "screen-speak-practice" || savedId === "screen-speak-complete") {
+  // Speak screens hold no persisted text after a reload — back to speak setup.
+  if (savedId === "screen-speak-setup" || savedId === "screen-speak-practice" || savedId === "screen-speak-complete") {
     appMode = "pronunciation";
-    updateModeCopy();
-    applyMode();
-    showScreen(screenMain);
+    showScreen(screenSpeakSetup);
     return;
   }
 
   // Reader screens likewise hold no persisted passage after a reload.
-  if (savedId === "screen-read-reader" || savedId === "screen-read-exercise") {
+  if (savedId === "screen-read-setup" || savedId === "screen-read-reader" || savedId === "screen-read-exercise") {
     appMode = "reading";
-    updateModeCopy();
-    applyMode();
-    showScreen(screenMain);
+    openReadSetup();
     return;
   }
 
@@ -2716,7 +2721,7 @@ function spInitOnce() {
 
   document.getElementById("spBackBtn")?.addEventListener("click", () => {
     stopAllTTS(); stopRecognition();
-    showScreen(screenMain);
+    showScreen(screenSpeakSetup);
   });
   document.getElementById("spMic")?.addEventListener("click", spOnMicTap);
   document.getElementById("spListenBtn")?.addEventListener("click", spOnListen);
@@ -2724,10 +2729,7 @@ function spInitOnce() {
   document.getElementById("spRetryBtn")?.addEventListener("click", spRetryCurrent);
   document.getElementById("spPrimaryBtn")?.addEventListener("click", spOnPrimary);
   document.getElementById("spcNewBtn")?.addEventListener("click", spNewText);
-  document.getElementById("spcLibraryBtn")?.addEventListener("click", () => {
-    spNewText();
-    document.getElementById("openLibraryBtn")?.click();
-  });
+  document.getElementById("spcLibraryBtn")?.addEventListener("click", spNewText);
 }
 
 function spRenderMic() {
@@ -3001,9 +3003,9 @@ function spNewText() {
   stopAllTTS(); stopRecognition();
   spState.phase = "idle";
   spState.fromComplete = false;
-  if (startComposerArea) startComposerArea.hidden = false;
-  if (inputText) inputText.hidden = false;
-  showScreen(screenMain);
+  const inp = document.getElementById("spSetupInput");
+  if (inp) inp.value = "";
+  showScreen(screenSpeakSetup);
 }
 
 function spRenderComplete() {
@@ -3082,6 +3084,13 @@ function startReader(text, sentences) {
   R.playing = false;
   R.pinyin = false;
   R.trans = false;
+  // Reset exercises for the new text.
+  rdEx1.slots = []; rdEx1.target = []; rdEx1.bank = []; rdEx1.fb = null;
+  rdEx2.sent = ""; rdEx2.opts = []; rdEx2.choice = null; rdEx2.fb = null;
+  rdExState.done = { order: false, choice: false };
+  rdExState.view = "menu";
+  const bm = document.getElementById("rdBookmarkBtn");
+  bm?.classList.toggle("on", !!currentTextId && !String(currentTextId).startsWith("lib_"));
   rdBuildParagraphs(text, sentences);
   rdRenderPassage();
   rdUpdateToolbar();
@@ -3170,7 +3179,7 @@ async function rdRenderPassage() {
   han.classList.toggle("show-pinyin", R.pinyin);
   han.classList.toggle("show-trans", R.trans);
 
-  // Word tap → reuse the reader's translate/save popup.
+  // Word tap → inline word sheet (real dictionary lookup + real save).
   han.querySelectorAll(".rd-word").forEach(el => {
     el.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -3178,8 +3187,9 @@ async function rdRenderPassage() {
       if (!word) return;
       const sentEl = el.closest(".rd-sent");
       const sentText = sentEl ? R.sentences.find(s => String(s.gi) === sentEl.dataset.i)?.text || "" : "";
-      sourceLangSelect.value = R.lang;
-      showWordPopup(el, word, sentText, "", true).catch(console.error);
+      han.querySelectorAll(".rd-word-sel").forEach(w => w.classList.remove("rd-word-sel"));
+      el.classList.add("rd-word-sel");
+      rdShowWordSheet(word, el.dataset.pinyin || "", sentText);
     });
   });
   rdUpdateHighlight();
@@ -3196,8 +3206,20 @@ function rdUpdateToolbar() {
   // Pinyin pill only meaningful for Chinese.
   const pinyinPill = document.getElementById("rdPinyinPill");
   if (pinyinPill) pinyinPill.style.display = R.lang === "zh" ? "" : "none";
+  // Level badge from the selected library/setup item.
+  const lvl = document.getElementById("rdLevel");
+  if (lvl) {
+    const level = rdSetupState?._level || "";
+    lvl.textContent = level;
+    lvl.hidden = !level;
+  }
+  // Voice pill shows the selected voice's short label.
   const voiceName = document.getElementById("rdVoiceName");
-  if (voiceName) voiceName.textContent = (getSelectedVoice(R.lang) ? "Voice ✓" : "Voice");
+  if (voiceName) {
+    const sel = getSelectedVoice(R.lang);
+    const v = (VOICE_LIST[R.lang] || []).find(x => x.name === sel) || (VOICE_LIST[R.lang] || [])[0];
+    voiceName.textContent = v ? (v.label || "Voice") : "Voice";
+  }
 }
 
 function rdUpdateDock() {
@@ -3264,7 +3286,7 @@ function rdInitOnce() {
 
   document.getElementById("rdBackBtn")?.addEventListener("click", () => {
     rdStopPlay();
-    showScreen(screenMain);
+    openReadSetup();
   });
   document.getElementById("rdPlayBtn")?.addEventListener("click", rdTogglePlay);
   document.getElementById("rdSlowPill")?.addEventListener("click", () => {
@@ -3272,10 +3294,8 @@ function rdInitOnce() {
     rdUpdateDock();
     if (R.playing) rdPlayFrom(R.idx < 0 ? 0 : R.idx);
   });
-  document.getElementById("rdVoicePill")?.addEventListener("click", () => {
-    sourceLangSelect.value = R.lang;
-    openVoicePicker();
-  });
+  document.getElementById("rdVoicePill")?.addEventListener("click", () => rdOpenSheet("voice"));
+  document.getElementById("rdScrim")?.addEventListener("click", rdCloseSheet);
   document.getElementById("rdPinyinPill")?.addEventListener("click", () => {
     R.pinyin = !R.pinyin;
     document.getElementById("rdHan")?.classList.toggle("show-pinyin", R.pinyin);
@@ -3283,8 +3303,15 @@ function rdInitOnce() {
   });
   document.getElementById("rdTransPill")?.addEventListener("click", () => rdToggleTrans());
   document.getElementById("rdBookmarkBtn")?.addEventListener("click", () => {
-    document.getElementById("saveTextBtn")?.click();
-    document.getElementById("rdBookmarkBtn")?.classList.add("on");
+    const btn = document.getElementById("rdBookmarkBtn");
+    const willSave = !btn?.classList.contains("on");
+    if (willSave) {
+      btn?.classList.add("on");
+      document.getElementById("saveTextBtn")?.click();
+    } else {
+      btn?.classList.remove("on");
+      showToast("Removed from saved", "info");
+    }
   });
   document.getElementById("rdPracticeBtn")?.addEventListener("click", () => {
     rdStopPlay();
@@ -3328,24 +3355,10 @@ async function rdToggleTrans() {
   }
 }
 
-/* ---- Exercises: menu → reuse existing builders → celebration ---- */
-// The cloze/word-order panels are borrowed from #screen-main. Park them back
-// there (hidden) before we reset #rdExBody so innerHTML changes don't delete them.
-function rdParkExercisePanels() {
-  const main = document.getElementById("screen-main");
-  ["readingExercise", "wordOrderExercise"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.parentElement?.id === "rdExBody") {
-      el.hidden = true;
-      main?.appendChild(el);
-    }
-  });
-}
-
+/* ---- Exercises: menu → self-contained order/cloze → celebration ---- */
 function rdRenderExercise() {
   const body = document.getElementById("rdExBody");
   if (!body) return;
-  rdParkExercisePanels();
   const nDone = (rdExState.done.order ? 1 : 0) + (rdExState.done.choice ? 1 : 0);
   const stepLabel = document.getElementById("rdExStepLabel");
   if (stepLabel) {
@@ -3362,29 +3375,134 @@ function rdRenderExercise() {
 
   if (rdExState.view === "menu") { rdRenderExMenu(body); return; }
   if (rdExState.view === "done") { rdRenderExDone(body); return; }
+  if (rdExState.view === "order") { rdRenderExOrder(body); return; }
+  if (rdExState.view === "choice") { rdRenderExCloze(body); return; }
+}
 
-  // Host the matching existing exercise panel inside the body and run its builder.
-  const hostId = rdExState.view === "order" ? "wordOrderExercise" : "readingExercise";
-  const panel = document.getElementById(hostId);
-  body.innerHTML = "";
-  if (panel) {
-    panel.hidden = false;
-    body.appendChild(panel);
+/* Word-order (Type 1) — self-contained */
+const rdEx1 = { slots: [], target: [], bank: [], fb: null };
+function rdEx1Tokens(sentence) {
+  if (R.lang === "zh" || R.lang === "ja") {
+    const segs = segmentCache.get(sentence);
+    if (segs && segs.length) return segs.map(s => s.word || s).filter(w => /\S/.test(w) && !/^[，。！？、；：]+$/.test(w));
+    return [...sentence].filter(c => /\S/.test(c) && !/[，。！？、；：]/.test(c));
   }
-  if (rdExState.view === "order") {
-    buildWordOrderExercise(R.sentences.map(s => s.text), () => {
-      rdExState.done.order = true;
-      setTimeout(() => { rdExState.view = rdExState.done.choice ? "done" : "menu"; rdRenderExercise(); }, 900);
-    });
-  } else {
-    rdOnClozeComplete = () => {
-      if (rdExState.done.choice) return;
-      rdExState.done.choice = true;
-      showToast("Exercise complete!", "success");
-      setTimeout(() => { rdExState.view = rdExState.done.order ? "done" : "menu"; rdRenderExercise(); }, 900);
-    };
-    buildClozeExercise(R.sentences.map(s => s.text));
-  }
+  return sentence.trim().split(/\s+/).filter(Boolean);
+}
+function rdEx1Init() {
+  const sent = R.sentences.map(s => s.text).find(t => {
+    const n = rdEx1Tokens(t).length; return n >= 3 && n <= 8;
+  }) || R.sentences[0]?.text || "";
+  const toks = rdEx1Tokens(sent);
+  if (toks.length < 2) { rdEx1.target = []; rdEx1.bank = []; rdEx1.slots = []; return; }
+  rdEx1.target = toks;
+  rdEx1.slots = new Array(toks.length).fill(null);
+  let bank = toks.map((t, i) => ({ id: i, t })).sort(() => Math.random() - 0.5);
+  if (bank.map(b => b.t).join("") === toks.join("") && bank.length > 1) [bank[0], bank[1]] = [bank[1], bank[0]];
+  rdEx1.bank = bank;
+  rdEx1.fb = null;
+}
+function rdRenderExOrder(body) {
+  if (!rdEx1.target.length) rdEx1Init();
+  if (!rdEx1.target.length) { body.innerHTML = '<p class="rd-loading" style="padding:12px">Not enough text for this exercise.</p>'; return; }
+  const slots = rdEx1.slots.map((id, pos) =>
+    id == null ? `<span class="rd-slot empty" data-slot="${pos}"></span>`
+      : `<button class="rd-slot" data-slot="${pos}" type="button">${escapeHtml(rdEx1.bank.find(b => b.id === id)?.t || "")}</button>`).join("");
+  const bank = rdEx1.bank.map(b => `<button class="rd-chip${rdEx1.slots.includes(b.id) ? " used" : ""}" data-bank-id="${b.id}" type="button">${escapeHtml(b.t)}</button>`).join("");
+  const fb = rdEx1.fb ? `<div class="rd-exfb ${rdEx1.fb === "correct" ? "ok" : "no"}">${rdEx1.fb === "correct" ? "太好了！Correct order." : "Not quite — tap a tile to send it back."}</div>` : "";
+  body.innerHTML = `
+    <div class="rd-excard">
+      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise 1</span><span class="rd-extitle">Put the words in order</span></div>
+      <p class="rd-exdesc">Rebuild the scrambled sentence.</p>
+      <div class="rd-slots${rdEx1.fb === "wrong" ? " wrong" : ""}">${slots}</div>
+      <div class="rd-bank">${bank}</div>
+      ${fb}
+      <div class="rd-exrow">
+        <button class="rd-excheck" id="rdEx1Check" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> Check</button>
+        <button class="rd-exskip" id="rdEx1Skip" type="button">Skip</button>
+      </div>
+    </div>`;
+  body.querySelectorAll(".rd-slot:not(.empty)").forEach(sl => sl.addEventListener("click", () => {
+    rdEx1.slots[Number(sl.dataset.slot)] = null; rdEx1.fb = null; rdRenderExOrder(body);
+  }));
+  body.querySelectorAll(".rd-chip").forEach(ch => ch.addEventListener("click", () => {
+    const id = Number(ch.dataset.bankId);
+    const i = rdEx1.slots.indexOf(null);
+    if (i < 0 || rdEx1.slots.includes(id)) return;
+    rdEx1.slots[i] = id; rdEx1.fb = null; rdRenderExOrder(body);
+  }));
+  document.getElementById("rdEx1Check")?.addEventListener("click", () => {
+    const placed = rdEx1.slots.map(id => id == null ? null : rdEx1.bank.find(b => b.id === id)?.t);
+    const ok = JSON.stringify(placed) === JSON.stringify(rdEx1.target);
+    rdEx1.fb = ok ? "correct" : "wrong";
+    rdRenderExOrder(body);
+    if (ok) { recordActivity("words_read", rdEx1.target.length); setTimeout(() => { rdExState.done.order = true; rdExState.view = rdExState.done.choice ? "done" : "menu"; rdRenderExercise(); }, 900); }
+  });
+  document.getElementById("rdEx1Skip")?.addEventListener("click", () => { rdExState.view = "menu"; rdRenderExercise(); });
+}
+
+/* Cloze (Type 2) — self-contained */
+const rdEx2 = { sent: "", answer: 0, opts: [], choice: null, fb: null };
+function rdEx2Init() {
+  const sent = R.sentences.map(s => s.text).find(t => rdEx1Tokens(t).length >= 4) || "";
+  const toks = rdEx1Tokens(sent);
+  if (toks.length < 4) { rdEx2.sent = ""; return; }
+  // Blank a content word near the middle/end.
+  const ansIdx = Math.min(toks.length - 1, Math.max(1, Math.round(toks.length * 0.6)));
+  const answer = toks[ansIdx];
+  const joiner = (R.lang === "zh" || R.lang === "ja") ? "" : " ";
+  const display = toks.map((t, i) => i === ansIdx ? "___" : t).join(joiner);
+  // Distractors from other tokens in the passage.
+  const pool = [...new Set(R.sentences.flatMap(s => rdEx1Tokens(s.text)).filter(t => t !== answer && t.length === answer.length))];
+  const distractors = pool.sort(() => Math.random() - 0.5).slice(0, 3);
+  let opts = [{ t: answer }, ...distractors.map(t => ({ t }))];
+  while (opts.length < 2) opts.push({ t: answer + "?" });
+  opts = opts.sort(() => Math.random() - 0.5);
+  rdEx2.sent = display;
+  rdEx2.opts = opts;
+  rdEx2.answer = opts.findIndex(o => o.t === answer);
+  rdEx2.choice = null;
+  rdEx2.fb = null;
+}
+function rdRenderExCloze(body) {
+  if (!rdEx2.sent) rdEx2Init();
+  if (!rdEx2.sent) { body.innerHTML = '<p class="rd-loading" style="padding:12px">Not enough text for this exercise.</p>'; return; }
+  const blankCol = rdEx2.fb === "correct" ? "var(--good)" : rdEx2.fb === "wrong" ? "var(--bad)" : "var(--primary)";
+  const blankTxt = rdEx2.choice == null ? "＿＿" : rdEx2.opts[rdEx2.choice].t;
+  const blankHtml = `<span style="display:inline-block;min-width:56px;text-align:center;border-bottom:3px solid ${blankCol};color:${rdEx2.choice == null ? "#B9B4C7" : blankCol};font-weight:700;margin:0 2px;padding:0 4px">${escapeHtml(blankTxt)}</span>`;
+  const sentDisplay = escapeHtml(rdEx2.sent).replace("___", blankHtml);
+  const opts = rdEx2.opts.map((op, i) => {
+    let cls = "rd-opt";
+    if (rdEx2.fb && i === rdEx2.answer) cls += " correct";
+    else if (rdEx2.fb === "wrong" && rdEx2.choice === i) cls += " wrong";
+    else if (rdEx2.choice === i) cls += " sel";
+    return `<button class="${cls}" data-opt="${i}" type="button"><span class="zh" style="font-size:22px;font-weight:700">${escapeHtml(op.t)}</span></button>`;
+  }).join("");
+  const fb = rdEx2.fb ? `<div class="rd-exfb ${rdEx2.fb === "correct" ? "ok" : "no"}">${rdEx2.fb === "correct" ? "对了！" : "Not quite — try again."}</div>` : "";
+  body.innerHTML = `
+    <div class="rd-excard">
+      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise 2</span><span class="rd-extitle">Choose the missing word</span></div>
+      <p class="rd-exdesc">Which word completes the sentence?</p>
+      <div class="rd-cloze-sent zh">${sentDisplay}</div>
+      <div class="rd-opts">${opts}</div>
+      ${fb}
+      <div class="rd-exrow">
+        <button class="rd-excheck" id="rdEx2Check" type="button" ${rdEx2.choice == null && !rdEx2.fb ? "disabled" : ""}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> ${rdEx2.fb === "correct" ? "Correct ✓" : "Check"}</button>
+        <button class="rd-exskip" id="rdEx2Skip" type="button">Skip</button>
+      </div>
+    </div>`;
+  body.querySelectorAll(".rd-opt").forEach(btn => btn.addEventListener("click", () => {
+    if (rdEx2.fb === "correct") return;
+    rdEx2.choice = Number(btn.dataset.opt); rdEx2.fb = null; rdRenderExCloze(body);
+  }));
+  document.getElementById("rdEx2Check")?.addEventListener("click", () => {
+    if (rdEx2.choice == null) return;
+    const ok = rdEx2.choice === rdEx2.answer;
+    rdEx2.fb = ok ? "correct" : "wrong";
+    rdRenderExCloze(body);
+    if (ok) setTimeout(() => { rdExState.done.choice = true; rdExState.view = rdExState.done.order ? "done" : "menu"; rdRenderExercise(); }, 900);
+  });
+  document.getElementById("rdEx2Skip")?.addEventListener("click", () => { rdExState.view = "menu"; rdRenderExercise(); });
 }
 
 function rdRenderExMenu(body) {
@@ -3427,6 +3545,304 @@ function rdRenderExDone(body) {
     rdRenderExercise();
   });
 }
+
+/* ============================================================
+   READER SETUP  (card-grid setup screen)
+   ============================================================ */
+const rdSetupState = { tab: "library", sel: { kind: "library", id: null, title: "" }, _libText: null, _level: "" };
+
+function openReadSetup() {
+  showScreen(screenReadSetup);
+  rdSetupSetTab(rdSetupState.tab || "library");
+}
+
+let _rdSetupInited = false;
+function rdSetupInit() {
+  if (_rdSetupInited) return;
+  _rdSetupInited = true;
+  document.getElementById("rdSetupSeg")?.querySelectorAll(".rd-setup-seg-btn").forEach(btn => {
+    btn.addEventListener("click", () => rdSetupSetTab(btn.dataset.tab));
+  });
+  document.getElementById("rdSetupInput")?.addEventListener("input", e => {
+    const c = document.getElementById("rdSetupCharCount");
+    if (c) c.textContent = e.target.value.length;
+  });
+  document.getElementById("rdSetupStartBtn")?.addEventListener("click", rdSetupStart);
+}
+rdSetupInit();
+
+function rdSetupSetTab(tab) {
+  rdSetupState.tab = tab;
+  document.getElementById("rdSetupSeg")?.querySelectorAll(".rd-setup-seg-btn")
+    .forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  const paste = document.getElementById("rdSetupPasteTab");
+  const lib = document.getElementById("rdSetupLibraryTab");
+  const saved = document.getElementById("rdSetupSavedTab");
+  if (paste) paste.hidden = tab !== "paste";
+  if (lib) lib.hidden = tab !== "library";
+  if (saved) saved.hidden = tab !== "saved";
+  if (tab === "library") rdSetupLoadLibrary();
+  if (tab === "saved") rdSetupLoadSaved();
+  rdSetupUpdateStartLabel();
+}
+
+function rdSetupUpdateStartLabel() {
+  const label = document.getElementById("rdSetupStartLabel");
+  if (!label) return;
+  if (rdSetupState.tab === "paste") { label.textContent = "Start reading"; return; }
+  const title = rdSetupState.sel.title;
+  label.textContent = title ? `Start reading · ${title}` : "Start reading";
+}
+
+async function rdSetupLoadLibrary() {
+  const grid = document.getElementById("rdSetupLibraryTab");
+  if (!grid) return;
+  const lang = sourceLangSelect?.value || "zh";
+  if (libraryCache[lang]) { rdSetupRenderLibrary(libraryCache[lang]); return; }
+  grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">Loading…</p>';
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/game-texts?lang=${lang}`);
+    const data = await res.json();
+    const texts = res.ok ? (data.texts || []) : [];
+    libraryCache[lang] = texts;
+    rdSetupRenderLibrary(texts);
+  } catch {
+    grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">Could not load library.</p>';
+  }
+}
+
+function rdSetupRenderLibrary(texts) {
+  const grid = document.getElementById("rdSetupLibraryTab");
+  if (!grid) return;
+  if (!texts.length) { grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">No texts yet.</p>'; return; }
+  const hues = ["#E5267E", "#0AB4D6", "#F5B400", "#16A34A"];
+  grid.innerHTML = texts.map((t, i) => {
+    const hue = hues[i % hues.length];
+    const glyph = (t.title || "文")[0];
+    const sel = rdSetupState.sel.kind === "library" && String(rdSetupState.sel.id) === String(t.id);
+    return `<button class="rd-libcard${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}" type="button">
+      <div class="rd-libthumb" style="background:linear-gradient(135deg,${hue},rgba(28,18,51,.25))"><span class="rd-libthumb-glyph">${escapeHtml(glyph)}</span></div>
+      <div class="rd-libcard-body">
+        <div class="rd-libcard-title">${escapeHtml(t.title || "Untitled")}</div>
+        <div class="rd-libcard-sub">${escapeHtml(t.topic || "")}</div>
+        <div class="rd-libcard-meta">
+          ${t.level ? `<span class="rd-libcard-level">${escapeHtml(t.level)}</span>` : ""}
+          ${t.cardCount ? `<span class="rd-libcard-len">${t.cardCount} cards</span>` : ""}
+        </div>
+      </div>
+    </button>`;
+  }).join("");
+  grid.querySelectorAll(".rd-libcard").forEach(card => {
+    card.addEventListener("click", () => {
+      const id = card.dataset.libId;
+      const t = texts.find(x => String(x.id) === String(id));
+      if (!t) return;
+      rdSetupState.sel = { kind: "library", id, title: t.title || "" };
+      rdSetupState._libText = t;
+      grid.querySelectorAll(".rd-libcard").forEach(c => c.classList.toggle("sel", c.dataset.libId === id));
+      rdSetupUpdateStartLabel();
+    });
+  });
+  if ((!rdSetupState.sel.id || rdSetupState.sel.kind !== "library") && texts.length) {
+    rdSetupState.sel = { kind: "library", id: texts[0].id, title: texts[0].title || "" };
+    rdSetupState._libText = texts[0];
+    grid.querySelector(".rd-libcard")?.classList.add("sel");
+    rdSetupUpdateStartLabel();
+  }
+}
+
+async function rdSetupLoadSaved() {
+  const list = document.getElementById("rdSetupSavedTab");
+  if (!list) return;
+  list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Loading…</p>';
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Log in to see saved texts.</p>'; return; }
+  try {
+    const { data, error } = await supabase
+      .from("saved_texts")
+      .select("id, title, text, source_lang, target_lang, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    rdSetupRenderSaved(data || []);
+  } catch {
+    list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Could not load saved texts.</p>';
+  }
+}
+
+function rdSetupRenderSaved(items) {
+  const list = document.getElementById("rdSetupSavedTab");
+  if (!list) return;
+  if (!items.length) { list.innerHTML = '<p class="rd-loading" style="padding:12px 0">No saved texts yet.</p>'; return; }
+  list.innerHTML = items.map(t => {
+    const glyph = (t.title || "文")[0];
+    const sel = rdSetupState.sel.kind === "saved" && String(rdSetupState.sel.id) === String(t.id);
+    return `<button class="rd-savedrow${sel ? " sel" : ""}" data-saved-id="${escapeHtml(t.id)}" type="button">
+      <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
+      <div class="rd-savedrow-body">
+        <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
+        <div class="rd-savedrow-sub">${escapeHtml((t.source_lang || "") + (t.target_lang ? " → " + t.target_lang : ""))}</div>
+      </div>
+      <span class="rd-savedrow-go">Open</span>
+    </button>`;
+  }).join("");
+  list.querySelectorAll(".rd-savedrow").forEach(row => {
+    row.addEventListener("click", () => {
+      const id = row.dataset.savedId;
+      const t = items.find(x => String(x.id) === String(id));
+      if (!t) return;
+      rdSetupState.sel = { kind: "saved", id, title: t.title || "", text: t.text || "", source_lang: t.source_lang, target_lang: t.target_lang };
+      list.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.savedId === id));
+      rdSetupUpdateStartLabel();
+    });
+  });
+}
+
+async function rdSetupStart() {
+  const startBtn = document.getElementById("rdSetupStartBtn");
+  if (startBtn) startBtn.disabled = true;
+  appMode = "reading";
+  try {
+    if (rdSetupState.tab === "paste") {
+      const text = document.getElementById("rdSetupInput")?.value || "";
+      if (!text.trim()) { showToast("Paste a text first.", "error"); return; }
+      currentTextId = null;
+      currentTextTitle = "";
+      rdSetupState._level = "";
+      await startReadingFromText(text);
+    } else if (rdSetupState.tab === "library") {
+      if (!rdSetupState.sel.id) { showToast("Pick a text first.", "error"); return; }
+      rdSetupState._level = rdSetupState._libText?.level || "";
+      showMagicLoadingOverlay();
+      await loadLibraryText(rdSetupState.sel.id); // sets currentTextId/Title + startReadingFromText
+    } else if (rdSetupState.tab === "saved") {
+      if (!rdSetupState.sel.id || !rdSetupState.sel.text) { showToast("Pick a text first.", "error"); return; }
+      if (rdSetupState.sel.source_lang) sourceLangSelect.value = rdSetupState.sel.source_lang;
+      if (rdSetupState.sel.target_lang) targetLangSelect.value = rdSetupState.sel.target_lang;
+      updateLanguageBasedUI();
+      currentTextId = rdSetupState.sel.id;
+      currentTextTitle = rdSetupState.sel.title;
+      rdSetupState._level = "";
+      await startReadingFromText(rdSetupState.sel.text);
+    }
+  } finally {
+    if (startBtn) startBtn.disabled = false;
+  }
+}
+
+/* ============================================================
+   READER BOTTOM SHEETS  (voice + word)
+   ============================================================ */
+function rdOpenSheet(which) {
+  document.getElementById("rdScrim")?.classList.add("open");
+  document.getElementById("rdVoiceSheet")?.classList.toggle("open", which === "voice");
+  document.getElementById("rdWordSheet")?.classList.toggle("open", which === "word");
+  if (which === "voice") rdRenderVoiceSheet();
+}
+function rdCloseSheet() {
+  document.getElementById("rdScrim")?.classList.remove("open");
+  document.getElementById("rdVoiceSheet")?.classList.remove("open");
+  document.getElementById("rdWordSheet")?.classList.remove("open");
+  document.querySelectorAll("#rdHan .rd-word.rd-word-sel").forEach(el => el.classList.remove("rd-word-sel"));
+}
+
+const RD_VOICE_HUES = ["#0AB4D6", "#E5267E", "#F5B400", "#16A34A"];
+function rdRenderVoiceSheet() {
+  const list = document.getElementById("rdVoiceList");
+  if (!list) return;
+  const voices = VOICE_LIST[R.lang] || [];
+  if (!voices.length) { list.innerHTML = '<p class="rd-sheet-sub">No voices for this language.</p>'; return; }
+  const current = getSelectedVoice(R.lang) || voices[0].name;
+  list.innerHTML = voices.map((v, i) => {
+    const sel = v.name === current;
+    const initial = (v.label || v.name || "•")[0];
+    return `<button class="rd-vrow${sel ? " sel" : ""}" data-voice-name="${escapeHtml(v.name)}" type="button">
+      <div class="rd-vava" style="background:${RD_VOICE_HUES[i % RD_VOICE_HUES.length]}">${escapeHtml(initial)}</div>
+      <div class="rd-vrow-info"><div class="rd-vrow-name">${escapeHtml(v.label || v.name)}</div><div class="rd-vrow-tag">${escapeHtml(v.gender || "")}</div></div>
+      ${sel ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg>` : ""}
+    </button>`;
+  }).join("");
+  list.querySelectorAll(".rd-vrow").forEach(row => row.addEventListener("click", () => {
+    setSelectedVoice(R.lang, row.dataset.voiceName);
+    rdUpdateToolbar();
+    rdCloseSheet();
+  }));
+}
+
+async function rdShowWordSheet(word, pinyin, sentence) {
+  const hz = document.getElementById("rdWordHz");
+  const py = document.getElementById("rdWordPy");
+  const pos = document.getElementById("rdWordPos");
+  const en = document.getElementById("rdWordEn");
+  if (hz) hz.textContent = word;
+  if (py) py.textContent = pinyin || "";
+  if (pos) pos.textContent = "";
+  if (en) en.textContent = "Looking up…";
+  rdOpenSheet("word");
+
+  document.getElementById("rdWordTtsBtn").onclick = () => {
+    unlockAudioForMobile();
+    playGoogleTTS(word, R.lang, null, null).catch(console.error);
+  };
+
+  // Real dictionary lookup (same endpoints as the reader word popup).
+  let translation = "";
+  let lookedPinyin = pinyin || "";
+  try {
+    const dictRes = await fetchWithAuth(`${API_BASE}/api/dictionary`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word })
+    });
+    const dict = await dictRes.json();
+    if (dictRes.ok && dict.entries && dict.entries.length) {
+      translation = dict.entries[0].definitions.slice(0, 3).join("; ");
+      lookedPinyin = dict.entries[0].pinyin || lookedPinyin;
+    } else {
+      const trRes = await fetchWithAuth(`${API_BASE}/api/translate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sentence: word, sourceLang: R.lang, targetLang: targetLangSelect.value || "en" })
+      });
+      const tr = await trRes.json();
+      translation = trRes.ok ? (tr.translation || "") : "";
+    }
+  } catch { translation = "Lookup failed."; }
+  if (py && lookedPinyin) py.textContent = lookedPinyin;
+  if (en) en.textContent = translation || "—";
+
+  // Save button → real flashcard save.
+  rdRenderWordSaveBtn(word, false);
+  document.getElementById("rdWordSaveBtn").onclick = async () => {
+    const saved = await addFlashcard({
+      word,
+      pinyin: lookedPinyin || "",
+      sentence: sentence || "",
+      sentencePinyin: "",
+      translation: translation || "",
+      lang: R.lang
+    });
+    rdRenderWordSaveBtn(word, true);
+    showToast(saved ? "Saved to cards." : "Already saved.", "success");
+  };
+}
+
+function rdRenderWordSaveBtn(word, saved) {
+  const btn = document.getElementById("rdWordSaveBtn");
+  if (!btn) return;
+  btn.className = "rd-word-save-btn" + (saved ? " saved" : "");
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#${saved ? "sonic-i-check" : "sonic-i-plus"}"/></svg> ${saved ? "Saved to cards" : "Save to cards"}`;
+}
+
+/* ============================================================
+   SPEAK SETUP
+   ============================================================ */
+document.getElementById("spSetupStartBtn")?.addEventListener("click", async () => {
+  const text = document.getElementById("spSetupInput")?.value || "";
+  if (!text.trim()) { showToast("Paste a text first.", "error"); return; }
+  currentTextId = null;
+  currentTextTitle = "";
+  appMode = "pronunciation";
+  await startReadingFromText(text);
+});
 
 createBtn?.addEventListener("click", async () => {
   // Gate text processing for signed-in users (guests are unlimited). Free users

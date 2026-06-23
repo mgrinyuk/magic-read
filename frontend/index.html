@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260622.3" />
+  <link rel="stylesheet" href="style.css?v=20260622.4" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
 </head>
@@ -550,6 +550,21 @@
         <section id="wordOrderExercise" class="workspace-card word-order-exercise" hidden></section>
       </section>
 
+      <!-- ===================== SPEAK · SETUP ===================== -->
+      <section id="screen-speak-setup" class="app-screen">
+        <div class="sp-setup-body">
+          <div class="sp-eyebrow">Magic Read</div>
+          <div class="sp-h1" style="margin-top:8px">Practice pronunciation<br>with your own texts</div>
+          <div class="sp-sub" style="margin-top:12px">Paste homework, a dialogue or an exam text. We split it into sentences and coach you one at a time.</div>
+          <textarea id="spSetupInput" class="sp-setup-textarea" placeholder="Paste a text to start…"></textarea>
+          <button class="sp-btn sp-btn-primary sp-setup-start" id="spSetupStartBtn" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+            Start speaking
+          </button>
+          <div class="sp-setup-hint" id="spSetupHint"></div>
+        </div>
+      </section>
+
       <!-- ===================== SPEAK · SPOTLIGHT (practice) ===================== -->
       <section id="screen-speak-practice" class="app-screen">
         <div class="sp-body">
@@ -642,6 +657,36 @@
       </section>
 
       <!-- ===================== READER · FLOWING PASSAGE ===================== -->
+      <!-- ===================== READER · SETUP ===================== -->
+      <section id="screen-read-setup" class="app-screen">
+        <div class="rd-setup-scroll">
+          <div class="rd-setup-eyebrow">Magic Read</div>
+          <div class="rd-setup-h1">What would you like<br>to read today?</div>
+
+          <div class="rd-setup-seg" id="rdSetupSeg">
+            <button class="rd-setup-seg-btn" data-tab="paste" type="button">Paste text</button>
+            <button class="rd-setup-seg-btn on" data-tab="library" type="button">Library</button>
+            <button class="rd-setup-seg-btn" data-tab="saved" type="button">Saved</button>
+          </div>
+
+          <div id="rdSetupPasteTab" class="rd-setup-tab" hidden>
+            <textarea id="rdSetupInput" class="rd-setup-textarea"
+              placeholder="Paste a text here — an article, a chat, song lyrics or homework. We'll add pinyin, audio and word lookups automatically."></textarea>
+            <div class="rd-setup-charcount"><span id="rdSetupCharCount">0</span> / 2000 characters</div>
+          </div>
+
+          <div id="rdSetupLibraryTab" class="rd-setup-libgrid rd-setup-tab"></div>
+          <div id="rdSetupSavedTab" class="rd-setup-savedlist rd-setup-tab" hidden></div>
+        </div>
+
+        <div class="rd-setup-footer">
+          <button class="rd-setup-start-btn" id="rdSetupStartBtn" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg>
+            <span id="rdSetupStartLabel">Start reading</span>
+          </button>
+        </div>
+      </section>
+
       <section id="screen-read-reader" class="app-screen">
         <div class="rd-appbar">
           <button class="rd-iconbtn" id="rdBackBtn" type="button" aria-label="Back">
@@ -660,6 +705,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
             <span id="rdVoiceName">Voice</span>
           </button>
+          <span class="rd-lvl" id="rdLevel" hidden>A2</span>
         </div>
 
         <div class="rd-surface">
@@ -684,6 +730,34 @@
             </div>
           </div>
           <button class="rd-pill rd-slow" id="rdSlowPill" type="button"><span aria-hidden="true" style="font-size:16px;line-height:1">🐢</span> Slow</button>
+        </div>
+
+        <!-- reader bottom sheets -->
+        <div class="rd-scrim" id="rdScrim"></div>
+
+        <div class="rd-sheet" id="rdVoiceSheet">
+          <div class="rd-grab"></div>
+          <div class="rd-sheet-title">Choose a voice</div>
+          <div class="rd-sheet-sub">Pick the narrator for text-to-speech.</div>
+          <div id="rdVoiceList" class="rd-voice-list"></div>
+        </div>
+
+        <div class="rd-sheet" id="rdWordSheet">
+          <div class="rd-grab"></div>
+          <div class="rd-word-header">
+            <div class="rd-word-left">
+              <div class="rd-word-hz zh" id="rdWordHz"></div>
+              <div class="rd-word-py" id="rdWordPy"></div>
+            </div>
+            <button class="rd-iconbtn" id="rdWordTtsBtn" type="button" aria-label="Listen">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
+            </button>
+            <div style="flex:1"></div>
+            <button class="rd-word-save-btn" id="rdWordSaveBtn" type="button"></button>
+          </div>
+          <div class="rd-word-divider"></div>
+          <span class="rd-word-pos" id="rdWordPos"></span>
+          <div class="rd-word-en" id="rdWordEn"></div>
         </div>
       </section>
 
@@ -1196,7 +1270,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260622.3"></script>
+  <script type="module" src="app.js?v=20260622.4"></script>
 
   <footer class="footer">
     <div>
