@@ -5266,7 +5266,7 @@ body.is-logged-in.dashboard-active .top-ui-language {
   background: var(--surface);
   margin: 0 clamp(10px,3vw,14px) 90px; border-radius: 18px; padding: 24px clamp(18px,4vw,24px) 28px;
 }
-.rd-han { font-family: 'Noto Sans SC', sans-serif; font-size: 23px; font-weight: 500; line-height: 2.4; color: var(--text); }
+.rd-han { font-family: 'Noto Sans SC', sans-serif; font-size: 28px; font-weight: 500; line-height: 2.45; color: var(--text); }
 .rd-para { margin-bottom: 18px; }
 .rd-sent { border-radius: 6px; padding: 2px 0; }
 .rd-sent.active { background: rgba(229,38,126,.08); box-shadow: 0 0 0 4px rgba(229,38,126,.08); }
@@ -5292,19 +5292,29 @@ body.is-logged-in.dashboard-active .top-ui-language {
 .rd-practice-btn:hover { background: rgba(229,38,126,.16); }
 
 /* Sits just above the global bottom tab bar (~64px) which is also sticky. */
-.rd-dock { display: flex; align-items: center; gap: 14px; padding: 14px clamp(16px,4vw,22px); position: sticky; bottom: 64px; z-index: 12; background: var(--shell, #f4f5f9); border-top: 1px solid var(--border); }
+.rd-dock { display: flex; align-items: center; gap: 10px; padding: 14px clamp(16px,4vw,22px); position: sticky; bottom: 64px; z-index: 12; background: var(--shell, #f4f5f9); border-top: 1px solid var(--border); }
 .rd-playbtn {
   width: 54px; height: 54px; flex: none; border-radius: 999px; border: none; cursor: pointer;
   display: grid; place-items: center; color: #fff;
   background: linear-gradient(135deg, var(--primary), var(--primary-soft));
   box-shadow: 0 10px 22px -10px rgba(229,38,126,.7);
 }
+.rd-skipbtn {
+  width: 42px; height: 42px; flex: none; border-radius: 999px; border: 1px solid var(--border);
+  display: grid; place-items: center; color: var(--text); background: var(--surface); cursor: pointer;
+}
+.rd-skipbtn:hover { background: var(--surface-2); }
+.rd-skipbtn:disabled { opacity: .38; cursor: not-allowed; }
 .rd-dock-mid { flex: 1; min-width: 0; }
 .rd-progress { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .rd-progress i { display: block; height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), var(--primary-soft)); transition: width .4s ease; }
 .rd-dock-meta { display: flex; justify-content: space-between; margin-top: 7px; }
 .rd-dock-meta span { font-size: 12px; color: var(--text-soft); font-weight: 600; }
 .rd-dock-meta span:last-child { color: var(--text-dim); font-weight: 500; }
+.rd-dock .rd-slow { white-space: nowrap; }
+.rd-dock .rd-slow.extra-slow { background: rgba(245,180,0,.22); border-color: rgba(245,180,0,.65); color: var(--amber-ink); }
+.rd-slow-icon { font-size: 16px; line-height: 1; transform-origin: center; }
+.rd-slow.extra-slow .rd-slow-icon { transform: scale(1.28); }
 
 /* Reader exercises */
 .rd-ex-segs { display: flex; gap: 7px; padding: 8px clamp(16px,4vw,22px) 0; }

@@ -532,7 +532,7 @@ let currentAudioRate = 1.0;
 let activePopup = null;
 let activeHighlightTimer = null;
 
-let ttsSlowMode = false;
+let ttsSpeedMode = 0; // 0 normal, 1 slow, 2 extra slow
 let popupTimeout = null;
 
 let currentText = "";
@@ -3070,6 +3070,7 @@ const R = {
   sentences: [],    // flat [{ text }] in render order; gi = global index
   idx: -1,
   playing: false,
+  paused: false,
   playSession: 0,
   pinyin: false,
   trans: false,
@@ -3082,6 +3083,7 @@ function startReader(text, sentences) {
   R.lang = sourceLangSelect.value || "zh";
   R.idx = -1;
   R.playing = false;
+  R.paused = false;
   R.pinyin = false;
   R.trans = false;
   // Reset exercises for the new text.
@@ -3201,6 +3203,26 @@ async function rdRenderPassage() {
 
   // Word tap → inline word sheet (real dictionary lookup + real save).
   han.querySelectorAll(".rd-word").forEach(el => {
+    const word = el.dataset.word;
+    if (word) {
+      const sentEl = el.closest(".rd-sent");
+      const sentText = sentEl ? R.sentences.find(s => String(s.gi) === sentEl.dataset.i)?.text || "" : "";
+
+      el.addEventListener("mouseenter", () => {
+        if (el._popupTimer) clearTimeout(el._popupTimer);
+        el._popupTimer = setTimeout(() => {
+          showWordPopup(el, word, sentText, "", false).catch(console.error);
+        }, 250);
+      });
+
+      el.addEventListener("mouseleave", () => {
+        if (el._popupTimer) {
+          clearTimeout(el._popupTimer);
+          el._popupTimer = null;
+        }
+      });
+    }
+
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       const word = el.dataset.word;
@@ -3250,10 +3272,16 @@ function rdUpdateDock() {
   const label = document.getElementById("rdSentLabel");
   if (label) label.textContent = `${cur} / ${total} sentences`;
   const speed = document.getElementById("rdSpeed");
-  if (speed) speed.textContent = ttsSlowMode ? "0.85×" : "1.0×";
-  document.getElementById("rdSlowPill")?.classList.toggle("on", ttsSlowMode);
+  if (speed) speed.textContent = getTtsSpeedLabel();
+  const slowPill = document.getElementById("rdSlowPill");
+  slowPill?.classList.toggle("on", ttsSpeedMode > 0);
+  slowPill?.classList.toggle("extra-slow", ttsSpeedMode === 2);
+  const slowLabel = document.getElementById("rdSlowLabel");
+  if (slowLabel) slowLabel.textContent = ttsSpeedMode === 2 ? "Extra slow" : "Slow";
   const useEl = document.getElementById("rdPlayUse");
   if (useEl) useEl.setAttribute("href", R.playing ? "#sonic-i-pause" : "#sonic-i-play");
+  document.getElementById("rdPrevSentBtn")?.toggleAttribute("disabled", total === 0 || cur <= 1);
+  document.getElementById("rdNextSentBtn")?.toggleAttribute("disabled", total === 0 || cur >= total);
 }
 
 function rdUpdateHighlight() {
@@ -3265,38 +3293,84 @@ function rdUpdateHighlight() {
 
 function rdStopPlay() {
   R.playing = false;
+  R.paused = false;
   R.playSession++;
   stopAllTTS();
   rdUpdateDock();
 }
 
+function rdPausePlay() {
+  if (currentAudio && !audioCtxSuspended) {
+    audioCtx.suspend();
+    audioCtxSuspended = true;
+  } else if (window.speechSynthesis?.speaking && !window.speechSynthesis.paused) {
+    window.speechSynthesis.pause();
+  } else {
+    return;
+  }
+  R.playing = false;
+  R.paused = true;
+  rdUpdateDock();
+}
+
+function rdResumePlay() {
+  if (currentAudio && audioCtxSuspended) {
+    audioCtx.resume();
+    audioCtxSuspended = false;
+  } else if (window.speechSynthesis?.paused) {
+    window.speechSynthesis.resume();
+  } else {
+    return false;
+  }
+  R.playing = true;
+  R.paused = false;
+  rdUpdateDock();
+  rdUpdateHighlight();
+  return true;
+}
+
 async function rdPlayFrom(i) {
   const session = ++R.playSession;
   R.playing = true;
+  R.paused = false;
   rdUpdateDock();
 
   const playOne = async (idx) => {
     if (session !== R.playSession) return;
-    if (idx >= R.sentences.length) { R.playing = false; R.idx = R.sentences.length - 1; rdUpdateDock(); rdUpdateHighlight(); return; }
+    if (idx >= R.sentences.length) { R.playing = false; R.paused = false; R.idx = R.sentences.length - 1; rdUpdateDock(); rdUpdateHighlight(); return; }
     R.idx = idx;
     rdUpdateDock();
     rdUpdateHighlight();
     const clean = await prepareTTSInput(R.sentences[idx].text, R.lang);
     if (session !== R.playSession) return;
-    const el = document.querySelector(`#rdHan .rd-sent[data-i="${idx}"]`);
     await playGoogleTTS(clean, R.lang, () => {
       if (session === R.playSession) playOne(idx + 1);
-    }, el);
+    });
   };
   playOne(i);
 }
 
 function rdTogglePlay() {
   unlockAudioForMobile();
-  if (R.playing) { rdStopPlay(); return; }
+  if (R.playing) { rdPausePlay(); return; }
+  if (R.paused && rdResumePlay()) return;
   let start = R.idx;
   if (start < 0 || start >= R.sentences.length - 1) start = 0;
   rdPlayFrom(start);
+}
+
+function rdJumpSentence(delta) {
+  if (!R.sentences.length) return;
+  const current = R.idx < 0 ? (delta > 0 ? -1 : 0) : R.idx;
+  const target = Math.max(0, Math.min(R.sentences.length - 1, current + delta));
+  if (target === R.idx && !R.paused && !R.playing) return;
+  if (R.playing || R.paused) {
+    rdPlayFrom(target);
+  } else {
+    R.idx = target;
+    rdUpdateDock();
+    rdUpdateHighlight();
+  }
 }
 
 let _rdInited = false;
@@ -3309,10 +3383,15 @@ function rdInitOnce() {
     openReadSetup();
   });
   document.getElementById("rdPlayBtn")?.addEventListener("click", rdTogglePlay);
+  document.getElementById("rdPrevSentBtn")?.addEventListener("click", () => rdJumpSentence(-1));
+  document.getElementById("rdNextSentBtn")?.addEventListener("click", () => rdJumpSentence(1));
   document.getElementById("rdSlowPill")?.addEventListener("click", () => {
+    const wasActive = R.playing || R.paused;
+    const start = R.idx < 0 ? 0 : R.idx;
     toggleSlowMode();
+    R.paused = false;
     rdUpdateDock();
-    if (R.playing) rdPlayFrom(R.idx < 0 ? 0 : R.idx);
+    if (wasActive) rdPlayFrom(start);
   });
   document.getElementById("rdVoicePill")?.addEventListener("click", () => rdOpenSheet("voice"));
   document.getElementById("rdScrim")?.addEventListener("click", rdCloseSheet);
@@ -4344,22 +4423,31 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
 
 function updateSlowLabels() {
   const t = getT();
-  const label = t.slow || "Slow";
+  const label = ttsSpeedMode === 2 ? "Extra slow" : (t.slow || "Slow");
 
   ["globalSlowBtn", "flashcardSlowBtn"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const lbl = el.querySelector(".toggle-label");
     if (lbl) lbl.textContent = label;
-    el.classList.toggle("is-active", ttsSlowMode);
-    el.setAttribute("aria-pressed", ttsSlowMode ? "true" : "false");
+    el.classList.toggle("is-active", ttsSpeedMode > 0);
+    el.classList.toggle("is-extra-slow", ttsSpeedMode === 2);
+    el.setAttribute("aria-pressed", ttsSpeedMode > 0 ? "true" : "false");
   });
 }
 
 function toggleSlowMode() {
-  ttsSlowMode = !ttsSlowMode;
+  ttsSpeedMode = (ttsSpeedMode + 1) % 3;
   stopAllTTS();
   updateSlowLabels();
+}
+
+function getTtsRate() {
+  return ttsSpeedMode === 2 ? 0.75 : ttsSpeedMode === 1 ? 0.85 : 1.0;
+}
+
+function getTtsSpeedLabel() {
+  return `${getTtsRate().toFixed(2).replace(/0$/, "")}×`;
 }
 
 globalSlowBtn?.addEventListener("click", toggleSlowMode);
@@ -4633,7 +4721,7 @@ async function renderCards(sentences) {
       const isSameAudio =
         currentAudio &&
         currentAudioText === cleanSentence &&
-        currentAudioRate === (ttsSlowMode ? 0.85 : 1.0);
+        currentAudioRate === getTtsRate();
 
       if (isSameAudio && !audioCtxSuspended) {
         audioCtx.suspend();
@@ -5349,7 +5437,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
   if (!text) return;
 
   const effectiveLang = langOverride || sourceLangSelect.value;
-  const effectiveRate = ttsSlowMode ? 0.85 : 1.0;
+  const effectiveRate = getTtsRate();
 
   // Toggle pause/resume for same audio
   if (currentAudio && currentAudioText === text && currentAudioRate === effectiveRate) {
@@ -5452,7 +5540,7 @@ function playBrowserTTS(text, langOverride = null, sentenceEl = null, onEnd = nu
   clearWordHighlights();
 
   const lang = mapToSpeechLang(langOverride || sourceLangSelect.value);
-  const rate = ttsSlowMode ? 0.85 : 1.0;
+  const rate = getTtsRate();
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang;

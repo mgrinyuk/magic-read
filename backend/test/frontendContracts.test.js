@@ -124,3 +124,22 @@ test("Safari flashcard speaking uses fast browser recognition", async () => {
   assert.match(app, /settleTimer = setTimeout\(\(\) => finishWithTranscript\(transcript\), 650\);/);
   assert.match(app, /if \(fastBrowserRecognition && !handled && pendingTranscript\.trim\(\)\)/);
 });
+
+test("reader polish keeps sentence-only playback and controls", async () => {
+  const [app, css, html] = await Promise.all([
+    fs.readFile(new URL("../../frontend/app.js", import.meta.url), "utf8"),
+    fs.readFile(new URL("../../frontend/style.css", import.meta.url), "utf8"),
+    fs.readFile(new URL("../../frontend/index.html", import.meta.url), "utf8")
+  ]);
+
+  assert.match(css, /\.rd-han\s*\{[^}]*font-size: 28px;/);
+  assert.match(html, /id="rdPrevSentBtn"/);
+  assert.match(html, /id="rdNextSentBtn"/);
+  assert.match(app, /function rdPausePlay\(\)/);
+  assert.match(app, /function rdResumePlay\(\)/);
+  assert.match(app, /function rdJumpSentence\(delta\)/);
+  assert.match(app, /let ttsSpeedMode = 0;/);
+  assert.match(app, /return ttsSpeedMode === 2 \? 0\.75 : ttsSpeedMode === 1 \? 0\.85 : 1\.0;/);
+  assert.match(app, /showWordPopup\(el, word, sentText, "", false\)/);
+  assert.doesNotMatch(app, /playGoogleTTS\(clean, R\.lang,[\s\S]{0,180}, el\)/);
+});

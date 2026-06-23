@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260623.3" />
+  <link rel="stylesheet" href="style.css?v=20260623.4" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
 </head>
@@ -720,8 +720,14 @@
         </div>
 
         <div class="rd-dock">
+          <button class="rd-skipbtn" id="rdPrevSentBtn" type="button" aria-label="Previous sentence">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+          </button>
           <button class="rd-playbtn" id="rdPlayBtn" type="button" aria-label="Play / Pause">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" stroke="none" aria-hidden="true"><use id="rdPlayUse" href="#sonic-i-play"/></svg>
+          </button>
+          <button class="rd-skipbtn" id="rdNextSentBtn" type="button" aria-label="Next sentence">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-right"/></svg>
           </button>
           <div class="rd-dock-mid">
             <div class="rd-progress"><i id="rdProgress"></i></div>
@@ -730,7 +736,7 @@
               <span id="rdSpeed">1.0×</span>
             </div>
           </div>
-          <button class="rd-pill rd-slow" id="rdSlowPill" type="button"><span aria-hidden="true" style="font-size:16px;line-height:1">🐢</span> Slow</button>
+          <button class="rd-pill rd-slow" id="rdSlowPill" type="button"><span class="rd-slow-icon" aria-hidden="true">🐢</span><span id="rdSlowLabel">Slow</span></button>
         </div>
 
         <!-- reader bottom sheets -->
@@ -1271,7 +1277,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260623.3"></script>
+  <script type="module" src="app.js?v=20260623.4"></script>
 
   <footer class="footer">
     <div>
