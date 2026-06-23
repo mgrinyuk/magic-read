@@ -3148,6 +3148,23 @@ function rdWordHTML(word, py) {
     `<small>${escapeHtml(py || "")}</small><span class="rd-hz">${escapeHtml(word)}</span></span>`;
 }
 
+function rdCleanHanziWord(word) {
+  const raw = String(word || "");
+  if (!/[\u3400-\u9fff\uf900-\ufaff]/u.test(raw)) return raw;
+  return raw.replace(/[^\u3400-\u9fff\uf900-\ufaff，。！？；：、“”‘’（）()\[\]{}…,.!?;:\s]/gu, "");
+}
+
+function rdWordParts(item) {
+  if (typeof item === "string") {
+    return { word: rdCleanHanziWord(item), pinyin: "" };
+  }
+  const rawWord = item?.hanzi || item?.hz || item?.word || "";
+  return {
+    word: rdCleanHanziWord(rawWord),
+    pinyin: item?.pinyin || item?.py || ""
+  };
+}
+
 async function rdRenderPassage() {
   const han = document.getElementById("rdHan");
   if (!han) return;
@@ -3162,7 +3179,10 @@ async function rdRenderPassage() {
       if (isZh) {
         const words = await rdSegment(s.text);
         inner = words.length
-          ? words.map(w => rdWordHTML(w.word, w.pinyin)).join("")
+          ? words.map(w => {
+              const { word, pinyin } = rdWordParts(w);
+              return rdWordHTML(word, pinyin);
+            }).join("")
           : escapeHtml(s.text);
       } else {
         inner = s.text.split(/(\s+)/).map(tok =>

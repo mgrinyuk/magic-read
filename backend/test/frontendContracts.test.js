@@ -90,3 +90,21 @@ test("signed-in language picker is visible only on the dashboard", async () => {
   assert.match(css, /#screen-main \.composer-footer \.language-switcher\s*\{\s*display: none !important;/);
   assert.doesNotMatch(html, /class="header-language-controls language-switcher"/);
 });
+
+test("reader pinyin renders as ruby labels above clean hanzi words", async () => {
+  const [app, css, html] = await Promise.all([
+    fs.readFile(new URL("../../frontend/app.js", import.meta.url), "utf8"),
+    fs.readFile(new URL("../../frontend/style.css", import.meta.url), "utf8"),
+    fs.readFile(new URL("../../frontend/index.html", import.meta.url), "utf8")
+  ]);
+
+  assert.match(html, /<div class="rd-han" id="rdHan"><\/div>/);
+  assert.match(app, /function rdCleanHanziWord\(word\)/);
+  assert.ok(app.includes("return raw.replace(/[^\\u3400-\\u9fff\\uf900-\\ufaff"));
+  assert.match(app, /const rawWord = item\?\.hanzi \|\| item\?\.hz \|\| item\?\.word \|\| "";/);
+  assert.match(app, /const \{ word, pinyin \} = rdWordParts\(w\);/);
+  assert.match(app, /rdWordHTML\(word, pinyin\)/);
+  assert.match(app, /<small>\$\{escapeHtml\(py \|\| ""\)\}<\/small><span class="rd-hz">\$\{escapeHtml\(word\)\}<\/span><\/span>/);
+  assert.match(css, /\.rd-word small\s*\{[^}]*display: none;/);
+  assert.match(css, /\.rd-han\.show-pinyin \.rd-word > small\s*\{\s*display: block !important;\s*\}/);
+});

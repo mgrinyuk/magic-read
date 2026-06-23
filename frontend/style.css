@@ -5273,7 +5273,7 @@ body.is-logged-in.dashboard-active .top-ui-language {
 .rd-word { display: inline-flex; flex-direction: column; align-items: center; vertical-align: bottom; margin: 0 1px; cursor: pointer; border-radius: 5px; padding: 0 1px; }
 .rd-word:hover { background: rgba(10,180,214,.10); }
 .rd-word small { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-dim); font-weight: 600; line-height: 1.1; margin-bottom: 3px; display: none; }
-.rd-han.show-pinyin .rd-word small { display: block; }
+.rd-han.show-pinyin .rd-word > small { display: block !important; }
 .rd-word .rd-hz { line-height: 1.15; border-radius: 4px; }
 /* Align punctuation with the hanzi row (the bottom of the ruby word boxes),
    not the baseline at the top of the tall word columns. */
