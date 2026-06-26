@@ -1553,6 +1553,7 @@ function showScreen(screen) {
   sessionStorage.setItem("activeScreenId", screen.id);
   document.body.classList.toggle("product-active", screen.id !== "screen-onboarding");
   document.body.classList.toggle("dashboard-active", screen.id === "screen-home");
+  document.body.classList.toggle("video-active", screen.id === "screen-video");
 
   const appTabBar = document.getElementById("appTabBar");
   if (appTabBar) {
@@ -1565,7 +1566,10 @@ function showScreen(screen) {
     );
   }
 
-  window.scrollTo({ top: 0, behavior: "auto" });
+  // Don't scroll the window when video is active — vid-scroll handles its own scrolling.
+  if (screen.id !== "screen-video") {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
 }
 
 profileMenuBtn?.addEventListener("click", () => {

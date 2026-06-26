@@ -4644,15 +4644,17 @@ body.is-logged-in .top-ui-language {
 
 /* Video screen — fixed player, only captions scroll.
    Lock height from body all the way down so vid-scroll
-   becomes the only scrollable container. */
-body:has(#screen-video.active),
-body:has(#screen-video.active) .app-shell {
-  height: 100dvh;
-  overflow: hidden;
+   becomes the only scrollable container.
+   Uses body.video-active (set by showScreen) instead of :has()
+   so the override reliably beats later padding-bottom rules. */
+body.video-active,
+body.video-active .app-shell {
+  height: 100dvh !important;
+  overflow: hidden !important;
 }
 
-.app-shell .main:has(#screen-video.active) {
-  padding: 0;
+body.video-active .app-shell .main {
+  padding: 0 !important;
   flex: 1;
   display: flex;
   flex-direction: column;
