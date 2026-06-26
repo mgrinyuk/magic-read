@@ -16,7 +16,7 @@ class CaptionServiceError extends Error {
  *
  * All timing values in the returned lines are in seconds (Supadata gives ms).
  */
-export async function fetchTranscript(videoId, preferredLang) {
+export async function fetchTranscript(videoId, preferredLang, timeoutMs = 15000) {
   const apiKey = process.env.SUPADATA_API_KEY;
   if (!apiKey) throw new CaptionServiceError("SUPADATA_API_KEY is not configured");
 
@@ -27,7 +27,8 @@ export async function fetchTranscript(videoId, preferredLang) {
   let res;
   try {
     res = await fetch(`${SUPADATA_BASE}/youtube/transcript?${params}`, {
-      headers: { "x-api-key": apiKey }
+      headers: { "x-api-key": apiKey },
+      signal: AbortSignal.timeout(timeoutMs)
     });
   } catch (err) {
     throw new CaptionServiceError(`Network error reaching transcript provider: ${err.message}`);

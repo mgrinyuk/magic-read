@@ -3005,6 +3005,7 @@ function spNewText() {
   spState.fromComplete = false;
   const inp = document.getElementById("spSetupInput");
   if (inp) inp.value = "";
+  spSetupSetTab("paste");
   showScreen(screenSpeakSetup);
 }
 
@@ -4133,14 +4134,221 @@ function rdRenderWordSaveBtn(word, saved) {
 /* ============================================================
    SPEAK SETUP
    ============================================================ */
-document.getElementById("spSetupStartBtn")?.addEventListener("click", async () => {
-  const text = document.getElementById("spSetupInput")?.value || "";
-  if (!text.trim()) { showToast("Paste a text first.", "error"); return; }
-  currentTextId = null;
-  currentTextTitle = "";
+const spSetupState = {
+  tab: "paste",
+  sel: { kind: "paste", id: null, title: "" },
+  _libText: null,
+};
+
+function spSetupInit() {
+  if (spSetupInit._done) return;
+  spSetupInit._done = true;
+  document.getElementById("spSetupSeg")?.querySelectorAll(".rd-setup-seg-btn").forEach(btn => {
+    btn.addEventListener("click", () => spSetupSetTab(btn.dataset.tab));
+  });
+  document.getElementById("spSetupInput")?.addEventListener("input", e => {
+    const c = document.getElementById("spSetupCharCount");
+    if (c) c.textContent = e.target.value.length;
+  });
+  document.getElementById("spSetupStartBtn")?.addEventListener("click", spSetupStart);
+}
+
+function spSetupSetTab(tab) {
+  spSetupState.tab = tab || "paste";
+  document.getElementById("spSetupSeg")?.querySelectorAll(".rd-setup-seg-btn")
+    .forEach(b => b.classList.toggle("on", b.dataset.tab === spSetupState.tab));
+  const paste = document.getElementById("spSetupPasteTab");
+  const lib = document.getElementById("spSetupLibraryTab");
+  const saved = document.getElementById("spSetupSavedTab");
+  if (paste) paste.hidden = spSetupState.tab !== "paste";
+  if (lib) lib.hidden = spSetupState.tab !== "library";
+  if (saved) saved.hidden = spSetupState.tab !== "saved";
+  if (spSetupState.tab === "library") spSetupLoadLibrary();
+  if (spSetupState.tab === "saved") spSetupLoadSaved();
+  spSetupUpdateStartLabel();
+}
+
+function spSetupUpdateStartLabel() {
+  const label = document.getElementById("spSetupStartLabel");
+  if (!label) return;
+  if (spSetupState.tab === "paste") {
+    label.textContent = "Start speaking";
+    return;
+  }
+  const title = spSetupState.sel.title;
+  label.textContent = title ? `Start speaking · ${title}` : "Start speaking";
+}
+
+async function spSetupLoadLibrary() {
+  const grid = document.getElementById("spSetupLibraryTab");
+  if (!grid) return;
+  const lang = sourceLangSelect?.value || "zh";
+  if (libraryCache[lang]) {
+    spSetupRenderLibrary(libraryCache[lang]);
+    return;
+  }
+  grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">Loading…</p>';
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/game-texts?lang=${lang}`);
+    const data = await res.json();
+    const texts = res.ok ? (data.texts || []) : [];
+    libraryCache[lang] = texts;
+    spSetupRenderLibrary(texts);
+  } catch {
+    grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">Could not load library.</p>';
+  }
+}
+
+function spSetupRenderLibrary(texts) {
+  const grid = document.getElementById("spSetupLibraryTab");
+  if (!grid) return;
+  if (!texts.length) {
+    grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">No texts yet.</p>';
+    return;
+  }
+  const hues = ["#E5267E", "#0AB4D6", "#F5B400", "#16A34A"];
+  grid.innerHTML = texts.map((t, i) => {
+    const hue = hues[i % hues.length];
+    const glyph = (t.title || "文")[0];
+    const sel = spSetupState.sel.kind === "library" && String(spSetupState.sel.id) === String(t.id);
+    return `<button class="rd-libcard${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}" type="button">
+      <div class="rd-libthumb" style="background:linear-gradient(135deg,${hue},rgba(28,18,51,.25))"><span class="rd-libthumb-glyph">${escapeHtml(glyph)}</span></div>
+      <div class="rd-libcard-body">
+        <div class="rd-libcard-title">${escapeHtml(t.title || "Untitled")}</div>
+        <div class="rd-libcard-sub">${escapeHtml(t.topic || "")}</div>
+        <div class="rd-libcard-meta">
+          ${t.level ? `<span class="rd-libcard-level">${escapeHtml(t.level)}</span>` : ""}
+          ${t.cardCount ? `<span class="rd-libcard-len">${t.cardCount} cards</span>` : ""}
+        </div>
+      </div>
+    </button>`;
+  }).join("");
+  grid.querySelectorAll(".rd-libcard").forEach(card => {
+    card.addEventListener("click", () => {
+      const id = card.dataset.libId;
+      const t = texts.find(x => String(x.id) === String(id));
+      if (!t) return;
+      spSetupState.sel = { kind: "library", id, title: t.title || "" };
+      spSetupState._libText = t;
+      grid.querySelectorAll(".rd-libcard").forEach(c => c.classList.toggle("sel", c.dataset.libId === id));
+      spSetupUpdateStartLabel();
+    });
+  });
+  if ((!spSetupState.sel.id || spSetupState.sel.kind !== "library") && texts.length) {
+    spSetupState.sel = { kind: "library", id: texts[0].id, title: texts[0].title || "" };
+    spSetupState._libText = texts[0];
+    grid.querySelector(".rd-libcard")?.classList.add("sel");
+    spSetupUpdateStartLabel();
+  }
+}
+
+async function spSetupLoadSaved() {
+  const list = document.getElementById("spSetupSavedTab");
+  if (!list) return;
+  list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Loading…</p>';
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Log in to see saved texts.</p>';
+    return;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("saved_texts")
+      .select("id, title, text, source_lang, target_lang, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    spSetupRenderSaved(data || []);
+  } catch {
+    list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Could not load saved texts.</p>';
+  }
+}
+
+function spSetupRenderSaved(items) {
+  const list = document.getElementById("spSetupSavedTab");
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = '<p class="rd-loading" style="padding:12px 0">No saved texts yet.</p>';
+    return;
+  }
+  list.innerHTML = items.map(t => {
+    const glyph = (t.title || "文")[0];
+    const sel = spSetupState.sel.kind === "saved" && String(spSetupState.sel.id) === String(t.id);
+    return `<div class="rd-savedrow${sel ? " sel" : ""}" data-saved-id="${escapeHtml(t.id)}">
+      <button class="rd-savedrow-main" data-saved-id="${escapeHtml(t.id)}" type="button">
+        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--primary),var(--primary-soft))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
+        <div class="rd-savedrow-body">
+          <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
+          <div class="rd-savedrow-sub">${escapeHtml((t.source_lang || "") + (t.target_lang ? " → " + t.target_lang : ""))}</div>
+        </div>
+      </button>
+      <button class="rd-savedrow-del" data-del-id="${escapeHtml(t.id)}" type="button" aria-label="Delete saved text">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-trash"/></svg>
+      </button>
+    </div>`;
+  }).join("");
+  list.querySelectorAll(".rd-savedrow-main").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.savedId;
+      const t = items.find(x => String(x.id) === String(id));
+      if (!t) return;
+      spSetupState.sel = { kind: "saved", id, title: t.title || "", text: t.text || "", source_lang: t.source_lang, target_lang: t.target_lang };
+      list.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.savedId === id));
+      spSetupUpdateStartLabel();
+    });
+  });
+  list.querySelectorAll(".rd-savedrow-del").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.delId;
+      const confirmed = await showConfirm("Delete this saved text?");
+      if (!confirmed) return;
+      const { error } = await supabase.from("saved_texts").delete().eq("id", id);
+      if (error) {
+        console.error("Delete saved text error:", error);
+        showToast("Could not delete saved text.", "error");
+        return;
+      }
+      savedTextsCache = null;
+      if (String(spSetupState.sel.id) === String(id)) spSetupState.sel = { kind: "paste", id: null, title: "" };
+      showToast("Saved text deleted.", "success");
+      spSetupLoadSaved();
+      spSetupUpdateStartLabel();
+    });
+  });
+}
+
+async function spSetupStart() {
+  const startBtn = document.getElementById("spSetupStartBtn");
+  if (startBtn) startBtn.disabled = true;
   appMode = "pronunciation";
-  await startReadingFromText(text);
-});
+  try {
+    if (spSetupState.tab === "paste") {
+      const text = document.getElementById("spSetupInput")?.value || "";
+      if (!text.trim()) { showToast("Paste a text first.", "error"); return; }
+      currentTextId = null;
+      currentTextTitle = "";
+      await startReadingFromText(text);
+    } else if (spSetupState.tab === "library") {
+      if (!spSetupState.sel.id) { showToast("Pick a text first.", "error"); return; }
+      showMagicLoadingOverlay();
+      await loadLibraryText(spSetupState.sel.id);
+    } else if (spSetupState.tab === "saved") {
+      if (!spSetupState.sel.id || !spSetupState.sel.text) { showToast("Pick a text first.", "error"); return; }
+      if (spSetupState.sel.source_lang) sourceLangSelect.value = spSetupState.sel.source_lang;
+      if (spSetupState.sel.target_lang) targetLangSelect.value = spSetupState.sel.target_lang;
+      updateLanguageBasedUI();
+      currentTextId = spSetupState.sel.id;
+      currentTextTitle = spSetupState.sel.title;
+      await startReadingFromText(spSetupState.sel.text);
+    }
+  } finally {
+    hideMagicLoadingOverlay();
+    if (startBtn) startBtn.disabled = false;
+  }
+}
+
+spSetupInit();
 
 createBtn?.addEventListener("click", async () => {
   // Gate text processing for signed-in users (guests are unlimited). Free users
@@ -5458,6 +5666,19 @@ async function showWordPopup(wordEl, word, sentence = "", sentencePinyin = "", a
   setTimeout(() => document.addEventListener("click", closePopup), 0);
   window.addEventListener("scroll", closePopup, { once: true });
   document.addEventListener("keydown", onEscape);
+}
+
+async function showVideoWordPopup(wordEl, word, sentence = "", sentencePinyin = "", allowSave = true) {
+  const prevSource = sourceLangSelect?.value;
+  const prevTarget = targetLangSelect?.value;
+  if (sourceLangSelect && videoLang) sourceLangSelect.value = videoLang;
+  if (targetLangSelect && videoHelpLang) targetLangSelect.value = videoHelpLang;
+  try {
+    await showWordPopup(wordEl, word, sentence, sentencePinyin, allowSave);
+  } finally {
+    if (sourceLangSelect && prevSource) sourceLangSelect.value = prevSource;
+    if (targetLangSelect && prevTarget) targetLangSelect.value = prevTarget;
+  }
 }
 
 /* -----------------------------
@@ -7195,32 +7416,17 @@ function showConfirm(message) {
 let vidPlayer      = null;   // YT.Player instance
 let vidCaptions    = [];     // enriched caption array from /api/video-captions
 let videoLang      = "";     // caption language (e.g. "zh")
+let videoHelpLang  = "";     // translation/help language (e.g. "ru")
 let vidSlowOn      = false;
 let vidPinyinOn    = true;
 let vidHighlightId = null;   // setInterval handle for line highlighting
 let vidReplayTimer = null;   // setTimeout handle for auto-pause after replay
+let currentVideoId  = "";
+let vidFrameWindow = null;
+let vidFrameMessageHandler = null;
+let vidProxyState = { state: -1, currentTime: 0, duration: 0 };
 
-// ── YouTube IFrame API ──────────────────────────────────
-
-let _ytApiReady = false;
-const _ytApiCallbacks = [];
-
-window.onYouTubeIframeAPIReady = () => {
-  _ytApiReady = true;
-  _ytApiCallbacks.forEach(cb => cb());
-  _ytApiCallbacks.length = 0;
-};
-
-function whenYTReady(cb) {
-  if (_ytApiReady) { cb(); return; }
-  _ytApiCallbacks.push(cb);
-  if (!document.getElementById("yt-api-script")) {
-    const s = document.createElement("script");
-    s.id = "yt-api-script";
-    s.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(s);
-  }
-}
+const HOSTED_VIDEO_PLAYER_URL = "https://magic-read.onrender.com/video-player.html";
 
 function extractYouTubeId(input) {
   const s = (input || "").trim();
@@ -7229,10 +7435,119 @@ function extractYouTubeId(input) {
   return m ? m[1] : null;
 }
 
+function getYouTubeEmbedOrigin() {
+  const origin = window.location.origin || "";
+  if (origin.startsWith("http://") || origin.startsWith("https://")) return origin;
+  return "https://localhost";
+}
+
+function postHostedVideo(type, payload = {}) {
+  if (!vidFrameWindow) return;
+  vidFrameWindow.postMessage({ source: "magic-read-video-host", type, ...payload }, "https://magic-read.onrender.com");
+}
+
+function makeHostedVideoProxy() {
+  return {
+    getCurrentTime: () => vidProxyState.currentTime || 0,
+    getDuration: () => vidProxyState.duration || 0,
+    getPlayerState: () => vidProxyState.state,
+    playVideo: () => postHostedVideo("play"),
+    pauseVideo: () => postHostedVideo("pause"),
+    seekTo: (seconds) => {
+      vidProxyState.currentTime = Math.max(0, Number(seconds) || 0);
+      postHostedVideo("seek", { seconds: vidProxyState.currentTime });
+    },
+    setPlaybackRate: (rate) => postHostedVideo("rate", { rate })
+  };
+}
+
+function showVideoExternalFallback(videoId, reason = "") {
+  const container = document.getElementById("vidPlayerContainer");
+  const placeholder = document.getElementById("vidPlayerPlaceholder");
+  const transport = document.getElementById("vidTransport");
+  if (placeholder) placeholder.hidden = true;
+  if (transport) transport.hidden = true;
+  if (!container || !videoId) return;
+  const url = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+  const thumb = `https://img.youtube.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
+  container.innerHTML = `
+    <div class="vid-external-fallback">
+      <img src="${escapeHtml(thumb)}" alt="" loading="lazy">
+      <div class="vid-external-shade"></div>
+      <div class="vid-external-content">
+        <div class="vid-external-title">Open video on YouTube</div>
+        <div class="vid-external-sub">${escapeHtml(reason || "YouTube blocked embedded playback here, but captions are still available below.")}</div>
+        <a class="vid-external-btn" href="${escapeHtml(url)}" target="_blank" rel="noopener">Watch on YouTube</a>
+      </div>
+    </div>`;
+}
+
 function fmtTime(s) {
   const m = Math.floor(s / 60);
   const ss = Math.floor(s % 60);
   return `${m}:${String(ss).padStart(2, "0")}`;
+}
+
+function withTimeout(promise, ms, message = "Timed out") {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function fetchJsonWithTimeout(url, ms = 20000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetchWithAuth(url, { signal: controller.signal });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || `Request failed (${res.status})`);
+      err.data = data;
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function getVideoCaptionLangCandidates(lang) {
+  const base = lang || "en";
+  const variants = {
+    en: ["en", "en-US", "en-GB"],
+    zh: ["zh", "zh-CN", "zh-Hans"],
+    pt: ["pt", "pt-BR", "pt-PT"],
+    es: ["es", "es-419"],
+  };
+  return [...new Set(variants[base] || [base])];
+}
+
+async function fetchVideoCaptionsWithFallback(videoId, lang, targetLang) {
+  let lastData = null;
+  let lastError = null;
+  for (const captionLang of getVideoCaptionLangCandidates(lang)) {
+    try {
+      const data = await fetchJsonWithTimeout(
+        `${API_BASE}/api/video-captions?videoId=${encodeURIComponent(videoId)}&lang=${encodeURIComponent(captionLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+        22000
+      );
+      if (data?.captions?.length) return { data, lang: captionLang };
+      lastData = data;
+    } catch (err) {
+      lastError = err;
+      if (err.status && err.status !== 503) break;
+    }
+  }
+  if (lastData) return { data: lastData, lang };
+  throw lastError || new Error("Captions unavailable");
+}
+
+function setVideoCaptionError(message) {
+  const text = document.getElementById("vidServiceErrorText");
+  if (text) text.textContent = message || "Something went wrong loading captions. Please try again in a moment.";
 }
 
 // ── Player lifecycle ────────────────────────────────────
@@ -7241,23 +7556,51 @@ function mountYTPlayer(videoId) {
   const container = document.getElementById("vidPlayerContainer");
   if (!container) return Promise.resolve();
 
-  // Wipe old iframe
-  container.innerHTML = "";
-  const div = document.createElement("div");
-  container.appendChild(div);
+  if (vidFrameMessageHandler) {
+    window.removeEventListener("message", vidFrameMessageHandler);
+    vidFrameMessageHandler = null;
+  }
+  vidFrameWindow = null;
+  vidProxyState = { state: -1, currentTime: 0, duration: 0 };
+  vidPlayer = makeHostedVideoProxy();
 
-  return new Promise(resolve => {
-    whenYTReady(() => {
-      vidPlayer = new YT.Player(div, {
-        videoId,
-        playerVars: { controls: 0, rel: 0, modestbranding: 1, playsinline: 1 },
-        events: {
-          onReady:       () => resolve(),
-          onStateChange: onVidStateChange
-        }
-      });
-    });
+  container.innerHTML = "";
+  const iframe = document.createElement("iframe");
+  iframe.src = `${HOSTED_VIDEO_PLAYER_URL}?videoId=${encodeURIComponent(videoId)}&parentOrigin=${encodeURIComponent(getYouTubeEmbedOrigin())}`;
+  iframe.title = "YouTube video player";
+  iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
+  iframe.allowFullscreen = true;
+  container.appendChild(iframe);
+  vidFrameWindow = iframe.contentWindow;
+
+  return new Promise((resolve, reject) => {
+    vidFrameMessageHandler = (event) => {
+      if (event.origin !== "https://magic-read.onrender.com") return;
+      const msg = event.data || {};
+      if (msg.source !== "magic-read-video-player") return;
+      if (typeof msg.currentTime === "number") vidProxyState.currentTime = msg.currentTime;
+      if (typeof msg.duration === "number") vidProxyState.duration = msg.duration;
+      if (typeof msg.state === "number") vidProxyState.state = msg.state;
+      if (msg.type === "ready") resolve();
+      if (msg.type === "time") updateScrubberUI(vidProxyState.currentTime, vidProxyState.duration || 1);
+      if (msg.type === "state") onVidStateChange({ data: vidProxyState.state });
+      if (msg.type === "error") {
+        onVidPlayerError({ data: msg.code });
+        reject(new Error(`YouTube player error ${msg.code}`));
+      }
+    };
+    window.addEventListener("message", vidFrameMessageHandler);
   });
+}
+
+function onVidPlayerError(event) {
+  const code = event?.data;
+  console.warn("[Video] YouTube player error:", code);
+  if (code === 153) {
+    showVideoExternalFallback(currentVideoId, "YouTube blocked embedded playback in the app.");
+    showToast("Captions loaded. Open the video on YouTube to watch it.", "info");
+  }
 }
 
 function onVidStateChange(event) {
@@ -7411,9 +7754,8 @@ function renderCaptions(captions, lang) {
         const word = tokenEl.dataset.word;
         document.querySelectorAll(".vid-ruby.sel").forEach(el => el.classList.remove("sel"));
         tokenEl.classList.add("sel");
-        sourceLangSelect.value = videoLang;
         replayCapLine(cap);
-        showWordPopup(tokenEl, word, cap.text, "", true).catch(console.error);
+        showVideoWordPopup(tokenEl, word, cap.text, "", true).catch(console.error);
       });
     });
 
@@ -7423,9 +7765,8 @@ function renderCaptions(captions, lang) {
         e.stopPropagation();
         unlockAudioForMobile();
         const word = wordEl.dataset.word;
-        sourceLangSelect.value = videoLang;
         replayCapLine(cap);
-        showWordPopup(wordEl, word, cap.text, "", true).catch(console.error);
+        showVideoWordPopup(wordEl, word, cap.text, "", true).catch(console.error);
       });
     });
   });
@@ -7463,6 +7804,7 @@ async function checkVideoQuota() {
 async function loadVideoById(videoId) {
   const allowed = await checkVideoQuota();
   if (!allowed) return;
+  currentVideoId = videoId;
 
   const placeholder  = document.getElementById("vidPlayerPlaceholder");
   const transport    = document.getElementById("vidTransport");
@@ -7478,25 +7820,35 @@ async function loadVideoById(videoId) {
   if (loadingState) loadingState.hidden = false;
   if (noCapState)   noCapState.hidden   = true;
   if (errState)     errState.hidden     = true;
+  const playerContainer = document.getElementById("vidPlayerContainer");
+  if (playerContainer) playerContainer.innerHTML = "";
+  setVideoCaptionError("");
 
-  const lang      = sourceLangSelect.value || "zh";
-  const targetLang = targetLangSelect.value || "en";
+  // In Video mode, the second selector is the language being learned.
+  // Example: Russian -> English means English captions with Russian translation.
+  const lang = targetLangSelect.value || "en";
+  const targetLang = sourceLangSelect.value || "ru";
   videoLang = lang;
+  videoHelpLang = targetLang;
 
   try {
-    // Start player mount and caption fetch in parallel
-    const [, captionData] = await Promise.all([
-      mountYTPlayer(videoId),
-      fetchWithAuth(
-        `${API_BASE}/api/video-captions?videoId=${encodeURIComponent(videoId)}&lang=${encodeURIComponent(lang)}&targetLang=${encodeURIComponent(targetLang)}`
-      ).then(r => r.json())
-    ]);
+    try {
+      await withTimeout(mountYTPlayer(videoId), 12000, "Video player timed out");
+      if (placeholder) placeholder.hidden = true;
+      if (transport) transport.hidden = false;
+    } catch (playerErr) {
+      console.warn("[Video] player load issue:", playerErr.message);
+      showVideoExternalFallback(videoId, "YouTube did not allow embedded playback here.");
+    }
+
+    const captionResult = await fetchVideoCaptionsWithFallback(videoId, lang, targetLang);
+    const captionData = captionResult.data;
+    videoLang = captionResult.lang || lang;
 
     if (loadingState) loadingState.hidden = true;
-    if (placeholder)  placeholder.hidden  = true;
-    if (transport)    transport.hidden    = false;
 
     if (captionData.code === "CAPTION_SERVICE_ERROR") {
+      setVideoCaptionError(captionData.detail || captionData.error || "The video opened, but captions are temporarily unavailable.");
       if (errState) errState.hidden = false;
       return;
     }
@@ -7507,7 +7859,7 @@ async function loadVideoById(videoId) {
     }
 
     vidCaptions = captionData.captions;
-    renderCaptions(vidCaptions, lang);
+    renderCaptions(vidCaptions, videoLang);
 
     if (capArea) capArea.hidden = false;
 
@@ -7526,8 +7878,9 @@ async function loadVideoById(videoId) {
   } catch (err) {
     console.error("[Video] load error:", err.message);
     if (loadingState) loadingState.hidden = true;
-    if (errState)     errState.hidden     = false;
-    showToast("Could not load video. Check your connection.", "error");
+    setVideoCaptionError(err.data?.detail || err.data?.error || err.message || "The video opened, but captions could not be loaded.");
+    if (errState) errState.hidden = false;
+    showToast("Video opened, but captions could not load.", "error");
   }
 }
 

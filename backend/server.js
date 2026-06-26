@@ -1327,8 +1327,8 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
     //    Try the user's learning language first; if unavailable, fall back to the video's default.
     let transcript;
     try {
-      transcript = await fetchTranscript(videoId, lang);
-      if (!transcript) transcript = await fetchTranscript(videoId, null);
+      transcript = await fetchTranscript(videoId, lang, 12000);
+      if (!transcript) transcript = await fetchTranscript(videoId, null, 12000);
     } catch (err) {
       console.error("[Captions] provider error:", err.message);
       return res.status(503).json({
@@ -1360,7 +1360,10 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
 
     let translations = rawLines.map(() => "");
     try {
-      translations = await translateBatch(rawLines.map(l => l.text), actualLang, targetLang);
+      translations = await Promise.race([
+        translateBatch(rawLines.map(l => l.text), actualLang, targetLang),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Caption translation timed out")), 12000))
+      ]);
     } catch (err) {
       console.error("[Captions] translation error:", err.message);
     }
@@ -1975,6 +1978,10 @@ app.get("/api/grammar-list", async (req, res) => {
 });
 
 app.use("/exports", express.static(path.join(__dirname, "public", "exports")));
+
+app.get("/video-player.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "frontend", "video-player.html"));
+});
 
 app.post("/api/export-flashcard-deck", (req, res) => {
   try {
