@@ -4642,20 +4642,34 @@ body.is-logged-in .top-ui-language {
 
 /* ── Video screen ────────────────────────────────────────── */
 
-/* Video screen — sticky player, window-scroll transcript */
+/* Video screen — fixed player, only captions scroll */
 .app-shell .main:has(#screen-video.active) {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - calc(64px + env(safe-area-inset-bottom)));
+  overflow: hidden;
+}
+
+#screen-video.active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .vid-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
-/* Player area sticks to the top while captions scroll past */
+/* Player area — fixed at top, never scrolls */
 .vid-pinned {
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 20;
   background: var(--shell, #f4f5f9);
   display: flex;
@@ -4665,8 +4679,12 @@ body.is-logged-in .top-ui-language {
   border-bottom: 1px solid var(--border);
 }
 
-/* Transcript scrolls naturally with the window */
+/* Only the captions scroll */
 .vid-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
   padding: 0 clamp(14px,3.5vw,24px) 32px;
 }
 

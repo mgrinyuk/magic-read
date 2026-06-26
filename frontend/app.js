@@ -1519,6 +1519,29 @@ const TAB_BY_SCREEN = {
   "screen-account":         null,
 };
 
+function isNativeCapacitorShell() {
+  try {
+    return !!window.Capacitor?.isNativePlatform?.();
+  } catch {
+    return !!window.Capacitor;
+  }
+}
+
+function openVideoSurface(videoId = "") {
+  const hostedOrigin = API_BASE;
+  const isHosted = window.location.origin === hostedOrigin;
+  if (isNativeCapacitorShell() && !isHosted) {
+    const url = new URL(hostedOrigin);
+    url.searchParams.set("appScreen", "video");
+    if (videoId) url.searchParams.set("videoId", videoId);
+    window.location.href = url.toString();
+    return;
+  }
+  showScreen(screenVideo);
+  initVideoScreen();
+  if (videoId) loadVideoById(videoId);
+}
+
 function showScreen(screen) {
   if (!screen) return;
 
@@ -1928,8 +1951,7 @@ document.querySelectorAll("[data-hd-target]").forEach(btn => {
     } else if (target === "write") {
       showScreen(screenWriting);
     } else if (target === "video") {
-      showScreen(screenVideo);
-      initVideoScreen();
+      openVideoSurface();
     }
   });
 });
@@ -1939,9 +1961,7 @@ document.getElementById("homeResume")?.addEventListener("click", async () => {
   const { activity, item_id, position } = _resumeProgress;
 
   if (activity === "video") {
-    showScreen(screenVideo);
-    initVideoScreen();
-    loadVideoById(item_id);
+    openVideoSurface(item_id);
     return;
   }
 
@@ -2007,8 +2027,7 @@ document.querySelectorAll(".sonic-tab").forEach(tab => {
       renderDeckSelector();
       renderFlashcards();
     } else if (t === "video") {
-      showScreen(screenVideo);
-      initVideoScreen();
+      openVideoSurface();
     }
   });
 });
@@ -2102,6 +2121,19 @@ function showOnboardingStepTrial() {
 
 // On reload, stay on the screen the user was last viewing instead of jumping home.
 function restoreActiveScreen() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("appScreen") === "video") {
+    showScreen(screenVideo);
+    initVideoScreen();
+    const videoId = params.get("videoId");
+    if (videoId) {
+      const input = document.getElementById("vidUrlInput");
+      if (input) input.value = `https://www.youtube.com/watch?v=${videoId}`;
+      loadVideoById(videoId);
+    }
+    return;
+  }
+
   const savedId = sessionStorage.getItem("activeScreenId");
   const target = savedId ? document.getElementById(savedId) : null;
 
@@ -7436,7 +7468,7 @@ let vidFrameWindow = null;
 let vidFrameMessageHandler = null;
 let vidProxyState = { state: -1, currentTime: 0, duration: 0 };
 
-const HOSTED_VIDEO_PLAYER_URL = "https://magic-read.onrender.com/video-player.html";
+const HOSTED_VIDEO_PLAYER_URL = "/video-player.html";
 
 function extractYouTubeId(input) {
   const s = (input || "").trim();
@@ -7453,7 +7485,7 @@ function getYouTubeEmbedOrigin() {
 
 function postHostedVideo(type, payload = {}) {
   if (!vidFrameWindow) return;
-  vidFrameWindow.postMessage({ source: "magic-read-video-host", type, ...payload }, "https://magic-read.onrender.com");
+  vidFrameWindow.postMessage({ source: "magic-read-video-host", type, ...payload }, window.location.origin);
 }
 
 function makeHostedVideoProxy() {
@@ -7586,7 +7618,7 @@ function mountYTPlayer(videoId) {
 
   return new Promise((resolve, reject) => {
     vidFrameMessageHandler = (event) => {
-      if (event.origin !== "https://magic-read.onrender.com") return;
+      if (event.origin !== window.location.origin) return;
       const msg = event.data || {};
       if (msg.source !== "magic-read-video-player") return;
       if (typeof msg.currentTime === "number") vidProxyState.currentTime = msg.currentTime;
@@ -7607,7 +7639,7 @@ function mountYTPlayer(videoId) {
 function onVidPlayerError(event) {
   const code = event?.data;
   console.warn("[Video] YouTube player error:", code);
-  if (code === 153) {
+  if (code === 101 || code === 150 || code === 153) {
     showVideoExternalFallback(currentVideoId, "YouTube blocked embedded playback in the app.");
     showToast("Captions loaded. Open the video on YouTube to watch it.", "info");
   }
@@ -7767,6 +7799,10 @@ function renderCaptions(captions, lang) {
         replayCapLine(cap);
         showVideoWordPopup(tokenEl, word, cap.text, "", true).catch(console.error);
       });
+      tokenEl.addEventListener("mouseenter", e => {
+        const word = tokenEl.dataset.word;
+        showVideoWordPopup(tokenEl, word, cap.text, "", false).catch(console.error);
+      });
     });
 
     // Non-Chinese word spans — replay line in video + show translate/save popup
@@ -7777,6 +7813,10 @@ function renderCaptions(captions, lang) {
         const word = wordEl.dataset.word;
         replayCapLine(cap);
         showVideoWordPopup(wordEl, word, cap.text, "", true).catch(console.error);
+      });
+      wordEl.addEventListener("mouseenter", e => {
+        const word = wordEl.dataset.word;
+        showVideoWordPopup(wordEl, word, cap.text, "", false).catch(console.error);
       });
     });
   });
@@ -7873,11 +7913,14 @@ async function loadVideoById(videoId) {
 
     if (capArea) capArea.hidden = false;
 
-    // Sync pinyin toggle state
+    // Sync pinyin toggle state — only show button for Chinese
     const capList = document.getElementById("vidCapList");
     const pinyinBtn = document.getElementById("vidPinyinToggle");
     if (capList) capList.classList.toggle("vid-pinyin-off", !vidPinyinOn);
-    if (pinyinBtn) pinyinBtn.classList.toggle("on", vidPinyinOn);
+    if (pinyinBtn) {
+      pinyinBtn.hidden = videoLang !== "zh";
+      pinyinBtn.classList.toggle("on", vidPinyinOn);
+    }
 
     // Save progress — fetch real title via YouTube oEmbed (free, no API key)
     fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&format=json`)
