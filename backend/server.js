@@ -311,9 +311,7 @@ const ttsClient = new textToSpeech.TextToSpeechClient({
 
 app.use(cors());
 
-app.get("/", (_req, res) => {
-  res.redirect(302, "https://magicread.app");
-});
+app.use(express.static(path.join(__dirname, "..", "frontend")));
 
 /* -----------------------------
    STRIPE WEBHOOK
