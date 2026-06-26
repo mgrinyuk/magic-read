@@ -794,6 +794,8 @@ let userPlan = {
   trialEndsAt: null,
   planEndsAt: null,
   planProvider: null,
+  isPaidPro: false,
+  isLifetimePro: false,
   tbankAvailable: false,
   lifetimeOfferEligible: false,
   textUsedToday: 0,
@@ -851,6 +853,14 @@ function trialDaysLeft() {
   return Math.max(0, Math.ceil(ms / 86400000));
 }
 
+function isPaidProUser() {
+  return userPlan.isPaidPro || userPlan.plan === "pro";
+}
+
+function isLifetimeProUser() {
+  return userPlan.isLifetimePro || userPlan.planProvider === "lifetime" || userPlan.planProvider === "forever";
+}
+
 // Drives the profile dropdown (upgrade button / Pro badge / trial badge),
 // the welcome-week banner, and the soft text counter.
 function renderPlanUI() {
@@ -859,7 +869,7 @@ function renderPlanUI() {
   const trialBadge = document.getElementById("trialBadge");
 
   const loggedIn = document.body.classList.contains("is-logged-in");
-  const paidPro = userPlan.plan === "pro";
+  const paidPro = isPaidProUser();
 
   if (!loggedIn) {
     if (upgradeBtn) upgradeBtn.hidden = true;
@@ -869,7 +879,7 @@ function renderPlanUI() {
     if (proBadge) proBadge.hidden = false;
     if (trialBadge) trialBadge.hidden = true;
     if (upgradeBtn) upgradeBtn.hidden = true;
-  } else if (userPlan.trialActive) {
+  } else if (userPlan.trialActive && !paidPro) {
     const days = trialDaysLeft();
     if (trialBadge) {
       trialBadge.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
@@ -890,7 +900,7 @@ function renderPlanUI() {
   if (profileBtn) {
     if (paidPro) {
       profileBtn.dataset.planBadge = "pro";
-    } else if (userPlan.trialActive) {
+    } else if (userPlan.trialActive && !paidPro) {
       profileBtn.dataset.planBadge = "trial";
     } else {
       delete profileBtn.dataset.planBadge;
@@ -913,7 +923,7 @@ function renderPlanUI() {
 
 function renderLifetimeOffer() {
   document.querySelectorAll('[data-price-type="lifetime"]').forEach(option => {
-    option.hidden = !userPlan.lifetimeOfferEligible;
+    option.hidden = isPaidProUser() || !userPlan.lifetimeOfferEligible;
   });
 }
 
@@ -928,7 +938,7 @@ function renderWelcomeBanner() {
   if (!banner) return;
 
   const dismissed = sessionStorage.getItem("welcomeWeekDismissed") === "1";
-  if (userPlan.trialActive && !dismissed) {
+  if (userPlan.trialActive && !isPaidProUser() && !dismissed) {
     const end = userPlan.trialEndsAt ? new Date(userPlan.trialEndsAt) : null;
     const dateStr = end ? end.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
     const textEl = banner.querySelector(".welcome-week-text");
@@ -1558,12 +1568,12 @@ function renderAccountScreen() {
     if (avatarEl) avatarEl.textContent = initial;
 
     if (pillEl) {
-      const paidPro = userPlan.plan === "pro";
+      const paidPro = isPaidProUser();
       if (paidPro) {
         const paidUntil = userPlan.planEndsAt
           ? new Date(userPlan.planEndsAt).toLocaleDateString()
           : null;
-        pillEl.textContent = paidUntil ? `Pro · ${paidUntil}` : "Pro";
+        pillEl.textContent = isLifetimeProUser() ? "Forever Pro" : (paidUntil ? `Pro · ${paidUntil}` : "Pro");
       } else if (userPlan.trialActive) {
         const days = trialDaysLeft();
         pillEl.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
@@ -1573,7 +1583,7 @@ function renderAccountScreen() {
     }
 
     if (upgradeRow) {
-      const isPro = userPlan.plan === "pro" && !userPlan.trialActive;
+      const isPro = isPaidProUser();
       upgradeRow.hidden = isPro;
     }
 
@@ -1597,7 +1607,7 @@ async function renderSubscriptionSection() {
   if (!card) return;
 
   // Free / trial users: keep the buy flow, no status card.
-  if (userPlan.plan !== "pro") {
+  if (!isPaidProUser()) {
     card.hidden = true;
     return;
   }
@@ -1793,9 +1803,9 @@ function renderHomeScreen() {
     if (avatarEl) avatarEl.textContent = initial;
 
     if (badgeEl) {
-      const paidPro = userPlan.plan === "pro";
-      if (paidPro && !userPlan.trialActive) {
-        badgeEl.textContent = "Pro";
+      const paidPro = isPaidProUser();
+      if (paidPro) {
+        badgeEl.textContent = isLifetimeProUser() ? "Forever Pro" : "Pro";
         badgeEl.dataset.variant = "pro";
       } else if (userPlan.trialActive) {
         const days = trialDaysLeft();
@@ -7778,7 +7788,7 @@ function renderVidFreeChip() {
   const chip = document.getElementById("vidFreeChip");
   const txt  = document.getElementById("vidFreeChipText");
   if (!chip) return;
-  if (!userPlan.trialActive || userPlan.plan === "pro") { chip.hidden = true; return; }
+  if (!userPlan.trialActive || isPaidProUser()) { chip.hidden = true; return; }
   const remaining = Math.max(0, userPlan.limits.videosPerTrial - userPlan.videosOpened);
   if (txt) txt.textContent = `${remaining} free video${remaining === 1 ? "" : "s"} left`;
   chip.hidden = false;

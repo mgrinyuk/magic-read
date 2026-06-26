@@ -126,8 +126,10 @@ async function getUserPlan(userId) {
 
   const storedPlan = profile?.plan || "free";
   const planEndsAt = paidAccess?.plan_ends_at || null;
+  const planProvider = paidAccess?.plan_provider || null;
+  const lifetimeProvider = planProvider === "lifetime" || planProvider === "forever";
   const paidPlanActive = storedPlan === "pro" &&
-    (!planEndsAt || new Date(planEndsAt) > new Date());
+    (lifetimeProvider || !planEndsAt || new Date(planEndsAt) > new Date());
   const plan = paidPlanActive ? "pro" : "free";
   const trialEndsAt = profile?.trial_ends_at || null;
   const trialActive =
@@ -142,7 +144,9 @@ async function getUserPlan(userId) {
   return {
     plan,
     planEndsAt,
-    planProvider: paidAccess?.plan_provider || null,
+    planProvider,
+    isPaidPro: paidPlanActive,
+    isLifetimePro: paidPlanActive && (lifetimeProvider || (planProvider === "stripe" && !planEndsAt)),
     trialEndsAt,
     trialActive,
     effectivePlan,
@@ -946,13 +950,13 @@ const toISO = (unixSeconds) =>
 app.get("/api/subscription-status", extractUser, requireUser, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { plan, planEndsAt, planProvider, trialActive } = await getUserPlan(userId);
+    const { plan, planEndsAt, planProvider, trialActive, isLifetimePro } = await getUserPlan(userId);
     const active = plan === "pro" || trialActive;
 
     const base = {
       active,
       provider: planProvider,
-      tier: null,
+      tier: isLifetimePro ? "lifetime" : null,
       purchasedAt: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
@@ -1006,8 +1010,8 @@ app.get("/api/subscription-status", extractUser, requireUser, async (req, res) =
       });
     }
 
-    // Pro with no provider = directly granted (comp/manual). No self-serve billing.
-    return res.json({ ...base, tier: null });
+    // Pro with no provider = directly granted (comp/manual). Treat it as lifetime access.
+    return res.json({ ...base, tier: isLifetimePro ? "lifetime" : null });
   } catch (error) {
     console.error("[Stripe] subscription-status error:", error.message);
     res.status(500).json({ error: "Could not load subscription status." });
@@ -1190,6 +1194,8 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
       plan,
       planEndsAt,
       planProvider,
+      isPaidPro,
+      isLifetimePro,
       trialEndsAt,
       trialActive,
       effectivePlan,
@@ -1211,6 +1217,8 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
       effectivePlan,
       planEndsAt,
       planProvider,
+      isPaidPro,
+      isLifetimePro,
       trialEndsAt,
       trialActive,
       lifetimeOfferEligible,
