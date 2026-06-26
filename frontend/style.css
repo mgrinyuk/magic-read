@@ -4642,12 +4642,21 @@ body.is-logged-in .top-ui-language {
 
 /* ── Video screen ────────────────────────────────────────── */
 
-/* Video screen — fixed player, only captions scroll */
+/* Video screen — fixed player, only captions scroll.
+   Lock height from body all the way down so vid-scroll
+   becomes the only scrollable container. */
+body:has(#screen-video.active),
+body:has(#screen-video.active) .app-shell {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .app-shell .main:has(#screen-video.active) {
   padding: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - calc(64px + env(safe-area-inset-bottom)));
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -4685,7 +4694,7 @@ body.is-logged-in .top-ui-language {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   min-height: 0;
-  padding: 0 clamp(14px,3.5vw,24px) 32px;
+  padding: 0 clamp(14px,3.5vw,24px) calc(80px + env(safe-area-inset-bottom));
 }
 
 /* URL bar */
