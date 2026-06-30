@@ -25,4 +25,34 @@
     <priority>0.2</priority>
     <changefreq>yearly</changefreq>
   </url>
+  <url>
+    <loc>https://magicread.app/blog/</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://magicread.app/blog/listening-and-speaking.html</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://magicread.app/blog/shadowing-technique.html</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://magicread.app/blog/learning-language-adhd.html</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://magicread.app/blog/do-flashcards-work.html</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://magicread.app/blog/boost-motivation.html</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
 </urlset>
