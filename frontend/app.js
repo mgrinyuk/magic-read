@@ -1884,10 +1884,6 @@ document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
 // renderSubscriptionSection() (see above); the old single "Manage subscription"
 // row / Stripe-portal handler was replaced by it.
 
-document.getElementById("acctPersonalDataBtn")?.addEventListener("click", () => {
-  showToast("Personal data settings coming soon.", "info");
-});
-
 document.getElementById("acctSavedWordsBtn")?.addEventListener("click", () => {
   showScreen(screenFlashcards);
   renderDeckSelector();
@@ -1895,8 +1891,34 @@ document.getElementById("acctSavedWordsBtn")?.addEventListener("click", () => {
 });
 
 document.getElementById("acctAppLanguageBtn")?.addEventListener("click", () => {
-  showToast("App language switch coming soon.", "info");
+  const picker = document.getElementById("acctLangPicker");
+  if (!picker) return;
+  picker.hidden = !picker.hidden;
 });
+
+const langNames = { en: "English", ru: "Русский", zh: "中文", tr: "Türkçe", de: "Deutsch", es: "Español", fr: "Français", ja: "日本語" };
+
+document.querySelectorAll(".acct-lang-opt").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const lang = btn.dataset.lang;
+    applyLocalization(lang);
+    const uiLangEl = document.getElementById("uiLang");
+    if (uiLangEl) uiLangEl.value = lang;
+    const label = document.getElementById("acctAppLangLabel");
+    if (label) label.textContent = langNames[lang] || lang;
+    // mark active
+    document.querySelectorAll(".acct-lang-opt").forEach(b => b.classList.toggle("active", b.dataset.lang === lang));
+    document.getElementById("acctLangPicker").hidden = true;
+  });
+});
+
+// Sync label and active state on load
+(function syncLangPickerLabel() {
+  const saved = localStorage.getItem("magicread_ui_lang") || "en";
+  const label = document.getElementById("acctAppLangLabel");
+  if (label) label.textContent = langNames[saved] || "English";
+  document.querySelectorAll(".acct-lang-opt").forEach(b => b.classList.toggle("active", b.dataset.lang === saved));
+})();
 
 document.getElementById("acctAboutBtn")?.addEventListener("click", () => {
   showToast("Magic Read — Phase 1.", "info");
@@ -2048,7 +2070,7 @@ document.querySelectorAll(".sonic-tab").forEach(tab => {
     stopRecognition();
     document.body.classList.remove("auth-active");
     if (authScreen) authScreen.hidden = true;
-    showOnboardingStepA();
+    goHome();
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 

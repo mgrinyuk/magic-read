@@ -3883,6 +3883,37 @@ body.is-logged-in .top-ui-language {
   color: var(--retry);
 }
 
+.acct-lang-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.acct-lang-opt {
+  background: var(--surface);
+  border: none;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.acct-lang-opt:hover,
+.acct-lang-opt.active {
+  background: var(--surface-2);
+}
+
+.acct-lang-opt.active {
+  color: var(--primary);
+  font-weight: 700;
+}
+
 /* ── Write / calligraphy screen ─────────────────────────── */
 #screen-writing {
   padding: clamp(14px, 3.5vw, 24px) clamp(16px, 4vw, 30px);

@@ -981,11 +981,6 @@
         <div id="acctSubStatus" class="acct-sub-card" hidden></div>
 
         <div class="acct-menu">
-          <button class="acct-mrow" id="acctPersonalDataBtn" type="button">
-            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-user"/></svg></span>
-            <span class="acct-ml">Personal data</span>
-            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
-          </button>
           <button class="acct-mrow" id="acctSavedWordsBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-bookmark"/></svg></span>
             <span class="acct-ml">Saved words</span>
@@ -994,8 +989,18 @@
           <button class="acct-mrow" id="acctAppLanguageBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-globe"/></svg></span>
             <span class="acct-ml">App language</span>
-            <span class="acct-mv"><span id="acctAppLangLabel">English</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+            <span class="acct-mv"><span id="acctAppLangLabel">English</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevdown"/></svg></span>
           </button>
+          <div id="acctLangPicker" class="acct-lang-picker" hidden>
+            <button class="acct-lang-opt" data-lang="en">🇬🇧 English</button>
+            <button class="acct-lang-opt" data-lang="ru">🇷🇺 Русский</button>
+            <button class="acct-lang-opt" data-lang="zh">🇨🇳 中文</button>
+            <button class="acct-lang-opt" data-lang="tr">🇹🇷 Türkçe</button>
+            <button class="acct-lang-opt" data-lang="de">🇩🇪 Deutsch</button>
+            <button class="acct-lang-opt" data-lang="es">🇪🇸 Español</button>
+            <button class="acct-lang-opt" data-lang="fr">🇫🇷 Français</button>
+            <button class="acct-lang-opt" data-lang="ja">🇯🇵 日本語</button>
+          </div>
           <button class="acct-mrow" id="acctAboutBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-info"/></svg></span>
             <span class="acct-ml">About</span>
@@ -1330,6 +1335,7 @@
 
   <footer class="footer">
     <div>
+      <a href="/blog/">Blog</a>
       <a href="/privacy.html">Privacy Policy</a>
       <a href="/terms.html">Terms</a>
       <a href="/cookies.html">Cookies</a>
