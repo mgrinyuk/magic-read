@@ -2201,7 +2201,7 @@ function goHome() {
 
 function showLandingPage() {
   document.querySelectorAll(".app-screen").forEach(s => s.classList.remove("active"));
-  document.body.classList.remove("product-active", "dashboard-active", "video-active");
+  document.body.classList.remove("product-active", "dashboard-active", "video-active", "auth-active");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
