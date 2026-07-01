@@ -1313,6 +1313,7 @@ logoutBtn?.addEventListener("click", async () => {
   await supabase.auth.signOut();
   if (profileDropdown) profileDropdown.hidden = true;
   await checkAuth();
+  showLandingPage();
 });
 
 // "Upgrade to Pro ✨" reveals the 3-plan picker inside the dropdown.
@@ -1930,8 +1931,8 @@ document.getElementById("acctHelpBtn")?.addEventListener("click", () => {
 
 document.getElementById("acctLogoutBtn")?.addEventListener("click", async () => {
   await supabase.auth.signOut();
-  showScreen(screenMain);
   await checkAuth();
+  showLandingPage();
 });
 
 document.addEventListener("click", (e) => {
@@ -2196,6 +2197,12 @@ function restoreActiveScreen() {
 
 function goHome() {
   showScreen(screenMain);
+}
+
+function showLandingPage() {
+  document.querySelectorAll(".app-screen").forEach(s => s.classList.remove("active"));
+  document.body.classList.remove("product-active", "dashboard-active", "video-active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 document.getElementById("onboardingContinueBtn")?.addEventListener("click", () => {

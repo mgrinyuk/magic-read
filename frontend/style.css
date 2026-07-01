@@ -3883,6 +3883,32 @@ body.is-logged-in .top-ui-language {
   color: var(--retry);
 }
 
+.acct-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  justify-content: center;
+  padding: 24px 16px 4px;
+}
+
+.acct-footer-links a {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.acct-footer-links a:hover {
+  color: var(--text-soft);
+}
+
+.acct-footer-copy {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 4px 0 24px;
+}
+
 .acct-lang-picker {
   display: grid;
   grid-template-columns: 1fr 1fr;
