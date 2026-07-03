@@ -1903,6 +1903,13 @@ textarea:focus,
 
 /* AUTH STATE */
 
+/* Hard gate: signed-out visitors never see app screens or the tab bar,
+   even if a script activates one. */
+body.is-logged-out .app-screen,
+body.is-logged-out #appTabBar {
+  display: none !important;
+}
+
 body.is-logged-out [data-tool-screen="flashcards"],
 body.is-logged-out [data-tool-screen="calligraphy"],
 body.is-logged-out #saveTextBtn,

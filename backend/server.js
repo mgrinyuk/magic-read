@@ -169,39 +169,6 @@ async function extractUser(req, _res, next) {
   next();
 }
 
-const RATE_LIMIT_MSG = { error: "Too many requests. Please wait or sign in for more access." };
-const skipAuth = (req) => req.user !== null;
-
-// TTS: expensive Google API call — 80/hour for guests.
-const ttsLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 80,
-  skip: skipAuth,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: RATE_LIMIT_MSG
-});
-
-// Translate: moderate cost — 100/hour for guests.
-const translateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 100,
-  skip: skipAuth,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: RATE_LIMIT_MSG
-});
-
-// Dictionary: cheap local lookup — 600/hour for guests.
-const dictionaryLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 600,
-  skip: skipAuth,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: RATE_LIMIT_MSG
-});
-
 // Baseline protection for all endpoints (300 req / 15 min per IP).
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -218,11 +185,11 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Pronunciation assessment is a paid-cost feature — signed-in users only.
+// App APIs are for signed-in users only.
 function requireUser(req, res, next) {
   if (!req.user) {
     return res.status(401).json({
-      error: "Please sign in to use the pronunciation coach.",
+      error: "Please sign in to continue.",
       code: "NO_AUTH"
     });
   }
@@ -590,7 +557,7 @@ function splitIntoSentences(text) {
     .filter(Boolean);
 }
 
-app.post("/api/split-text", (req, res) => {
+app.post("/api/split-text", extractUser, requireUser, (req, res) => {
   const { text } = req.body || {};
 
   if (!text) {
@@ -624,7 +591,7 @@ function segmentChineseText(text) {
   }));
 }
 
-app.post("/api/segment", (req, res) => {
+app.post("/api/segment", extractUser, requireUser, (req, res) => {
   const { text } = req.body;
 
   if (!text) {
@@ -639,7 +606,7 @@ app.post("/api/segment", (req, res) => {
   }
 });
 
-app.post("/api/segment-many", (req, res) => {
+app.post("/api/segment-many", extractUser, requireUser, (req, res) => {
   const { texts } = req.body;
 
   if (!Array.isArray(texts)) {
@@ -660,7 +627,7 @@ app.post("/api/segment-many", (req, res) => {
 });
 
 
-app.post("/api/dictionary", extractUser, dictionaryLimiter, (req, res) => {
+app.post("/api/dictionary", extractUser, requireUser, (req, res) => {
   const { word } = req.body;
 
   if (!word) {
@@ -687,7 +654,7 @@ app.post("/api/dictionary", extractUser, dictionaryLimiter, (req, res) => {
   }
 });
 
-app.post("/api/pinyin", (req, res) => {
+app.post("/api/pinyin", extractUser, requireUser, (req, res) => {
   try {
     const { text } = req.body || {};
     if (!text) return res.status(400).json({ error: "Text is required" });
@@ -719,7 +686,7 @@ function buildSSMLWithMarks(text, words) {
   return `<speak>${result}</speak>`;
 }
 
-app.post("/api/tts", extractUser, ttsLimiter, async (req, res) => {
+app.post("/api/tts", extractUser, requireUser, async (req, res) => {
   try {
     const { text, sourceLang, speakingRate, voiceName, words } = req.body;
 
@@ -776,7 +743,7 @@ app.post("/api/tts", extractUser, ttsLimiter, async (req, res) => {
 });
 
 
-app.post("/api/translate", extractUser, translateLimiter, async (req, res) => {
+app.post("/api/translate", extractUser, requireUser, async (req, res) => {
   try {
     const { sentence, sourceLang, targetLang } = req.body;
 

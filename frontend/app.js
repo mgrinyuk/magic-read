@@ -1396,7 +1396,8 @@ document.querySelectorAll("[data-tbank-plan]").forEach(btn => {
   });
 });
 
-checkAuth().then(() => {
+const initialAuthCheck = checkAuth();
+initialAuthCheck.then(() => {
   const paymentStatus = new URLSearchParams(window.location.search).get("tbank");
   if (paymentStatus === "success") {
     showToast(getT().tbankPaymentPending || "Payment received. Pro access will appear shortly.", "success");
@@ -2147,7 +2148,13 @@ function showOnboardingStepTrial() {
   showScreen(screenOnboarding);
 }
 
+// Captured at startup: checkAuth() may route to home (writing a new
+// activeScreenId) before DOMContentLoaded, so the live sessionStorage value
+// is unreliable by the time restoreActiveScreen runs.
+const initialScreenId = sessionStorage.getItem("activeScreenId");
+
 // On reload, stay on the screen the user was last viewing instead of jumping home.
+// Only called for signed-in users — logged-out visitors stay on the landing page.
 function restoreActiveScreen() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("appScreen") === "video") {
@@ -2162,8 +2169,10 @@ function restoreActiveScreen() {
     return;
   }
 
-  const savedId = sessionStorage.getItem("activeScreenId");
-  const target = savedId ? document.getElementById(savedId) : null;
+  const savedId = initialScreenId;
+  if (!savedId) return; // fresh visit — checkAuth already routed to home
+
+  const target = document.getElementById(savedId);
 
   if (!target || savedId === "screen-onboarding") {
     if (sessionStorage.getItem("onboardingStep") === "trial") {
@@ -7413,7 +7422,10 @@ createWritingSheetBtn?.addEventListener("click", async (event) => {
 
 window.addEventListener("DOMContentLoaded", async () => {
   syncMainToOnboarding();
-  restoreActiveScreen();
+  // App screens are only for signed-in users — logged-out visitors stay on
+  // the landing page regardless of URL params or a stale sessionStorage.
+  await initialAuthCheck;
+  if (document.body.classList.contains("is-logged-in")) restoreActiveScreen();
   updateLanguageBasedUI();
   updateSlowLabels();
 
