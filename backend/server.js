@@ -594,17 +594,25 @@ function segmentChineseText(text) {
 }
 
 // --- Japanese segmentation (kuromoji morphological analyzer + romaji readings) ---
+// kuromoji's in-memory dictionary costs ~300MB RSS — it OOMs a 512MB instance
+// alongside CC-CEDICT. Opt in with JA_TOKENIZER=kuromoji only when the server
+// has at least 1GB of memory. Without it, Japanese still segments into words
+// via Intl.Segmenter; romaji is then limited to kana-only words.
 let kuromojiTokenizer = null;
-kuromoji
-  .builder({ dicPath: path.join(__dirname, "node_modules", "kuromoji", "dict") })
-  .build((err, tokenizer) => {
-    if (err) {
-      console.error("[JA] kuromoji failed to load — falling back to Intl.Segmenter:", err.message);
-      return;
-    }
-    kuromojiTokenizer = tokenizer;
-    console.log("[JA] kuromoji tokenizer ready");
-  });
+if (process.env.JA_TOKENIZER === "kuromoji") {
+  kuromoji
+    .builder({ dicPath: path.join(__dirname, "node_modules", "kuromoji", "dict") })
+    .build((err, tokenizer) => {
+      if (err) {
+        console.error("[JA] kuromoji failed to load — falling back to Intl.Segmenter:", err.message);
+        return;
+      }
+      kuromojiTokenizer = tokenizer;
+      console.log("[JA] kuromoji tokenizer ready");
+    });
+} else {
+  console.log("[JA] kuromoji disabled (set JA_TOKENIZER=kuromoji to enable full romaji) — using Intl.Segmenter");
+}
 
 const JA_SCRIPT = /[\u3040-\u30ff\u3400-\u9fff]/;
 
