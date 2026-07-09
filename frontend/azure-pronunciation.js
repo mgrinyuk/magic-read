@@ -193,6 +193,137 @@ export async function assessPronunciation(referenceText, lang, { tokenUrl, fetch
   });
 }
 
+/* Push-to-talk session: continuous recognition that only ends when the user
+   taps again. Resolves the same shape as assessPronunciation. Multiple
+   recognized segments (user paused mid-sentence) are merged: words are
+   concatenated and metrics averaged weighted by word count. */
+export async function startPronunciationSession(referenceText, lang, { tokenUrl, fetchWithAuth }) {
+  if (!micWarmedUp && navigator.mediaDevices?.getUserMedia) {
+    let warmup = null;
+    try {
+      warmup = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micWarmedUp = true;
+    } catch {
+      throw makeErr("Microphone is blocked or unavailable", "MIC_DENIED");
+    } finally {
+      if (warmup) warmup.getTracks().forEach((tr) => tr.stop());
+    }
+  }
+
+  const res = await fetchWithAuth(tokenUrl, { method: "POST" });
+  let data = {};
+  try { data = await res.json(); } catch { /* non-JSON error body */ }
+  if (!res.ok) {
+    const code =
+      data.code ||
+      (res.status === 401 ? "NO_AUTH" : res.status === 429 ? "QUOTA_EXCEEDED" : "TOKEN_FAILED");
+    throw makeErr(data.error || "Could not get speech token", code, data);
+  }
+  const { token, region } = data;
+
+  const SpeechSDK = await loadSpeechSDK();
+
+  const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
+  speechConfig.speechRecognitionLanguage = lang;
+  try {
+    // The user decides when the take ends — be maximally patient about silence.
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
+      "60000"
+    );
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+      "5000"
+    );
+  } catch { /* property names vary across SDK builds */ }
+
+  const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+  const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+  const paConfig = new SpeechSDK.PronunciationAssessmentConfig(
+    referenceText,
+    SpeechSDK.PronunciationAssessmentGradingSystem.HundredMark,
+    SpeechSDK.PronunciationAssessmentGranularity.Phoneme,
+    true
+  );
+  if (String(lang).toLowerCase().startsWith("en")) {
+    paConfig.enableProsodyAssessment = true;
+  }
+  paConfig.applyTo(recognizer);
+
+  const segments = [];
+  let sessionError = null;
+
+  recognizer.recognized = (_s, e) => {
+    try {
+      if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
+      const pa = SpeechSDK.PronunciationAssessmentResult.fromResult(e.result);
+      let detail = {};
+      try {
+        detail = JSON.parse(
+          e.result.properties.getProperty(SpeechSDK.PropertyId.SpeechServiceResponse_JsonResult)
+        );
+      } catch { /* keep empty */ }
+      segments.push({
+        transcript: e.result.text || "",
+        accuracy: pa.accuracyScore,
+        fluency: pa.fluencyScore,
+        completeness: pa.completenessScore,
+        pronunciation: pa.pronunciationScore,
+        prosody: pa.prosodyScore ?? null,
+        words: extractWords(detail)
+      });
+    } catch { /* skip malformed segment */ }
+  };
+
+  recognizer.canceled = (_s, e) => {
+    if (e.reason === SpeechSDK.CancellationReason.Error) {
+      const denied = /denied|permission/i.test(e.errorDetails || "");
+      sessionError = makeErr(e.errorDetails || "Recognition canceled", denied ? "MIC_DENIED" : "CANCELED");
+    }
+  };
+
+  await new Promise((resolve, reject) => {
+    recognizer.startContinuousRecognitionAsync(resolve, (err) =>
+      reject(makeErr(String(err) || "SDK error", "SDK_ERROR"))
+    );
+  });
+
+  const shutdown = () =>
+    new Promise((resolve) => {
+      recognizer.stopContinuousRecognitionAsync(
+        () => { try { recognizer.close(); } catch { /* ignore */ } resolve(); },
+        () => { try { recognizer.close(); } catch { /* ignore */ } resolve(); }
+      );
+    });
+
+  return {
+    async stop() {
+      await shutdown();
+      if (sessionError) throw sessionError;
+      if (!segments.length) throw makeErr("No speech recognized", "NO_SPEECH");
+      if (segments.length === 1) return segments[0];
+      // Merge multi-segment takes: concat words, weight metrics by word count.
+      const weight = (seg) => Math.max(1, (seg.words || []).length);
+      const total = segments.reduce((n, seg) => n + weight(seg), 0);
+      const avg = (key) =>
+        segments.reduce((n, seg) => n + (Number(seg[key]) || 0) * weight(seg), 0) / total;
+      return {
+        transcript: segments.map((seg) => seg.transcript).join(" "),
+        accuracy: avg("accuracy"),
+        fluency: avg("fluency"),
+        completeness: avg("completeness"),
+        pronunciation: avg("pronunciation"),
+        prosody: null,
+        words: segments.flatMap((seg) => seg.words || [])
+      };
+    },
+    async cancel() {
+      await shutdown();
+    }
+  };
+}
+
 // The per-word accuracy below which a word is treated as "not green" — must
 // match the green threshold used in scoreColor / renderAssessment (80).
 export const GREEN_THRESHOLD = 80;

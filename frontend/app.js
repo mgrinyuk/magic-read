@@ -3,6 +3,7 @@ import { UI_TEXT } from "./ui-text.js?v=20260622.6";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
+  startPronunciationSession,
   renderAssessment,
   collectFailedChunks,
   GREEN_THRESHOLD
@@ -1155,12 +1156,31 @@ async function checkAuth() {
   }
 }
 
+function closeAuthScreen() {
+  if (authScreen) authScreen.hidden = true;
+  document.body.classList.remove("auth-active");
+  const loginError = document.getElementById("loginError");
+  if (loginError) loginError.hidden = true;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("authCloseBtn")?.addEventListener("click", closeAuthScreen);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.body.classList.contains("auth-active")) {
+    closeAuthScreen();
+  }
+});
+
 function openAuthFromOverlay(mode = "signup") {
   const overlay = document.getElementById("authOverlay");
   if (overlay) overlay.hidden = true;
 
   if (authScreen) authScreen.hidden = false;
   document.body.classList.add("auth-active");
+
+  const loginError = document.getElementById("loginError");
+  if (loginError) loginError.hidden = true;
 
   authMode = mode;
   const authTitleText = document.getElementById("authTitleText");
@@ -1294,6 +1314,8 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
   const password = document.getElementById("authPassword")?.value.trim();
   const t = getT();
 
+  const loginError = document.getElementById("loginError");
+  if (loginError) loginError.hidden = true;
   if (authMessage) authMessage.textContent = t.loggingIn;
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -1302,10 +1324,15 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
   });
 
   if (error) {
-    if (authMessage) authMessage.textContent = error.message;
+    if (authMessage) authMessage.textContent = "";
+    if (loginError) {
+      loginError.textContent = error.message;
+      loginError.hidden = false;
+    }
     return;
   }
 
+  if (loginError) loginError.hidden = true;
   if (authMessage) authMessage.textContent = "";
   await checkAuth();
 });
@@ -1414,12 +1441,19 @@ initialAuthCheck.then(() => {
 const forgotPasswordBox = document.getElementById("forgotPasswordBox");
 const recoveryEmailInput = document.getElementById("recoveryEmailInput");
 const sendRecoveryEmailBtn = document.getElementById("sendRecoveryEmailBtn");
+const recoveryMessage = document.getElementById("recoveryMessage");
+
+function setRecoveryMessage(text) {
+  if (!recoveryMessage) return;
+  recoveryMessage.textContent = text;
+  recoveryMessage.hidden = !text;
+}
 
 document.getElementById("forgotPasswordBtn")?.addEventListener("click", () => {
   const t = getT();
 
   if (forgotPasswordBox) forgotPasswordBox.hidden = false;
-  if (authMessage) authMessage.textContent = t.enterEmailInstruction;
+  setRecoveryMessage(t.enterEmailInstruction);
 });
 
 sendRecoveryEmailBtn?.addEventListener("click", async () => {
@@ -1427,22 +1461,22 @@ sendRecoveryEmailBtn?.addEventListener("click", async () => {
   const email = recoveryEmailInput?.value.trim();
 
   if (!email) {
-    if (authMessage) authMessage.textContent = t.enterEmailError;
+    setRecoveryMessage(t.enterEmailError);
     return;
   }
 
-  if (authMessage) authMessage.textContent = t.sendingRecovery;
+  setRecoveryMessage(t.sendingRecovery);
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}?reset=true`
   });
 
   if (error) {
-    if (authMessage) authMessage.textContent = error.message;
+    setRecoveryMessage(error.message);
     return;
   }
 
-  if (authMessage) authMessage.textContent = t.recoverySent;
+  setRecoveryMessage(t.recoverySent);
 });
 
 const resetPasswordScreen = document.getElementById("resetPasswordScreen");
@@ -2234,6 +2268,10 @@ document.getElementById("heroCtaBtn")?.addEventListener("click", () => {
   openAuthFromOverlay("signup");
 });
 
+document.getElementById("finalCtaBtn")?.addEventListener("click", () => {
+  openAuthFromOverlay("signup");
+});
+
 document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
   await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -2807,6 +2845,8 @@ function spInitOnce() {
 
   document.getElementById("spBackBtn")?.addEventListener("click", () => {
     stopAllTTS(); stopRecognition();
+    if (spState.session) { spState.session.cancel(); }
+    spResetMic();
     showScreen(screenSpeakSetup);
   });
   document.getElementById("spMic")?.addEventListener("click", spOnMicTap);
@@ -2823,11 +2863,55 @@ function spRenderMic() {
   const label = document.getElementById("spMicLabel");
   if (!mic) return;
   mic.className = "sp-mic " + (spState.phase === "recording" ? "is-recording"
+    : spState.phase === "scoring" ? "is-scoring"
     : spState.phase === "listening" ? "is-listening" : "is-idle");
   if (label) {
-    label.textContent = spState.phase === "recording" ? "Listening…"
-      : spState.phase === "listening" ? "Playing audio…" : "Tap to speak";
+    label.textContent = spState.phase === "recording" ? "Speak now — tap again when you're done"
+      : spState.phase === "scoring" ? "Scoring…"
+      : spState.phase === "listening" ? "Playing audio…"
+      : "Tap to speak, tap again when you're done";
   }
+}
+
+/* Voice-reactive mic meter: while recording, drive --mic-level (0..1) on the
+   mic button from the live input level so it visibly reacts to speech. */
+let spMicMeter = null;
+async function spStartMicMeter() {
+  if (spMicMeter) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    const mic = document.getElementById("spMic");
+    let raf = 0;
+    const tick = () => {
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+      const level = Math.min(1, Math.sqrt(sum / buf.length) * 5);
+      mic?.style.setProperty("--mic-level", level.toFixed(3));
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    spMicMeter = {
+      stop() {
+        cancelAnimationFrame(raf);
+        try { src.disconnect(); } catch { /* ignore */ }
+        try { ctx.close(); } catch { /* ignore */ }
+        stream.getTracks().forEach(t => t.stop());
+        mic?.style.removeProperty("--mic-level");
+      }
+    };
+  } catch { /* no meter — recording still works */ }
+}
+function spStopMicMeter() {
+  spMicMeter?.stop();
+  spMicMeter = null;
 }
 
 async function spRenderPractice() {
@@ -2965,32 +3049,74 @@ async function spLoadMeta(idx) {
 }
 
 /* INTEGRATION #1 — record + score the current sentence. */
+/* Push-to-talk: first tap starts recording, second tap stops and scores. */
 async function spOnMicTap() {
-  if (spState.recording || spState.phase === "recording") return;
+  if (spState.phase === "scoring") return;
+  if (spState.phase === "recording") { spStopAndScore(); return; }
+
   unlockAudioForMobile();
   stopAllTTS();
   spState.recording = true;
   spState.phase = "recording";
+  spState.stopRequested = false;
   spRenderMic();
+  spStartMicMeter();
 
   const sentence = spState.sentences[spState.idx];
   const azureLang = mapToSpeechLang(spState.lang);
 
   try {
-    const azure = await assessChunk(sentence, azureLang);
-    if (azure && azure.result) {
-      spApplyScore(spMapAzure(azure.result));
-      recordActivity("words_spoken", (azure.result.words || []).length || 1);
-      fetchMyPlan();
+    const session = await startPronunciationSession(sentence, azureLang, {
+      tokenUrl: SPEECH_TOKEN_URL,
+      fetchWithAuth
+    });
+    spState.session = session;
+    // The user may have tapped "done" while the session was still connecting.
+    if (spState.stopRequested) spStopAndScore();
+  } catch (err) {
+    if (err && err.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); spResetMic(); return; }
+    if (err && err.code === "MIC_DENIED") {
+      showToast("Microphone is blocked — allow access in your browser settings.", "error");
+      spResetMic();
       return;
     }
-    // Azure unavailable / errored — fall back to browser SpeechRecognition.
-    const err = azure && azure.error;
-    if (err && err.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); spResetMic(); return; }
-    await spFallbackRecognition(sentence);
-  } catch (e) {
-    console.error("[Spotlight] scoring error:", e);
-    showToast("Could not score your speech. Try again.", "error");
+    // Azure unavailable — fall back to browser SpeechRecognition (auto-stops).
+    try {
+      await spFallbackRecognition(sentence);
+    } catch (e) {
+      console.error("[Spotlight] scoring error:", e);
+      showToast("Could not score your speech. Try again.", "error");
+      spResetMic();
+    }
+  }
+}
+
+async function spStopAndScore() {
+  const session = spState.session;
+  if (!session) {
+    // Session still connecting — flag the stop; spOnMicTap will finish it.
+    // If we're in the browser-recognition fallback, stop that instead.
+    if (spState.fallbackRec) { try { spState.fallbackRec.stop(); } catch { /* ignore */ } return; }
+    spState.stopRequested = true;
+    return;
+  }
+  spState.session = null;
+  spState.phase = "scoring";
+  spRenderMic();
+  spStopMicMeter();
+
+  try {
+    const result = await session.stop();
+    spApplyScore(spMapAzure(result));
+    recordActivity("words_spoken", (result.words || []).length || 1);
+    fetchMyPlan();
+  } catch (err) {
+    if (err && err.code === "NO_SPEECH") {
+      showToast("I didn't hear anything — tap the mic and try again.", "error");
+    } else {
+      console.error("[Spotlight] scoring error:", err);
+      showToast("Could not score your speech. Try again.", "error");
+    }
     spResetMic();
   }
 }
@@ -3001,8 +3127,10 @@ function spFallbackRecognition(sentence) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showToast("Speech scoring isn't available in this browser.", "error"); spResetMic(); resolve(); return; }
     const rec = new SR();
+    spState.fallbackRec = rec;
     const lang = mapToSpeechLang(spState.lang);
     rec.lang = lang; rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.onend = () => { spState.fallbackRec = null; };
     rec.onresult = (event) => {
       const transcript = event.results[0][0].transcript || "";
       const { score } = compareText(sentence, transcript, lang);
@@ -3023,12 +3151,17 @@ function spFallbackRecognition(sentence) {
 function spResetMic() {
   spState.recording = false;
   spState.phase = "idle";
+  spState.session = null;
+  spState.stopRequested = false;
+  spStopMicMeter();
   spRenderMic();
 }
 
 /* INTEGRATION #2 — feed a normalised result in. */
 function spApplyScore(result) {
   spState.recording = false;
+  spState.session = null;
+  spStopMicMeter();
   spState.results[spState.idx] = result;
   spState.phase = "done";
   spRenderPractice();
@@ -3220,7 +3353,7 @@ async function rdSegment(sentence) {
       const res = await fetchWithAuth(`${API_BASE}/api/segment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: sentence })
+        body: JSON.stringify({ text: sentence, lang: R.lang })
       });
       const data = await res.json();
       words = res.ok ? (data.words || []) : [];
@@ -3241,6 +3374,8 @@ function rdWordHTML(word, py) {
 
 function rdCleanHanziWord(word) {
   const raw = String(word || "");
+  // Japanese words mix kanji and kana (e.g. \u98df\u3079\u308b) \u2014 leave them intact.
+  if (R.lang === "ja") return raw;
   if (!/[\u3400-\u9fff\uf900-\ufaff]/u.test(raw)) return raw;
   return raw.replace(/[^\u3400-\u9fff\uf900-\ufaff，。！？；：、“”‘’（）()\[\]{}…,.!?;:\s]/gu, "");
 }
@@ -3261,13 +3396,13 @@ async function rdRenderPassage() {
   if (!han) return;
   han.innerHTML = `<p class="rd-loading">Loading…</p>`;
 
-  const isZh = R.lang === "zh";
+  const isCJK = R.lang === "zh" || R.lang === "ja";
   const paraHTML = [];
   for (const pa of R.paras) {
     const sentHTML = [];
     for (const s of pa.sents) {
       let inner;
-      if (isZh) {
+      if (isCJK) {
         const words = await rdSegment(s.text);
         inner = words.length
           ? words.map(w => {
@@ -3334,9 +3469,12 @@ function rdUpdateToolbar() {
   if (subEl) subEl.textContent = `${R.sentences.length} sentence${R.sentences.length === 1 ? "" : "s"}`;
   document.getElementById("rdPinyinPill")?.classList.toggle("on", R.pinyin);
   document.getElementById("rdTransPill")?.classList.toggle("on", R.trans);
-  // Pinyin pill only meaningful for Chinese.
+  // Reading-aid pill: pinyin for Chinese, romaji for Japanese.
   const pinyinPill = document.getElementById("rdPinyinPill");
-  if (pinyinPill) pinyinPill.style.display = R.lang === "zh" ? "" : "none";
+  if (pinyinPill) {
+    pinyinPill.style.display = (R.lang === "zh" || R.lang === "ja") ? "" : "none";
+    pinyinPill.textContent = R.lang === "ja" ? "ロ Romaji" : "拼 Pinyin";
+  }
   // Level badge from the selected library/setup item.
   const lvl = document.getElementById("rdLevel");
   if (lvl) {
@@ -3667,6 +3805,23 @@ function rdRenderExercise() {
   rdRenderSequentialOrder(body, item);
 }
 
+// Fetch (once) and show the exercise sentence's translation under the prompt.
+async function rdFillExTranslation(el, holder, sentence) {
+  if (!el || !sentence) return;
+  if (!holder.trans) {
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sentence, sourceLang: R.lang, targetLang: targetLangSelect.value || "en" })
+      });
+      const data = await res.json();
+      holder.trans = res.ok ? (data.translation || "") : "";
+    } catch { holder.trans = ""; }
+  }
+  el.textContent = holder.trans;
+}
+
 function rdRenderSequentialOrder(body, item) {
   const slots = item.slots.map((id, pos) =>
     id == null ? `<span class="rd-slot empty" data-slot="${pos}"></span>`
@@ -3677,6 +3832,7 @@ function rdRenderSequentialOrder(body, item) {
     <div class="rd-excard">
       <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise ${rdExState.idx + 1} of ${rdExState.items.length}</span><span class="rd-extitle">Put the words in order</span></div>
       <p class="rd-exdesc">Rebuild the scrambled sentence.</p>
+      <p class="rd-extrans" id="rdExTrans">${escapeHtml(item.trans || "")}</p>
       <div class="rd-slots${item.fb === "wrong" ? " wrong" : ""}">${slots}</div>
       <div class="rd-bank">${bank}</div>
       ${fb}
@@ -3685,6 +3841,8 @@ function rdRenderSequentialOrder(body, item) {
         <button class="rd-exskip" id="rdExSkip" type="button">Skip</button>
       </div>
     </div>`;
+
+  rdFillExTranslation(document.getElementById("rdExTrans"), item, item.sentence);
 
   body.querySelectorAll(".rd-slot:not(.empty)").forEach(sl => sl.addEventListener("click", () => {
     item.slots[Number(sl.dataset.slot)] = null; item.fb = null; rdRenderSequentialOrder(body, item);
@@ -3761,6 +3919,7 @@ function rdEx1Init() {
   }) || R.sentences[0]?.text || "";
   const toks = rdEx1Tokens(sent);
   if (toks.length < 2) { rdEx1.target = []; rdEx1.bank = []; rdEx1.slots = []; return; }
+  rdEx1.sentence = sent;
   rdEx1.target = toks;
   rdEx1.slots = new Array(toks.length).fill(null);
   let bank = toks.map((t, i) => ({ id: i, t })).sort(() => Math.random() - 0.5);
@@ -3780,6 +3939,7 @@ function rdRenderExOrder(body) {
     <div class="rd-excard">
       <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise 1</span><span class="rd-extitle">Put the words in order</span></div>
       <p class="rd-exdesc">Rebuild the scrambled sentence.</p>
+      <p class="rd-extrans" id="rdEx1Trans">${escapeHtml(rdEx1.trans || "")}</p>
       <div class="rd-slots${rdEx1.fb === "wrong" ? " wrong" : ""}">${slots}</div>
       <div class="rd-bank">${bank}</div>
       ${fb}
@@ -3788,6 +3948,8 @@ function rdRenderExOrder(body) {
         <button class="rd-exskip" id="rdEx1Skip" type="button">Skip</button>
       </div>
     </div>`;
+  rdFillExTranslation(document.getElementById("rdEx1Trans"), rdEx1, rdEx1.sentence);
+
   body.querySelectorAll(".rd-slot:not(.empty)").forEach(sl => sl.addEventListener("click", () => {
     rdEx1.slots[Number(sl.dataset.slot)] = null; rdEx1.fb = null; rdRenderExOrder(body);
   }));
@@ -3981,38 +4143,35 @@ function rdSetupRenderLibrary(texts) {
   const grid = document.getElementById("rdSetupLibraryTab");
   if (!grid) return;
   if (!texts.length) { grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">No texts yet.</p>'; return; }
-  const hues = ["#E5267E", "#0AB4D6", "#F5B400", "#16A34A"];
-  grid.innerHTML = texts.map((t, i) => {
-    const hue = hues[i % hues.length];
+  grid.innerHTML = texts.map(t => {
     const glyph = (t.title || "文")[0];
     const sel = rdSetupState.sel.kind === "library" && String(rdSetupState.sel.id) === String(t.id);
-    return `<button class="rd-libcard${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}" type="button">
-      <div class="rd-libthumb" style="background:linear-gradient(135deg,${hue},rgba(28,18,51,.25))"><span class="rd-libthumb-glyph">${escapeHtml(glyph)}</span></div>
-      <div class="rd-libcard-body">
-        <div class="rd-libcard-title">${escapeHtml(t.title || "Untitled")}</div>
-        <div class="rd-libcard-sub">${escapeHtml(t.topic || "")}</div>
-        <div class="rd-libcard-meta">
-          ${t.level ? `<span class="rd-libcard-level">${escapeHtml(t.level)}</span>` : ""}
-          ${t.cardCount ? `<span class="rd-libcard-len">${t.cardCount} cards</span>` : ""}
+    const sub = [t.topic, t.level].filter(Boolean).join(" · ");
+    return `<div class="rd-savedrow${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}">
+      <button class="rd-savedrow-main" data-lib-id="${escapeHtml(t.id)}" type="button">
+        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
+        <div class="rd-savedrow-body">
+          <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
+          <div class="rd-savedrow-sub">${escapeHtml(sub)}</div>
         </div>
-      </div>
-    </button>`;
+      </button>
+    </div>`;
   }).join("");
-  grid.querySelectorAll(".rd-libcard").forEach(card => {
-    card.addEventListener("click", () => {
-      const id = card.dataset.libId;
+  grid.querySelectorAll(".rd-savedrow-main").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.libId;
       const t = texts.find(x => String(x.id) === String(id));
       if (!t) return;
       rdSetupState.sel = { kind: "library", id, title: t.title || "" };
       rdSetupState._libText = t;
-      grid.querySelectorAll(".rd-libcard").forEach(c => c.classList.toggle("sel", c.dataset.libId === id));
+      grid.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.libId === id));
       rdSetupUpdateStartLabel();
     });
   });
   if ((!rdSetupState.sel.id || rdSetupState.sel.kind !== "library") && texts.length) {
     rdSetupState.sel = { kind: "library", id: texts[0].id, title: texts[0].title || "" };
     rdSetupState._libText = texts[0];
-    grid.querySelector(".rd-libcard")?.classList.add("sel");
+    grid.querySelector(".rd-savedrow")?.classList.add("sel");
     rdSetupUpdateStartLabel();
   }
 }
@@ -7508,6 +7667,7 @@ let videoLang      = "";     // caption language (e.g. "zh")
 let videoHelpLang  = "";     // translation/help language (e.g. "ru")
 let vidSlowOn      = false;
 let vidPinyinOn    = true;
+let vidTransOn     = true;   // caption translations visible by default
 let vidHighlightId = null;   // setInterval handle for line highlighting
 let vidReplayTimer = null;   // setTimeout handle for auto-pause after replay
 let currentVideoId  = "";
@@ -7738,7 +7898,9 @@ function highlightCurrentLine(t) {
     if (isCurrent) activeEl = el;
   });
   if (activeEl) {
-    activeEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Keep the active line pinned mid-box so the transcript flows upward
+    // (bottom → top) while the video plays.
+    activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }
 
@@ -7764,10 +7926,11 @@ function buildPlainLineHTML(text) {
 function renderCaptions(captions, lang) {
   const capList = document.getElementById("vidCapList");
   if (!capList) return;
-  const isZh = lang === "zh";
+  const isCJK = lang === "zh" || lang === "ja";
 
   capList.innerHTML = captions.map((cap, i) => {
-    const hanHTML = isZh
+    // Older cached Japanese captions have no tokens — fall back to plain text.
+    const hanHTML = (isCJK && cap.tokens?.length)
       ? `<div class="vid-han">${buildChineseLineHTML(cap.tokens)}</div>`
       : `<div class="vid-text">${buildPlainLineHTML(cap.text)}</div>`;
 
@@ -7960,14 +8123,20 @@ async function loadVideoById(videoId) {
 
     if (capArea) capArea.hidden = false;
 
-    // Sync pinyin toggle state — only show button for Chinese
+    // Sync toggles — reading-aid button for Chinese (Pinyin) and Japanese (Romaji)
     const capList = document.getElementById("vidCapList");
     const pinyinBtn = document.getElementById("vidPinyinToggle");
-    if (capList) capList.classList.toggle("vid-pinyin-off", !vidPinyinOn);
+    if (capList) {
+      capList.classList.toggle("vid-pinyin-off", !vidPinyinOn);
+      capList.classList.toggle("vid-trans-off", !vidTransOn);
+    }
     if (pinyinBtn) {
-      pinyinBtn.hidden = videoLang !== "zh";
+      pinyinBtn.hidden = videoLang !== "zh" && videoLang !== "ja";
+      pinyinBtn.textContent = videoLang === "ja" ? "Romaji" : "Pinyin";
       pinyinBtn.classList.toggle("on", vidPinyinOn);
     }
+    const transBtn = document.getElementById("vidTransToggle");
+    if (transBtn) transBtn.classList.toggle("on", vidTransOn);
 
     // Save progress — fetch real title via YouTube oEmbed (free, no API key)
     fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&format=json`)
@@ -8048,6 +8217,13 @@ function initVideoScreen() {
     pinyinBtn.classList.toggle("on", vidPinyinOn);
     const capList = document.getElementById("vidCapList");
     capList?.classList.toggle("vid-pinyin-off", !vidPinyinOn);
+  });
+
+  document.getElementById("vidTransToggle")?.addEventListener("click", (e) => {
+    vidTransOn = !vidTransOn;
+    e.currentTarget.classList.toggle("on", vidTransOn);
+    const capList = document.getElementById("vidCapList");
+    capList?.classList.toggle("vid-trans-off", !vidTransOn);
   });
 
   tryAgainBtn?.addEventListener("click", () => {

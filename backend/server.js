@@ -14,6 +14,8 @@ import { google } from "googleapis";
 import PDFDocument from "pdfkit";
 import Papa from "papaparse";
 import Stripe from "stripe";
+import kuromoji from "kuromoji";
+import wanakana from "wanakana";
 import { isLifetimeOfferEligible } from "./lib/planRules.js";
 import { getActivityRpcArgs } from "./lib/activityRules.js";
 import {
@@ -591,15 +593,77 @@ function segmentChineseText(text) {
   }));
 }
 
+// --- Japanese segmentation (kuromoji morphological analyzer + romaji readings) ---
+let kuromojiTokenizer = null;
+kuromoji
+  .builder({ dicPath: path.join(__dirname, "node_modules", "kuromoji", "dict") })
+  .build((err, tokenizer) => {
+    if (err) {
+      console.error("[JA] kuromoji failed to load — falling back to Intl.Segmenter:", err.message);
+      return;
+    }
+    kuromojiTokenizer = tokenizer;
+    console.log("[JA] kuromoji tokenizer ready");
+  });
+
+const JA_SCRIPT = /[\u3040-\u30ff\u3400-\u9fff]/;
+
+function segmentJapaneseText(text) {
+  if (kuromojiTokenizer) {
+    return kuromojiTokenizer
+      .tokenize(text)
+      .filter(t => t.surface_form.trim())
+      .map(t => {
+        // Particles は/へ/を are pronounced wa/e/o.
+        const particle = t.pos === "助詞" && { "は": "wa", "へ": "e", "を": "o" }[t.surface_form];
+        const reading = t.reading && t.reading !== "*" ? t.reading : t.surface_form;
+        return {
+          word: t.surface_form,
+          pinyin: particle || (JA_SCRIPT.test(t.surface_form) ? wanakana.toRomaji(reading) : "")
+        };
+      });
+  }
+
+  // Fallback while the tokenizer dictionary is still loading.
+  let words = [];
+  try {
+    const segmenter = new Intl.Segmenter("ja", { granularity: "word" });
+    words = Array.from(segmenter.segment(text))
+      .map(item => item.segment)
+      .filter(item => item.trim());
+  } catch (intlError) {
+    console.error("Intl.Segmenter (ja) failed:", intlError);
+  }
+  if (!words.length) words = [...text].filter(char => char.trim());
+
+  return words.map(word => ({
+    word,
+    // Kana-only words can be romanized without a dictionary; kanji need kuromoji.
+    pinyin: /^[\u3040-\u30ff]+$/.test(word) ? wanakana.toRomaji(word) : ""
+  }));
+}
+
+// Kana is a reliable Japanese marker; Han characters alone mean Chinese.
+function detectSegmentLang(text, requested) {
+  if (requested === "ja" || requested === "zh") return requested;
+  return /[\u3040-\u30ff]/.test(text) ? "ja" : "zh";
+}
+
+function segmentText(text, lang) {
+  return detectSegmentLang(text, lang) === "ja"
+    ? segmentJapaneseText(text)
+    : segmentChineseText(text);
+}
+
 app.post("/api/segment", extractUser, requireUser, (req, res) => {
-  const { text } = req.body;
+  const { text, lang } = req.body;
 
   if (!text) {
     return res.status(400).json({ error: "Text is required" });
   }
 
   try {
-    res.json({ words: segmentChineseText(text) });
+    res.json({ words: segmentText(text, lang) });
   } catch (error) {
     console.error("Segmentation route error:", error);
     res.status(500).json({ error: "Segmentation failed" });
@@ -607,7 +671,7 @@ app.post("/api/segment", extractUser, requireUser, (req, res) => {
 });
 
 app.post("/api/segment-many", extractUser, requireUser, (req, res) => {
-  const { texts } = req.body;
+  const { texts, lang } = req.body;
 
   if (!Array.isArray(texts)) {
     return res.status(400).json({ error: "texts must be an array" });
@@ -616,7 +680,7 @@ app.post("/api/segment-many", extractUser, requireUser, (req, res) => {
   try {
     const results = texts.map(text => ({
       text,
-      words: segmentChineseText(text)
+      words: segmentText(text, lang)
     }));
 
     res.json({ results });
@@ -1328,8 +1392,10 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
 
     const { lines: rawLines, language: actualLang } = transcript;
 
-    // 3. Enrich: batch-translate all lines; add pinyin + tokens for Chinese
+    // 3. Enrich: batch-translate all lines; add pinyin + tokens for Chinese,
+    //    romaji + tokens for Japanese
     const isZh = actualLang === "zh" || actualLang.startsWith("zh-");
+    const isJa = actualLang === "ja" || actualLang.startsWith("ja-");
 
     let translations = rawLines.map(() => "");
     try {
@@ -1351,6 +1417,9 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
       if (isZh) {
         out.pinyin = pinyin(line.text, { toneType: "symbol", type: "array" }).join(" ");
         out.tokens = segmentChineseText(line.text);
+      } else if (isJa) {
+        out.tokens = segmentJapaneseText(line.text);
+        out.pinyin = out.tokens.map(t => t.pinyin).filter(Boolean).join(" ");
       }
       return out;
     });
