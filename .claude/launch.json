@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8123", "--directory", "frontend"],
+      "port": 8123
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && GOOGLE_TTS_KEY_JSON=\"$(cat google-tts-key.json)\" node server.js"],
+      "port": 3000
+    }
+  ]
+}

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  @keyframes mrSparkleIn{
+    0%{opacity:0;transform:scale(.3) rotate(-25deg)}
+    15%{opacity:1;transform:scale(1.12) rotate(7deg)}
+    24%{transform:scale(1) rotate(0)}
+    82%{opacity:1;transform:scale(1) rotate(0)}
+    93%{opacity:0;transform:scale(.85) rotate(8deg)}
+    100%{opacity:0;transform:scale(.3) rotate(-25deg)}
+  }
+  @keyframes mrRise{
+    0%,20%{opacity:0;transform:translateY(20px)}
+    32%{opacity:1;transform:translateY(0)}
+    82%{opacity:1;transform:translateY(0)}
+    93%{opacity:0;transform:translateY(-8px)}
+    100%{opacity:0}
+  }
+  @keyframes mrGlow{
+    0%,100%{opacity:0;transform:scale(.6)}
+    24%{opacity:1;transform:scale(1)}
+    82%{opacity:.7;transform:scale(1.05)}
+    93%{opacity:0;transform:scale(.7)}
+  }
+  @keyframes mrTwinkle{
+    0%,100%{opacity:0;transform:scale(.3) rotate(0)}
+    50%{opacity:.95;transform:scale(1) rotate(25deg)}
+  }
+  @keyframes mrFloat{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-7px)}
+  }
+</style>
+</helmet>
+
+<!-- ===================== HEADER ===================== -->
+<div style="position:absolute;left:40px;top:40px;width:1180px">
+  <div data-drags-parent="1" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:.04em;color:#9A93AD;margin-bottom:10px">MAGIC READ · BRAND KIT</div>
+  <div style="background:#fff;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:30px 34px">
+    <div style="display:flex;align-items:center;gap:22px">
+      <div style="width:74px;height:74px;border-radius:17px;background:{{ accent }};display:grid;place-items:center;flex:none;box-shadow:0 10px 24px -10px rgba(229,38,126,.6)">
+        <svg width="46" height="46" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+      </div>
+      <div>
+        <div style="font-family:'Nunito',sans-serif;font-size:38px;font-weight:900;color:#1C1233;letter-spacing:-.01em;line-height:1">{{ wordmark }}</div>
+        <div style="font-family:'Inter',sans-serif;font-size:15px;color:#6A6480;margin-top:6px;max-width:720px;line-height:1.5">App icon, animated launch screen, home-screen mockup and store banner — all built from the magenta squircle and white sparkle. Use the Tweaks panel to retint the accent across every asset at once.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ICON DIRECTIONS ===================== -->
+<div style="position:absolute;left:40px;top:240px;width:1180px">
+  <div data-drags-parent="1" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:.04em;color:#6A6480;margin-bottom:10px">App icon — 3 directions to compare</div>
+  <div style="background:#fff;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:40px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:34px">
+
+    <!-- DIR 1 : SOLID -->
+    <div data-screen-label="Icon · Solid" style="display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div style="width:240px;height:240px;border-radius:54px;background:{{ accent }};display:grid;place-items:center;box-shadow:0 22px 48px -20px rgba(229,38,126,.65)">
+        <svg width="138" height="138" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+      </div>
+      <div style="margin-top:24px">
+        <div style="font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;color:#1C1233">Solid</div>
+        <div style="font-family:'Inter',sans-serif;font-size:13.5px;color:#6A6480;margin-top:4px;line-height:1.5;max-width:240px">Flat white sparkle on flat cyan. Maximum clarity at every size — your original mark.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:20px">
+        <div style="width:58px;height:58px;border-radius:13px;background:{{ accent }};display:grid;place-items:center"><svg width="34" height="34" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+        <div style="width:40px;height:40px;border-radius:9px;background:{{ accent }};display:grid;place-items:center"><svg width="23" height="23" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+        <div style="width:28px;height:28px;border-radius:7px;background:{{ accent }};display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+      </div>
+    </div>
+
+    <!-- DIR 2 : DIMENSIONAL -->
+    <div data-screen-label="Icon · Dimensional" style="display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div style="position:relative;width:240px;height:240px;border-radius:54px;background:linear-gradient(160deg,{{ accentLight }},{{ accent }} 62%,{{ accentDeep }});display:grid;place-items:center;overflow:hidden;box-shadow:0 22px 48px -20px rgba(229,38,126,.7)">
+        <div style="position:absolute;top:-30%;left:-10%;width:120%;height:70%;background:radial-gradient(circle at 50% 0,rgba(255,255,255,.32),transparent 62%)"></div>
+        <svg width="138" height="138" viewBox="0 0 100 100" style="filter:drop-shadow(0 8px 14px rgba(15,60,70,.35));position:relative"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+      </div>
+      <div style="margin-top:24px">
+        <div style="font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;color:#1C1233">Dimensional</div>
+        <div style="font-family:'Inter',sans-serif;font-size:13.5px;color:#6A6480;margin-top:4px;line-height:1.5;max-width:240px">Soft top-light gradient and a lifted sparkle. Feels premium on the home screen.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:20px">
+        <div style="width:58px;height:58px;border-radius:13px;background:linear-gradient(160deg,{{ accentLight }},{{ accent }} 62%,{{ accentDeep }});display:grid;place-items:center"><svg width="34" height="34" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+        <div style="width:40px;height:40px;border-radius:9px;background:linear-gradient(160deg,{{ accentLight }},{{ accent }} 62%,{{ accentDeep }});display:grid;place-items:center"><svg width="23" height="23" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+        <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(160deg,{{ accentLight }},{{ accent }} 62%,{{ accentDeep }});display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+      </div>
+    </div>
+
+    <!-- DIR 3 : PLAYFUL -->
+    <div data-screen-label="Icon · Playful" style="display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div style="position:relative;width:240px;height:240px;border-radius:54px;background:{{ accent }};display:grid;place-items:center;box-shadow:0 22px 48px -20px rgba(229,38,126,.65)">
+        <svg width="130" height="130" viewBox="0 0 100 100" style="position:relative;left:-8px;top:6px"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+        <svg width="50" height="50" viewBox="0 0 100 100" style="position:absolute;top:46px;right:42px"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#12B5CB"/></svg>
+      </div>
+      <div style="margin-top:24px">
+        <div style="font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;color:#1C1233">Playful</div>
+        <div style="font-family:'Inter',sans-serif;font-size:13.5px;color:#6A6480;margin-top:4px;line-height:1.5;max-width:240px">A small pink spark nods to the brand pink and the “magic” in the name.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:20px">
+        <div style="position:relative;width:58px;height:58px;border-radius:13px;background:{{ accent }};display:grid;place-items:center"><svg width="32" height="32" viewBox="0 0 100 100" style="position:relative;left:-2px;top:1px"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg><svg width="13" height="13" viewBox="0 0 100 100" style="position:absolute;top:11px;right:10px"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#12B5CB"/></svg></div>
+        <div style="position:relative;width:40px;height:40px;border-radius:9px;background:{{ accent }};display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 100 100" style="position:relative;left:-1px;top:1px"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+        <div style="width:28px;height:28px;border-radius:7px;background:{{ accent }};display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== LAUNCH SCREEN ===================== -->
+<div style="position:absolute;left:40px;top:860px;width:418px">
+  <div data-drags-parent="1" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:.04em;color:#6A6480;margin-bottom:10px">Launch screen · animated</div>
+  <div data-screen-label="Launch screen" style="position:relative;width:418px;height:872px;background:#0B0B10;border-radius:56px;padding:14px;box-shadow:0 40px 90px -40px rgba(28,18,51,.55)">
+    <div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:{{ accent }};font-family:'Nunito',sans-serif">
+      <!-- dynamic island -->
+      <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);width:118px;height:33px;background:#0B0B10;border-radius:20px;z-index:6"></div>
+      <!-- status bar -->
+      <div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;z-index:5">
+        <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:#fff">9:41</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:17px;height:11px;border:1.6px solid #fff;border-radius:3px;opacity:.95"></div>
+          <div style="width:16px;height:11px;border-radius:2px;background:#fff;opacity:.95"></div>
+        </div>
+      </div>
+      <!-- top glow -->
+      <div style="position:absolute;top:-22%;left:-10%;width:120%;height:62%;background:radial-gradient(circle at 50% 0,rgba(255,255,255,.28),transparent 60%)"></div>
+
+      <!-- center stage -->
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px">
+        <div style="position:relative;width:170px;height:170px;display:grid;place-items:center">
+          <div style="position:absolute;width:200px;height:200px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.38),transparent 68%);animation:mrGlow 4.6s ease-in-out infinite"></div>
+          <svg width="138" height="138" viewBox="0 0 100 100" style="position:relative;animation:mrSparkleIn 4.6s ease-in-out infinite"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+          <!-- twinkles -->
+          <svg width="26" height="26" viewBox="0 0 100 100" style="position:absolute;top:-6px;right:-2px;animation:mrTwinkle 2.4s ease-in-out infinite .3s"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="rgba(255,255,255,.9)"/></svg>
+          <svg width="18" height="18" viewBox="0 0 100 100" style="position:absolute;bottom:6px;left:-12px;animation:mrTwinkle 2.6s ease-in-out infinite .9s"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="rgba(255,255,255,.85)"/></svg>
+          <svg width="14" height="14" viewBox="0 0 100 100" style="position:absolute;top:30px;left:-22px;animation:mrTwinkle 2.2s ease-in-out infinite 1.4s"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="rgba(255,255,255,.8)"/></svg>
+        </div>
+        <div style="text-align:center;animation:mrRise 4.6s ease infinite">
+          <div style="font-family:'Nunito',sans-serif;font-size:40px;font-weight:900;color:#fff;letter-spacing:-.015em;line-height:1">{{ wordmark }}</div>
+          <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:rgba(255,255,255,.85);margin-top:8px">Read any language like magic</div>
+        </div>
+      </div>
+
+      <!-- footer loader -->
+      <div style="position:absolute;bottom:48px;left:0;right:0;text-align:center;animation:mrRise 4.6s ease infinite">
+        <div style="display:inline-flex;gap:6px">
+          <div style="width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.9);animation:mrFloat 1s ease-in-out infinite"></div>
+          <div style="width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.7);animation:mrFloat 1s ease-in-out infinite .15s"></div>
+          <div style="width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.55);animation:mrFloat 1s ease-in-out infinite .3s"></div>
+        </div>
+      </div>
+      <!-- home indicator -->
+      <div style="position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:999px;background:rgba(255,255,255,.7)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== HOME SCREEN MOCKUP ===================== -->
+<div style="position:absolute;left:520px;top:860px;width:418px">
+  <div data-drags-parent="1" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:.04em;color:#6A6480;margin-bottom:10px">On the home screen</div>
+  <div data-screen-label="Home screen" style="position:relative;width:418px;height:872px;background:#0B0B10;border-radius:56px;padding:14px;box-shadow:0 40px 90px -40px rgba(28,18,51,.55)">
+    <div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:linear-gradient(165deg,#241B3A,#101B24 55%,#0C2230);font-family:'Inter',sans-serif">
+      <!-- dynamic island -->
+      <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);width:118px;height:33px;background:#0B0B10;border-radius:20px;z-index:6"></div>
+      <!-- status bar -->
+      <div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;z-index:5">
+        <div style="font-size:15px;font-weight:700;color:#fff">9:41</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:17px;height:11px;border:1.6px solid #fff;border-radius:3px;opacity:.9"></div>
+          <div style="width:16px;height:11px;border-radius:2px;background:#fff;opacity:.9"></div>
+        </div>
+      </div>
+
+      <!-- search/date strip -->
+      <div style="position:absolute;top:66px;left:0;right:0;text-align:center;color:rgba(255,255,255,.65);font-size:13px;font-weight:600;letter-spacing:.02em">Tuesday, June 24</div>
+
+      <!-- app grid -->
+      <div style="position:absolute;top:108px;left:24px;right:24px;display:grid;grid-template-columns:repeat(4,1fr);row-gap:22px;column-gap:18px">
+        <sc-for list="{{ homeIcons }}" as="ic" hint-placeholder-count="16">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px">
+            <div style="{{ ic.tileStyle }}">
+              <sc-if value="{{ ic.isApp }}" hint-placeholder-val="{{ false }}">
+                <svg width="38" height="38" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+              </sc-if>
+            </div>
+            <div style="{{ ic.labelStyle }}">{{ ic.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- page dots -->
+      <div style="position:absolute;bottom:128px;left:0;right:0;display:flex;justify-content:center;gap:8px">
+        <div style="width:7px;height:7px;border-radius:999px;background:#fff"></div>
+        <div style="width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.4)"></div>
+      </div>
+
+      <!-- dock -->
+      <div style="position:absolute;bottom:30px;left:18px;right:18px;height:92px;border-radius:34px;background:rgba(255,255,255,.14);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:space-around;padding:0 16px">
+        <sc-for list="{{ dockIcons }}" as="d" hint-placeholder-count="4">
+          <div style="{{ d.tileStyle }}">
+            <sc-if value="{{ d.isApp }}" hint-placeholder-val="{{ false }}">
+              <svg width="38" height="38" viewBox="0 0 100 100"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <!-- home indicator -->
+      <div style="position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:999px;background:rgba(255,255,255,.8)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== STORE BANNER ===================== -->
+<div style="position:absolute;left:1000px;top:860px;width:1120px">
+  <div data-drags-parent="1" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:.04em;color:#6A6480;margin-bottom:10px">App Store banner · 1120 × 580</div>
+  <div data-screen-label="Store banner" style="position:relative;width:1120px;height:580px;border-radius:40px;overflow:hidden;background:linear-gradient(150deg,{{ accentLight }},{{ accent }} 55%,{{ accentDeep }});box-shadow:0 30px 70px -30px rgba(229,38,126,.6);font-family:'Nunito',sans-serif">
+    <div style="position:absolute;top:-25%;left:-5%;width:70%;height:90%;background:radial-gradient(circle at 40% 30%,rgba(255,255,255,.22),transparent 60%)"></div>
+    <!-- scattered twinkles -->
+    <svg width="40" height="40" viewBox="0 0 100 100" style="position:absolute;top:70px;right:120px;animation:mrTwinkle 3s ease-in-out infinite"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="rgba(255,255,255,.5)"/></svg>
+    <svg width="22" height="22" viewBox="0 0 100 100" style="position:absolute;bottom:90px;right:300px;animation:mrTwinkle 2.6s ease-in-out infinite .8s"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="rgba(255,255,255,.45)"/></svg>
+    <svg width="16" height="16" viewBox="0 0 100 100" style="position:absolute;top:150px;left:470px;animation:mrTwinkle 2.9s ease-in-out infinite 1.2s"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="rgba(255,255,255,.5)"/></svg>
+
+    <div style="position:absolute;inset:0;display:flex;align-items:center;gap:56px;padding:0 72px">
+      <!-- icon -->
+      <div style="position:relative;width:232px;height:232px;border-radius:52px;background:rgba(255,255,255,.16);display:grid;place-items:center;flex:none;box-shadow:0 24px 50px -20px rgba(8,40,48,.5);animation:mrFloat 4s ease-in-out infinite">
+        <svg width="140" height="140" viewBox="0 0 100 100" style="filter:drop-shadow(0 10px 16px rgba(8,40,48,.3))"><path d="M50 2 C50 28 54 46 92 50 C54 54 50 72 50 98 C50 72 46 54 8 50 C46 46 50 28 50 2 Z" fill="#fff"/></svg>
+      </div>
+      <!-- text -->
+      <div>
+        <div style="font-family:'Nunito',sans-serif;font-size:68px;font-weight:900;color:#fff;letter-spacing:-.02em;line-height:1">{{ wordmark }}</div>
+        <div style="font-family:'Inter',sans-serif;font-size:23px;font-weight:500;color:rgba(255,255,255,.92);margin-top:16px;line-height:1.4;max-width:560px">Turn any text, in any language, into reading, listening and speaking practice — with translations, audio and instant word lookups.</div>
+        <div style="display:flex;gap:12px;margin-top:28px">
+          <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:#fff;background:rgba(255,255,255,.2);padding:10px 20px;border-radius:999px">Word lookups</div>
+          <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:#fff;background:rgba(255,255,255,.2);padding:10px 20px;border-radius:999px">Native audio</div>
+          <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:#fff;background:rgba(255,255,255,.2);padding:10px 20px;border-radius:999px">Speaking scores</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#E5267E&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#E5267E&quot;,&quot;#12B5CB&quot;,&quot;#1C1233&quot;,&quot;#FF4D9D&quot;]},&quot;wordmark&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Magic Read&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  hexToRgb(h){ const m=h.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)); return m; }
+  mix(hex, target, t){ const a=this.hexToRgb(hex), b=this.hexToRgb(target);
+    const r=a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+    return '#'+r.map(v=>v.toString(16).padStart(2,'0')).join(''); }
+
+  renderVals(){
+    const accent = this.props.accent ?? '#E5267E';
+    const wordmark = this.props.wordmark ?? 'Magic Read';
+    const accentLight = this.mix(accent,'#ffffff',0.30);
+    const accentDeep  = this.mix(accent,'#3A0A22',0.42);
+
+    // home screen tiles
+    const muted = '#2A2740';
+    const tile = (label,color)=>({ label, isApp:false,
+      tileStyle:{ width:'62px', height:'62px', borderRadius:'15px', background:color, display:'grid', placeItems:'center',
+        boxShadow:'inset 0 1px 0 rgba(255,255,255,.06)' },
+      labelStyle:{ fontFamily:"'Inter',sans-serif", fontSize:'11px', fontWeight:500, color:'rgba(255,255,255,.85)', textShadow:'0 1px 2px rgba(0,0,0,.4)' } });
+    const app = (label)=>({ label, isApp:true,
+      tileStyle:{ width:'62px', height:'62px', borderRadius:'15px', background:accent, display:'grid', placeItems:'center',
+        boxShadow:'0 8px 18px -8px rgba(229,38,126,.9)' },
+      labelStyle:{ fontFamily:"'Inter',sans-serif", fontSize:'11px', fontWeight:700, color:'#fff', textShadow:'0 1px 2px rgba(0,0,0,.4)' } });
+
+    const homeIcons = [
+      tile('Notes','#37334F'), tile('Clock','#26262F'), tile('Weather','#2C4456'), tile('Maps','#2C4638'),
+      tile('Calendar','#43303B'), app('Magic Read'), tile('Music','#3A2C46'), tile('Files','#3A3A2C'),
+      tile('Health','#43302F'), tile('Wallet','#26262F'), tile('Books','#3A2E22'), tile('Mail','#2C3546'),
+      tile('Camera','#26262E'), tile('Photos','#372C46'), tile('Reminders','#2C4636'), tile('Settings','#33333B'),
+    ];
+    const dockIcons = [
+      tile('','#2C4636'), tile('','#2C3546'), tile('','#2C4456'), tile('','#3A2C46'),
+    ];
+
+    return { accent, accentLight, accentDeep, wordmark, homeIcons, dockIcons };
+  }
+}
+</script>
+</body>
+</html>

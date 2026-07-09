@@ -4,3 +4,5 @@ node_modules/
 backend/google-tts-key.json
 backend/public/exports/
 backend/public/worksheets/
+ios/DerivedData/
+.claude/settings.local.json

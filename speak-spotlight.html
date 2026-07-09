@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Speak · Spotlight (handoff mockup)</title>
+
+<!--
+  ============================================================================
+  SPEAK — "SPOTLIGHT" SCREEN  ·  handoff mockup for the existing vanilla app
+  ============================================================================
+  Matches your conventions so it drops into index.html / style.css / app.js:
+    • <section class="app-screen"> panels toggled by showScreen(id)
+    • CSS custom properties for theming (mirror your --primary etc.)
+    • inline SVG <symbol> sprite, referenced via <use href="#sonic-i-...">
+    • Inter + Noto Sans SC, mobile-first, max-width 700px app shell
+    • NO framework, NO build step
+
+  TWO INTEGRATION POINTS (search "INTEGRATION"):
+    1. startRecording() / stopRecording()  -> your Azure speech SDK + MediaRecorder
+    2. applyScore(result)                   -> feed Azure's JSON straight in.
+       Expected shape (you already produce this):
+         { score, accuracy, fluency, completeness,
+           words: [ { text, status: 'good' | 'ok' | 'bad' } ] }
+
+  Everything else (layout, ring, confetti, per-word colouring, completion
+  screen, per-sentence retry) is presentation you can lift as-is.
+  ============================================================================
+-->
+
+<style>
+  /* ---- THEME TOKENS (mirror these onto your existing :root variables) ---- */
+  :root{
+    --primary:#E5267E;          /* pink */
+    --primary-soft:rgba(229,38,126,.30);
+    --cyan:#12B5CB;
+    --ink:#191A33;              /* navy text */
+    --muted:#6E6E86;
+    --faint:#9A9AAd;
+    --line:#E2E0EC;
+    --surface:#ffffff;
+    --surface-2:#ECEAF3;        /* lavender */
+    --surface-3:#F4F2F9;
+    --bg:#E8E6EE;
+    --good:#16A34A;
+    --ok:#E0A106;
+    --bad:#DC2626;
+    --r-lg:34px;
+    --r-md:20px;
+    --r-pill:999px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    display:flex;align-items:flex-start;justify-content:center;
+    padding:24px 16px;
+  }
+  .zh{font-family:'Noto Sans SC','Inter',sans-serif}
+
+  /* ---- app shell ---- */
+  .app-shell{
+    position:relative;width:100%;max-width:700px;height:792px;
+    background:var(--surface);border-radius:var(--r-lg);
+    box-shadow:0 30px 70px -30px rgba(25,26,51,.35);
+    overflow:hidden;display:flex;flex-direction:column;
+  }
+
+  /* ---- screens (your showScreen pattern) ---- */
+  .app-screen{flex:1;min-height:0;display:none;flex-direction:column}
+  .app-screen.is-active{display:flex}
+
+  .screen-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:34px 40px 0;overflow:hidden}
+
+  /* ---- type ---- */
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--primary);text-transform:uppercase}
+  .h1{font-size:33px;font-weight:800;line-height:1.08;letter-spacing:-.01em;text-wrap:balance}
+  .sub{font-size:16px;color:var(--muted);line-height:1.5}
+
+  /* ---- buttons ---- */
+  .btn{display:flex;align-items:center;justify-content:center;gap:11px;border:none;cursor:pointer;
+       font-family:inherit;font-weight:800;border-radius:var(--r-pill);transition:transform .12s ease,filter .12s ease}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--primary);color:#fff;height:62px;font-size:18px;box-shadow:0 14px 26px -10px var(--primary-soft)}
+  .btn-primary:hover{filter:brightness(1.04)}
+  .btn-cyan{background:var(--cyan);color:#fff;height:58px;font-size:17px;box-shadow:0 12px 22px -10px rgba(18,181,203,.55)}
+  .btn-ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line);height:56px;font-size:17px}
+  .icon{width:22px;height:22px;display:block}
+
+  /* ---- segmented (library / my texts) ---- */
+  .seg{display:inline-flex;align-self:flex-start;background:var(--surface-2);border-radius:var(--r-pill);padding:5px}
+  .seg span{font-weight:700;font-size:15px;padding:9px 22px;border-radius:var(--r-pill);color:var(--muted)}
+  .seg span.on{background:#fff;color:var(--primary);box-shadow:0 2px 6px rgba(25,26,51,.08)}
+
+  .paste-box{background:var(--surface-2);border:2px solid var(--surface-2);border-radius:var(--r-md);padding:20px;min-height:200px;color:var(--faint);font-size:16px}
+
+  /* ---- practice header ---- */
+  .row{display:flex;align-items:center;justify-content:space-between}
+  .iconbtn{width:40px;height:40px;border-radius:var(--r-pill);border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .counter{font-size:14px;font-weight:700;color:var(--muted)}
+  .counter b{color:var(--primary)}
+  .lang-pill{background:var(--cyan);color:#fff;font-weight:700;font-size:14px;padding:7px 14px;border-radius:var(--r-pill)}
+
+  .segments{display:flex;gap:7px;margin-top:16px}
+  .segments i{flex:1;height:7px;border-radius:4px;background:var(--line)}
+  .segments i.done{background:var(--good)}
+  .segments i.cur{background:var(--primary)}
+
+  /* ---- karaoke sentence ---- */
+  .sentence{text-align:center;margin-top:28px}
+  .sentence .zh{font-size:42px;font-weight:700;line-height:1.25;color:var(--ink);display:flex;justify-content:center;flex-wrap:wrap;gap:2px}
+  .sentence .py{font-size:18px;color:var(--cyan);font-weight:700;margin-top:10px}
+  .sentence .en{font-size:15px;color:var(--faint);margin-top:4px}
+  .w-good{color:var(--good)} .w-ok{color:var(--ok)} .w-bad{color:var(--bad)}
+
+  /* ---- hero stage ---- */
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;min-height:0}
+
+  /* mic */
+  .mic{position:relative;width:176px;height:176px;border-radius:var(--r-pill);overflow:hidden;background:var(--primary);
+       display:flex;align-items:center;justify-content:center;cursor:pointer;
+       box-shadow:0 18px 40px -14px var(--primary-soft);transition:background .3s ease,box-shadow .3s ease}
+  .mic.is-idle{animation:micPulse 2.2s ease-out infinite}
+  .mic.is-listening{background:var(--cyan)}
+  .mic.is-recording{background:var(--ink);box-shadow:0 18px 40px -14px rgba(25,26,51,.6);animation:none}
+  .mic .fill{position:absolute;inset:0;background:linear-gradient(180deg,var(--cyan),var(--primary));height:0%;transition:height .35s ease}
+  .mic.is-recording .fill{height:100%;transition:height 2.25s linear}
+  .mic .ic{position:relative;z-index:2}
+  .mic-label{font-size:16px;font-weight:700;color:var(--muted);margin-top:22px;height:20px}
+  .listen-btn{margin-top:18px;display:inline-flex;align-items:center;gap:9px;background:#fff;border:1.5px solid var(--line);color:var(--ink);border-radius:var(--r-pill);padding:11px 22px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer}
+
+  @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 var(--primary-soft)}50%{box-shadow:0 0 0 22px rgba(229,38,126,0)}}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}
+  @keyframes burst{0%{transform:translate(0,0) scale(.2);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0}}
+
+  /* score ring */
+  .ring-wrap{position:relative;width:212px;height:212px;animation:pop .5s cubic-bezier(.2,.9,.3,1.2) both}
+  .ring-wrap.big{width:220px;height:220px}
+  .ring-arc{stroke-dasharray:326.7;stroke-dashoffset:326.7;transition:stroke-dashoffset 1.1s cubic-bezier(.2,.85,.25,1) .1s;transform:rotate(-90deg);transform-origin:60px 60px}
+  .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring-score{font-size:52px;font-weight:800;line-height:1}
+  .ring-score s{font-size:24px;text-decoration:none}
+  .ring-cap{font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+  .verdict{display:flex;align-items:center;gap:9px;margin-top:18px}
+  .verdict .dot{width:11px;height:11px;border-radius:var(--r-pill)}
+  .verdict .msg{font-size:18px;font-weight:800}
+
+  .details-toggle{margin-top:10px;background:none;border:none;color:var(--muted);font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .details-toggle svg{transition:transform .2s}
+  .details-toggle.open svg{transform:rotate(180deg)}
+  .metrics{margin-top:14px;display:none;gap:10px}
+  .metrics.show{display:flex}
+  .metric{background:var(--surface-2);border-radius:14px;padding:12px 18px;text-align:center}
+  .metric b{display:block;font-size:22px;font-weight:800;color:var(--ink)}
+  .metric span{font-size:12px;font-weight:700;color:var(--faint)}
+
+  /* confetti */
+  .confetti{position:absolute;top:46%;left:50%;pointer-events:none}
+  .confetti i{position:absolute;width:10px;height:10px;animation:burst .9s cubic-bezier(.2,.8,.3,1) forwards}
+
+  /* bottom action row */
+  .actions{display:flex;gap:14px;padding:0 40px 24px}
+  .actions .btn{flex:1}
+  .actions .btn.wide{flex:2}
+
+  /* ---- complete ---- */
+  .complete-body{flex:1;display:flex;flex-direction:column;align-items:center;padding:34px 40px 0;position:relative;min-height:0}
+  .recap{display:flex;gap:12px;margin-top:26px}
+  .recap button{background:none;border:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;font-family:inherit}
+  .recap .chip{position:relative;width:54px;height:54px;border-radius:16px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+  .recap .badge{position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;border-radius:var(--r-pill);background:#fff;border:1.5px solid var(--surface-2);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(25,26,51,.12)}
+  .recap small{font-size:12px;font-weight:700;color:var(--faint)}
+  .recap-hint{font-size:13px;font-weight:600;color:#B7B6C4;margin-top:14px;display:flex;align-items:center;gap:6px}
+  .complete-cta{margin-top:auto;width:100%;display:flex;flex-direction:column;gap:12px;padding-bottom:24px}
+
+  /* ---- bottom tab bar ---- */
+  .tabbar{display:flex;border-top:1px solid #F0EEF5;background:#fff;padding:10px 0 14px}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#B7B6C4;cursor:pointer}
+  .tab span{font-size:11px;font-weight:700}
+  .tab.on{color:var(--primary)}
+  .tab.on span{font-weight:800}
+
+  /* dev jump bar (REMOVE on integration) */
+  .devbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:4px;background:#191A33;border-radius:var(--r-pill);padding:5px;z-index:50}
+  .devbar button{border:none;background:transparent;color:#9A9AAd;font-family:inherit;font-weight:800;font-size:12px;padding:7px 14px;border-radius:var(--r-pill);cursor:pointer}
+  .devbar button.on{background:var(--primary);color:#fff}
+</style>
+</head>
+<body>
+
+<!-- ===================== SVG SPRITE (merge into your existing sprite) ===================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sonic-i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></symbol>
+  <symbol id="sonic-i-play" viewBox="0 0 24 24"><polygon points="6 4 18 12 6 20 6 4"/></symbol>
+  <symbol id="sonic-i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="sonic-i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="sonic-i-retry" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="sonic-i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="sonic-i-library" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.4-5-1.4-7 0v12c2-1.4 5-1.4 7 0 2-1.4 5-1.4 7 0V6c-2-1.4-5-1.4-7 0z"/></symbol>
+  <symbol id="sonic-i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="sonic-i-read" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.4-5-1.4-7 0v12c2-1.4 5-1.4 7 0 2-1.4 5-1.4 7 0V6c-2-1.4-5-1.4-7 0z"/></symbol>
+  <symbol id="sonic-i-cards" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="13" height="13" rx="2"/><path d="M4 16V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="sonic-i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+</svg>
+
+<!-- dev jump bar — REMOVE when integrating -->
+<div class="devbar">
+  <button data-jump="setup" class="on">Setup</button>
+  <button data-jump="practice">Practice</button>
+  <button data-jump="result">Result</button>
+  <button data-jump="complete">Finish</button>
+</div>
+
+<div class="app-shell">
+
+  <!-- ============================ SETUP ============================ -->
+  <section class="app-screen is-active" id="speak-setup">
+    <div class="screen-body">
+      <div class="seg"><span class="on">Library</span><span>My texts</span></div>
+      <div class="eyebrow" style="margin-top:28px">Magic Read</div>
+      <div class="h1" style="margin-top:8px">Practice pronunciation with your own texts</div>
+      <div class="sub" style="margin-top:12px;max-width:520px">Paste homework, a dialogue or an exam text. We split it into sentences and coach you one at a time.</div>
+      <div class="paste-box" style="margin-top:24px">Paste a text to start…</div>
+      <button class="btn btn-primary" style="margin-top:24px" onclick="startRun()">
+        <svg class="icon"><use href="#sonic-i-mic"/></svg> Start speaking
+      </button>
+      <div style="text-align:center;color:var(--faint);font-size:14px;margin-top:14px">4 sentences · about 2 minutes</div>
+    </div>
+    <!-- tab bar shared markup injected by renderTabbar() -->
+    <div class="tabbar" data-tabbar></div>
+  </section>
+
+  <!-- ============================ PRACTICE ============================ -->
+  <section class="app-screen" id="speak-practice">
+    <div class="screen-body">
+      <div class="row">
+        <button class="iconbtn" onclick="showScreen('speak-setup')"><svg class="icon" style="color:var(--muted)"><use href="#sonic-i-back"/></svg></button>
+        <div class="counter">Sentence <b id="p-num">1</b> of <span id="p-total">4</span></div>
+        <div class="lang-pill zh">中文</div>
+      </div>
+      <div class="segments" id="p-segments"></div>
+
+      <div class="sentence">
+        <div class="zh" id="p-zh"></div>
+        <div class="py" id="p-py"></div>
+        <div class="en" id="p-en"></div>
+      </div>
+
+      <div class="stage">
+        <div class="confetti" id="p-confetti" style="display:none"></div>
+
+        <!-- mic (idle / listening / recording) -->
+        <div id="p-mic-group" style="display:flex;flex-direction:column;align-items:center">
+          <div class="mic is-idle" id="p-mic" onclick="onMicTap()">
+            <div class="fill"></div>
+            <svg class="ic" width="62" height="62" style="color:#fff"><use href="#sonic-i-mic"/></svg>
+          </div>
+          <div class="mic-label" id="p-mic-label">Tap to speak</div>
+          <button class="listen-btn" onclick="onListen()">
+            <svg width="16" height="16" style="color:var(--cyan)"><use href="#sonic-i-play"/></svg> Listen first
+          </button>
+        </div>
+
+        <!-- score ring (done) -->
+        <div id="p-result" style="display:none;flex-direction:column;align-items:center">
+          <div class="ring-wrap">
+            <svg width="212" height="212" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" stroke="var(--surface-2)" stroke-width="11" fill="none"/>
+              <circle id="p-ring" class="ring-arc" cx="60" cy="60" r="52" stroke-width="11" fill="none" stroke-linecap="round"/>
+            </svg>
+            <div class="ring-center">
+              <div class="ring-score" id="p-ring-score"></div>
+              <div class="ring-cap">Pronunciation</div>
+            </div>
+          </div>
+          <div class="verdict"><span class="dot" id="p-dot"></span><span class="msg" id="p-msg"></span></div>
+          <button class="details-toggle" id="p-dtoggle" onclick="toggleDetails()">See details <svg width="14" height="14"><use href="#sonic-i-chevron"/></svg></button>
+          <div class="metrics" id="p-metrics">
+            <div class="metric"><b id="m-acc"></b><span>Accuracy</span></div>
+            <div class="metric"><b id="m-flu"></b><span>Fluency</span></div>
+            <div class="metric"><b id="m-comp"></b><span>Complete</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- actions (only when done) -->
+    <div class="actions" id="p-actions" style="display:none">
+      <button class="btn btn-ghost" onclick="retryCurrent()">Try again</button>
+      <button class="btn btn-cyan wide" id="p-primary" onclick="onPrimary()">Next sentence</button>
+    </div>
+    <div class="tabbar" data-tabbar></div>
+  </section>
+
+  <!-- ============================ COMPLETE ============================ -->
+  <section class="app-screen" id="speak-complete">
+    <div class="complete-body">
+      <div class="confetti" id="c-confetti" style="top:30%"></div>
+      <div class="eyebrow">Text complete</div>
+      <div class="h1" style="margin-top:8px;text-align:center">Nicely done!</div>
+      <div class="sub" style="margin-top:8px;text-align:center">You spoke all <span id="c-total">4</span> sentences out loud.</div>
+
+      <div class="ring-wrap big" style="margin-top:24px">
+        <svg width="220" height="220" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" stroke="var(--surface-2)" stroke-width="11" fill="none"/>
+          <circle id="c-ring" class="ring-arc" cx="60" cy="60" r="52" stroke-width="11" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-score" id="c-score"></div>
+          <div class="ring-cap">Overall</div>
+        </div>
+      </div>
+
+      <div class="recap" id="c-recap"></div>
+      <div class="recap-hint"><svg width="14" height="14"><use href="#sonic-i-retry"/></svg> Tap a sentence to practise it again</div>
+
+      <div class="complete-cta">
+        <button class="btn btn-primary" onclick="newText()"><svg class="icon"><use href="#sonic-i-plus"/></svg> Paste another text</button>
+        <button class="btn btn-ghost" onclick="newText()"><svg class="icon" style="color:var(--cyan)"><use href="#sonic-i-library"/></svg> Choose from Library</button>
+      </div>
+    </div>
+    <div class="tabbar" data-tabbar></div>
+  </section>
+
+</div>
+
+<script>
+/* ============================================================================
+   STATE
+   ============================================================================ */
+const SENTENCES = [
+  { zh:'我的爱好很多。', py:'Wǒ de àihào hěn duō.', en:'I have many hobbies.', base:94 },
+  { zh:'我喜欢听音乐，也喜欢看书。', py:'Wǒ xǐhuān tīng yīnyuè, yě xǐhuān kàn shū.', en:'I like music and reading.', base:88 },
+  { zh:'周末我常常跑步。', py:'Zhōumò wǒ chángcháng pǎobù.', en:'On weekends I often go running.', base:79 },
+  { zh:'运动让我很快乐。', py:'Yùndòng ràng wǒ hěn kuàilè.', en:'Exercise makes me happy.', base:97 },
+];
+
+const state = {
+  idx: 0,
+  phase: 'idle',          // idle | listening | recording | done
+  fromComplete: false,    // came here via a recap chip?
+  results: [],            // per-sentence { score, accuracy, fluency, completeness, words:[{text,status}] }
+};
+const TOTAL = SENTENCES.length;
+let recordTimer = null, listenTimer = null;
+
+function resetResults(){ state.results = SENTENCES.map(()=>null); }
+resetResults();
+
+/* ============================================================================
+   SCREEN ROUTER  (replace with your existing showScreen())
+   ============================================================================ */
+function showScreen(id){
+  document.querySelectorAll('.app-screen').forEach(s=>s.classList.toggle('is-active', s.id===id));
+  document.querySelectorAll('.devbar button').forEach(b=>{
+    const map={setup:'speak-setup',practice:'speak-practice',result:'speak-practice',complete:'speak-complete'};
+    b.classList.toggle('on', map[b.dataset.jump]===id);
+  });
+}
+
+/* ============================================================================
+   COLOUR / COPY HELPERS
+   ============================================================================ */
+const C = 326.7; // ring circumference (r=52)
+function colorFor(score){ return score>=85 ? 'var(--good)' : score>=70 ? 'var(--ok)' : 'var(--bad)'; }
+function strokeFor(score){ return score>=85 ? '#16A34A' : score>=70 ? '#E0A106' : '#DC2626'; }
+function messageFor(score){ return score>=95?'Native-like!' : score>=85?'Sounds clean!' : score>=70?'Almost there' : 'Keep going'; }
+
+/* ============================================================================
+   INTEGRATION POINT #1 — RECORDING
+   Replace the fake timer with your Azure speech SDK + MediaRecorder.
+   On tap: start capture, drive the mic fill, and when Azure returns call
+   applyScore(result) with the real JSON.
+   ============================================================================ */
+function onMicTap(){
+  if(state.phase==='recording') return;
+  state.phase='recording';
+  renderMic();
+
+  // --- INTEGRATION: start your recorder here -------------------------------
+  // startAzureRecognition({ referenceText: SENTENCES[state.idx].zh,
+  //   onResult: (azureJson) => applyScore(mapAzure(azureJson)) });
+  // -------------------------------------------------------------------------
+
+  // DEMO ONLY: fake a 2.3s recording then synthesise a score.
+  recordTimer = setTimeout(()=>{
+    applyScore(fakeScore(state.idx));
+  }, 2300);
+}
+
+/* INTEGRATION POINT #2 — feed Azure's result straight in.
+   result = { score, accuracy, fluency, completeness,
+              words:[ {text, status:'good'|'ok'|'bad'} ] }              */
+function applyScore(result){
+  state.results[state.idx] = result;
+  state.phase='done';
+  renderPractice();
+  fireConfetti('p-confetti', result.score>=85);
+}
+
+/* INTEGRATION POINT #1b — Listen (your Google TTS) */
+function onListen(){
+  if(state.phase==='recording') return;
+  state.phase='listening'; renderMic();
+  // --- INTEGRATION: play TTS for SENTENCES[state.idx].zh, then: --------------
+  listenTimer = setTimeout(()=>{ if(state.phase==='listening'){ state.phase='idle'; renderMic(); } }, 1400);
+}
+
+/* ============================================================================
+   FLOW
+   ============================================================================ */
+function startRun(){ state.idx=0; state.phase='idle'; state.fromComplete=false; resetResults(); renderPractice(); showScreen('speak-practice'); }
+function retryCurrent(){ state.phase='idle'; renderPractice(); }
+function onPrimary(){
+  if(state.fromComplete){ state.fromComplete=false; renderComplete(); showScreen('speak-complete'); return; }
+  if(state.idx >= TOTAL-1){ renderComplete(); showScreen('speak-complete'); fireConfetti('c-confetti', true); return; }
+  state.idx++; state.phase='idle'; renderPractice();
+}
+function retrySentence(i){ state.idx=i; state.phase='idle'; state.fromComplete=true; renderPractice(); showScreen('speak-practice'); }
+function newText(){ state.idx=0; state.phase='idle'; state.fromComplete=false; resetResults(); showScreen('speak-setup'); }
+
+/* ============================================================================
+   RENDER
+   ============================================================================ */
+function renderMic(){
+  const mic=document.getElementById('p-mic');
+  mic.className='mic '+(state.phase==='recording'?'is-recording':state.phase==='listening'?'is-listening':'is-idle');
+  const label=document.getElementById('p-mic-label');
+  label.textContent = state.phase==='recording'?'Listening…' : state.phase==='listening'?'Playing audio…' : 'Tap to speak';
+}
+
+function renderPractice(){
+  const s=SENTENCES[state.idx];
+  const done = state.phase==='done';
+  const res = state.results[state.idx];
+
+  document.getElementById('p-num').textContent = state.idx+1;
+  document.getElementById('p-total').textContent = TOTAL;
+  document.getElementById('p-py').textContent = s.py;
+  document.getElementById('p-en').textContent = s.en;
+
+  // segments
+  document.getElementById('p-segments').innerHTML =
+    SENTENCES.map((_,i)=>`<i class="${i<state.idx?'done':i===state.idx?'cur':''}"></i>`).join('');
+
+  // sentence (per-word colouring once we have a result)
+  const zh=document.getElementById('p-zh');
+  if(done && res && res.words){
+    zh.innerHTML = res.words.map(w=>`<span class="w-${w.status}">${w.text}</span>`).join('');
+  } else {
+    zh.textContent = s.zh;
+  }
+
+  // toggle mic vs result
+  document.getElementById('p-mic-group').style.display = done?'none':'flex';
+  document.getElementById('p-result').style.display = done?'flex':'none';
+  document.getElementById('p-actions').style.display = done?'flex':'none';
+  renderMic();
+
+  if(done && res){
+    document.getElementById('p-ring-score').innerHTML = res.score+'<s>%</s>';
+    document.getElementById('p-ring-score').style.color = colorFor(res.score);
+    const ring=document.getElementById('p-ring');
+    ring.setAttribute('stroke', strokeFor(res.score));
+    ring.style.strokeDashoffset = C; // reset then animate
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ ring.style.strokeDashoffset = (C*(1-res.score/100)).toFixed(1); }));
+    document.getElementById('p-dot').style.background = colorFor(res.score);
+    const msg=document.getElementById('p-msg'); msg.textContent=messageFor(res.score); msg.style.color=colorFor(res.score);
+    document.getElementById('m-acc').textContent = res.accuracy;
+    document.getElementById('m-flu').textContent = res.fluency;
+    document.getElementById('m-comp').textContent = res.completeness;
+    // collapse details by default
+    document.getElementById('p-metrics').classList.remove('show');
+    document.getElementById('p-dtoggle').classList.remove('open');
+    document.getElementById('p-dtoggle').firstChild.textContent='See details ';
+    document.getElementById('p-primary').textContent = state.fromComplete ? 'Back to summary' : (state.idx>=TOTAL-1 ? 'Finish text' : 'Next sentence');
+  }
+}
+
+function toggleDetails(){
+  const m=document.getElementById('p-metrics'), t=document.getElementById('p-dtoggle');
+  const open=m.classList.toggle('show'); t.classList.toggle('open', open);
+  t.firstChild.textContent = open?'Hide details ':'See details ';
+}
+
+function renderComplete(){
+  const scored = state.results.map((r,i)=> r ? r.score : SENTENCES[i].base);
+  const overall = Math.round(scored.reduce((a,b)=>a+b,0)/scored.length);
+  document.getElementById('c-total').textContent = TOTAL;
+  document.getElementById('c-score').innerHTML = overall+'<s>%</s>';
+  document.getElementById('c-score').style.color = colorFor(overall);
+  const ring=document.getElementById('c-ring');
+  ring.setAttribute('stroke', strokeFor(overall));
+  ring.style.strokeDashoffset=C;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ ring.style.strokeDashoffset=(C*(1-overall/100)).toFixed(1); }));
+
+  document.getElementById('c-recap').innerHTML = scored.map((sc,i)=>`
+    <button onclick="retrySentence(${i})">
+      <div class="chip" style="color:${colorFor(sc)}">${sc}
+        <div class="badge"><svg width="12" height="12" style="color:var(--primary)"><use href="#sonic-i-retry"/></svg></div>
+      </div>
+      <small>Sent ${i+1}</small>
+    </button>`).join('');
+}
+
+/* confetti */
+function fireConfetti(id, on){
+  const el=document.getElementById(id);
+  if(!on){ el.style.display='none'; el.innerHTML=''; return; }
+  const cols=['#E5267E','#12B5CB','#16A34A','#E0A106'];
+  el.innerHTML = Array.from({length:14},(_,i)=>{
+    const ang=(i/14)*Math.PI*2, d=64+((i*37)%46);
+    const tx=(Math.cos(ang)*d).toFixed(1), ty=(Math.sin(ang)*d).toFixed(1);
+    return `<i style="border-radius:${i%2?'999px':'3px'};background:${cols[i%4]};--tx:${tx}px;--ty:${ty}px;animation-delay:${(i%5)*0.03}s"></i>`;
+  }).join('');
+  el.style.display='block';
+  clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.display='none'; el.innerHTML=''; }, 1300);
+}
+
+/* ============================================================================
+   DEMO SCORE SYNTHESISER  (delete once Azure is wired)
+   ============================================================================ */
+function fakeScore(idx){
+  const prev = state.results[idx] ? state.results[idx].score : SENTENCES[idx].base;
+  let score = Math.round(prev + (Math.random()*13 - 3));
+  score = Math.max(62, Math.min(100, score));
+  const accuracy = Math.max(55, Math.min(100, score - Math.round(Math.random()*6)));
+  const fluency  = Math.min(100, score + Math.round(Math.random()*7));
+  const completeness = Math.random()<0.7 ? 100 : 96;
+  const badP=(100-score)/100;
+  const chars=[...SENTENCES[idx].zh].filter(ch=>!/[，。！？、]/.test(ch));
+  const words = chars.map(ch=>{ const r=Math.random(); let status='good'; if(r<badP*0.4) status='bad'; else if(r<badP) status='ok'; return {text:ch, status}; });
+  return { score, accuracy, fluency, completeness, words };
+}
+
+/* ============================================================================
+   SHARED TAB BAR  (you already have one — this just fills the mockup)
+   ============================================================================ */
+function renderTabbar(){
+  const items=[['home','Home'],['read','Read'],['mic','Speak','on'],['cards','Cards'],['video','Video']];
+  const html=items.map(([ic,label,on])=>`<div class="tab ${on||''}"><svg width="22" height="22"><use href="#sonic-i-${ic}"/></svg><span>${label}</span></div>`).join('');
+  document.querySelectorAll('[data-tabbar]').forEach(t=>t.innerHTML=html);
+}
+
+/* dev jump bar — REMOVE on integration */
+document.querySelector('.devbar').addEventListener('click', e=>{
+  const j=e.target.dataset.jump; if(!j) return;
+  if(j==='setup') showScreen('speak-setup');
+  else if(j==='practice'){ state.phase='idle'; state.fromComplete=false; renderPractice(); showScreen('speak-practice'); }
+  else if(j==='result'){ state.fromComplete=false; if(!state.results[state.idx]) state.results[state.idx]=fakeScore(state.idx); state.phase='done'; renderPractice(); showScreen('speak-practice'); fireConfetti('p-confetti', state.results[state.idx].score>=85); }
+  else if(j==='complete'){ renderComplete(); showScreen('speak-complete'); fireConfetti('c-confetti', true); }
+});
+
+/* init */
+renderTabbar();
+renderPractice();
+showScreen('speak-setup');
+</script>
+
+<!-- Inter + Noto Sans SC (you already load these) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</body>
+</html>

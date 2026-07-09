@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Magic Read — Reader (handoff mockup)</title>
+
+<!--
+  ============================================================================
+  READER SCREEN  ·  handoff mockup for the existing vanilla "sonic" app
+  ============================================================================
+  Built to your conventions so it drops into index.html / style.css / app.js:
+    • <section class="app-screen"> panels toggled by showScreen(id)
+    • CSS custom properties for theming (mirror onto your :root)
+    • inline SVG <symbol> sprite, referenced via <use href="#i-...">
+    • Inter + Noto Sans SC, mobile-first, max-width 700px app shell, bottom tabs
+
+  STAGES:  setup  →  reader  →  exercises (menu → type 1 / type 2)
+
+  INTEGRATION POINTS (search "INTEGRATION"):
+    1. TTS playback        -> Google TTS with the selected voice; drive the
+                              per-sentence highlight from real audio timings.
+    2. Slow toggle         -> TTS speakingRate.
+    3. Word data + lookup  -> pinyin-pro / your dictionary. Each token already
+                              carries {hz, py, en, pos}; swap the inline PASSAGE
+                              for your tokeniser output.
+    4. Save word to cards  -> Supabase flashcards insert (saveWord).
+    5. Bookmark / save text -> Supabase saved_texts (toggleBookmark).
+    6. Library / Saved lists -> Supabase queries (LIBRARY / SAVED arrays).
+    7. Exercise data       -> generate order-target & cloze options from the text.
+  ============================================================================
+-->
+
+<style>
+  /* ---- THEME TOKENS (these mirror the reader-sonic mockup; merge into :root) ---- */
+  :root{
+    --bg:#E5E7EE; --shell:#F4F5F9; --surface:#FFFFFF; --surface-2:#F1F2F8; --lav:#ECEAF3;
+    --primary:#E5267E; --primary-soft:#FF4D9D; --cyan:#0AB4D6; --cyan-ink:#0E7490;
+    --yellow:#F5B400; --amber-ink:#B98300; --good:#16A34A; --bad:#DC2626;
+    --text:#1C1233; --text-soft:#6A6480; --text-dim:#9A93AD; --border:#E5E3EE;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
+       background:var(--bg);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px}
+  .zh{font-family:'Noto Sans SC','Inter',sans-serif}
+  .ic{stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---- app shell ---- */
+  .app-shell{position:relative;width:100%;max-width:700px;height:880px;background:var(--shell);
+             border-radius:30px;box-shadow:0 30px 70px -30px rgba(28,18,51,.4);overflow:hidden;
+             display:flex;flex-direction:column}
+  .app-screen{flex:1;min-height:0;display:none;flex-direction:column}
+  .app-screen.is-active{display:flex}
+  .scroll{flex:1;min-height:0;overflow-y:auto}
+  .scroll::-webkit-scrollbar{width:0}
+
+  /* ---- generic ---- */
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--primary);text-transform:uppercase}
+  .h1{font-size:30px;font-weight:800;line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;border:none;cursor:pointer;
+       font-family:inherit;font-weight:700;border-radius:16px;transition:filter .12s ease}
+  .btn-primary{color:#fff;background:linear-gradient(95deg,var(--primary),var(--primary-soft));
+               box-shadow:0 12px 26px -12px rgba(229,38,126,.7)}
+  .btn-primary:hover{filter:brightness(1.04)}
+  .iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);
+           color:var(--text);display:grid;place-items:center;cursor:pointer}
+
+  /* ---- appbar / toolbar ---- */
+  .appbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 22px 12px}
+  .appbar .ttl b{font-weight:800;font-size:16px}
+  .appbar .ttl span{display:block;font-size:11px;color:var(--text-soft)}
+  .toolbar{display:flex;gap:8px;align-items:center;padding:0 22px 12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border-radius:11px;border:1px solid var(--border);
+        background:var(--surface);font-family:inherit;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+  .pill.on{background:rgba(10,180,214,.14);border-color:rgba(10,180,214,.5);color:var(--cyan-ink)}
+  .pill.slow.on{background:rgba(245,180,0,.16);border-color:rgba(245,180,0,.55);color:var(--amber-ink)}
+  .lvl{margin-left:auto;font-size:12px;font-weight:700;color:var(--cyan-ink);background:rgba(10,180,214,.12);
+       border:1px solid rgba(10,180,214,.4);padding:7px 11px;border-radius:11px}
+
+  /* ---- reading surface ---- */
+  .reader{flex:1;min-height:0;overflow-y:auto;background:var(--surface);margin:0 14px;border-radius:18px;padding:26px 24px 30px}
+  .han{font-family:'Noto Sans SC',sans-serif;font-size:23px;font-weight:500;line-height:2.4;color:var(--text)}
+  .para{margin-bottom:18px}
+  .sent{border-radius:6px;padding:2px 0}
+  .sent.active{background:rgba(229,38,126,.08);box-shadow:0 0 0 4px rgba(229,38,126,.08)}
+  .word{display:inline-flex;flex-direction:column;align-items:center;vertical-align:bottom;margin:0 1px;cursor:pointer;border-radius:5px;padding:0 1px}
+  .word:hover{background:rgba(10,180,214,.10)}
+  .word small{font-family:'Inter';font-size:11px;color:var(--text-dim);font-weight:600;line-height:1.1;margin-bottom:3px;display:none}
+  .han.show-pinyin .word small{display:block}
+  .word .hz{line-height:1.15;border-radius:4px}
+  .word.sel .hz{color:var(--cyan-ink);background:rgba(10,180,214,.18)}
+  .trans{margin:8px 2px 0;font-size:13.5px;line-height:1.55;color:var(--text-dim);font-style:italic;display:none}
+  .han.show-trans .trans{display:block}
+
+  /* ---- playback dock ---- */
+  .dock{display:flex;align-items:center;gap:14px;padding:14px 22px}
+  .playbtn{width:54px;height:54px;flex:none;border-radius:999px;border:none;cursor:pointer;display:grid;place-items:center;
+           background:linear-gradient(135deg,var(--primary),var(--primary-soft));box-shadow:0 10px 22px -10px rgba(229,38,126,.7)}
+  .progress{height:8px;border-radius:99px;background:var(--lav);overflow:hidden}
+  .progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--primary-soft));transition:width .4s ease}
+
+  /* ---- sheets ---- */
+  .scrim{position:absolute;inset:0;background:rgba(28,18,51,.35);z-index:20;display:none;animation:fadeIn .2s ease}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:22px 24px 26px;z-index:21;
+         display:none;box-shadow:0 -20px 50px -20px rgba(28,18,51,.4)}
+  .sheet.open{display:block;animation:sheetUp .28s cubic-bezier(.2,.85,.3,1)}
+  .scrim.open{display:block}
+  .grab{width:42px;height:5px;border-radius:99px;background:var(--border);margin:0 auto 16px}
+  .vrow{display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;cursor:pointer;border:1.5px solid var(--border);background:#fff;margin-bottom:8px}
+  .vrow.sel{border-color:var(--primary);background:rgba(229,38,126,.05)}
+  .vava{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none;color:#fff;font-weight:700;font-size:18px}
+
+  /* ---- toast ---- */
+  .toast{position:absolute;top:64px;left:50%;transform:translateX(-50%);z-index:30;display:none;align-items:center;gap:8px;
+         background:var(--text);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;
+         box-shadow:0 12px 30px -12px rgba(28,18,51,.5)}
+  .toast.show{display:inline-flex;animation:fadeIn .2s ease}
+
+  /* ---- tabs ---- */
+  .seg{display:flex;gap:6px;background:var(--lav);border-radius:14px;padding:5px}
+  .seg button{flex:1;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;padding:10px 0;border-radius:10px;background:transparent;color:var(--text-soft)}
+  .seg button.on{background:#fff;color:var(--primary);box-shadow:0 2px 6px rgba(28,18,51,.08)}
+
+  /* ---- setup ---- */
+  .libgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+  .libcard{border:1.5px solid var(--border);background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;font-family:inherit;text-align:left;padding:0}
+  .libcard.sel{border:2px solid var(--primary);box-shadow:0 10px 24px -14px rgba(229,38,126,.6)}
+  .libthumb{height:72px;display:grid;place-items:center}
+  .savedrow{display:flex;gap:13px;align-items:center;border:1.5px solid var(--border);background:#fff;border-radius:16px;padding:14px;cursor:pointer;font-family:inherit;width:100%;text-align:left}
+  .savedrow.sel{border:2px solid var(--primary)}
+
+  /* ---- exercises ---- */
+  .menucard{display:flex;align-items:center;gap:15px;width:100%;padding:18px;border-radius:18px;cursor:pointer;font-family:inherit;
+            border:1.5px solid var(--border);background:#fff;box-shadow:0 8px 20px -16px rgba(28,18,51,.5);margin-bottom:13px}
+  .menucard.done{border-color:rgba(22,163,74,.4);background:rgba(22,163,74,.05)}
+  .menuicon{width:48px;height:48px;border-radius:14px;flex:none;display:grid;place-items:center;color:#fff}
+  .excard{background:#fff;border:1px solid var(--border);border-radius:20px;padding:22px}
+  .extag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--primary);background:rgba(229,38,126,.10);padding:3px 9px;border-radius:6px}
+  .slots{display:flex;flex-wrap:wrap;gap:9px;padding:16px;border:1.5px dashed var(--border);border-radius:14px;background:var(--surface-2);min-height:70px}
+  .slots.wrong{animation:shake .4s ease}
+  .slot{height:44px;padding:0 16px;border-radius:11px;border:1px solid var(--border);background:#fff;color:var(--text);
+        cursor:pointer;font-family:'Noto Sans SC';font-size:19px;font-weight:700}
+  .slot.empty{min-width:56px;border:1.5px dashed #B9B4C7;background:transparent;cursor:default}
+  .chip{height:44px;padding:0 16px;border-radius:11px;border:1px solid var(--border);background:#fff;color:var(--primary);
+        cursor:pointer;font-family:'Noto Sans SC';font-size:19px;font-weight:700}
+  .chip.used{opacity:.32;pointer-events:none}
+  .opt{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 0;border-radius:14px;cursor:pointer;
+       font-family:inherit;border:1.5px solid var(--border);background:#fff;color:var(--text)}
+  .opt .opy{font-size:12px;font-weight:500;opacity:.7;margin-top:2px}
+  .fb{margin-top:16px;padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;animation:fadeIn .25s ease}
+  .fb.ok{background:rgba(22,163,74,.10);color:var(--good)}
+  .fb.no{background:rgba(220,38,38,.08);color:var(--bad)}
+
+  /* ---- tab bar ---- */
+  .tabbar{display:flex;justify-content:space-around;align-items:center;padding:11px 14px max(16px,env(safe-area-inset-bottom));
+          border-top:1px solid var(--border);background:rgba(244,245,249,.95)}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim);background:none;border:none;cursor:pointer;font-family:inherit}
+  .tab.on{color:var(--primary)}
+
+  .confetti{position:absolute;top:34%;left:50%;pointer-events:none}
+  .confetti i{position:absolute;width:10px;height:10px;animation:burst .9s cubic-bezier(.2,.8,.3,1) forwards}
+
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes sheetUp{from{transform:translateY(110%)}to{transform:translateY(0)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1);opacity:1}}
+  @keyframes burst{0%{transform:translate(0,0) scale(.2);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0}}
+
+  /* dev jump bar — REMOVE on integration */
+  .devbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:4px;background:#1C1233;border-radius:999px;padding:5px;z-index:50}
+  .devbar button{border:none;background:transparent;color:#9A93AD;font-family:inherit;font-weight:800;font-size:12px;padding:7px 14px;border-radius:999px;cursor:pointer}
+  .devbar button.on{background:var(--primary);color:#fff}
+</style>
+</head>
+<body>
+
+<!-- ============ SVG SPRITE (merge into your existing sprite) ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6C10.5 4.8 8 4 5 4v14c3 0 5.5.8 7 2 1.5-1.2 4-2 7-2V4c-3 0-5.5.8-7 2z"/><path d="M12 6v14"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></symbol>
+  <symbol id="i-order" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"/></symbol>
+  <symbol id="i-cloze" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+</svg>
+
+<!-- dev jump bar — REMOVE on integration -->
+<div class="devbar">
+  <button data-jump="setup" class="on">Setup</button>
+  <button data-jump="reader">Reader</button>
+  <button data-jump="exercise">Exercises</button>
+</div>
+
+<div class="app-shell">
+
+  <!-- ============================ SETUP ============================ -->
+  <section class="app-screen is-active" id="read-setup">
+    <div class="scroll" style="padding:30px 28px 24px">
+      <div class="eyebrow">Magic Read</div>
+      <div class="h1" style="margin-top:8px">What would you like to read today?</div>
+      <div class="seg" style="margin-top:24px">
+        <button data-tab="paste" onclick="setSetupTab('paste')">Paste text</button>
+        <button data-tab="library" class="on" onclick="setSetupTab('library')">Library</button>
+        <button data-tab="saved" onclick="setSetupTab('saved')">Saved</button>
+      </div>
+
+      <div id="tab-paste" style="display:none;margin-top:20px">
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:18px;min-height:240px;color:var(--text-dim);font-size:16px;line-height:1.6">Paste a Chinese text here — an article, a chat, song lyrics or homework. We’ll add pinyin, audio and word lookups automatically.</div>
+        <div style="text-align:right;margin-top:12px;font-size:13px;color:var(--text-dim)">0 / 2000 characters</div>
+      </div>
+
+      <div id="tab-library" class="libgrid"></div>
+      <div id="tab-saved" style="display:none;flex-direction:column;gap:10px;margin-top:20px"></div>
+    </div>
+    <div style="padding:14px 28px 18px;border-top:1px solid var(--border)">
+      <button class="btn btn-primary" style="width:100%;height:58px;font-size:17px" onclick="openReader()">
+        <svg class="ic" width="22" height="22"><use href="#i-book"/></svg> <span id="start-label">Start reading</span>
+      </button>
+    </div>
+    <nav class="tabbar" data-tabbar></nav>
+  </section>
+
+  <!-- ============================ READER ============================ -->
+  <section class="app-screen" id="read-reader">
+    <div class="appbar">
+      <button class="iconbtn" onclick="showScreen('read-setup')"><svg class="ic" width="20" height="20"><use href="#i-left"/></svg></button>
+      <div class="ttl" style="text-align:center"><b class="zh" id="rd-title">自我介绍</b><span id="rd-sub">About Me · A2</span></div>
+      <button class="iconbtn" id="rd-bookmark" title="Save this text" onclick="toggleBookmark()"><svg class="ic" width="20" height="20"><use href="#i-bookmark"/></svg></button>
+    </div>
+    <div class="toolbar">
+      <button class="pill" id="pill-pinyin" onclick="togglePinyin()">拼 Pinyin</button>
+      <button class="pill" id="pill-trans" onclick="toggleTrans()">译 Translate</button>
+      <button class="pill" onclick="openSheet('voice')"><svg class="ic" width="16" height="16" style="stroke:var(--cyan)"><use href="#i-vol"/></svg> <span id="voice-name">Xiǎoměi</span> <svg class="ic" width="13" height="13" style="stroke:var(--text-dim)"><use href="#i-chev"/></svg></button>
+      <span class="lvl" id="rd-level">A2</span>
+    </div>
+
+    <div class="reader"><div class="han" id="han"></div>
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--surface-2)">
+        <button class="btn" style="background:rgba(229,38,126,.10);border:1px solid rgba(229,38,126,.25);color:var(--primary);border-radius:13px;padding:13px 18px;font-size:15px" onclick="showScreen('read-exercise')">
+          Practice what you read <svg class="ic" width="18" height="18"><use href="#i-arrow"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="dock">
+      <button class="playbtn" id="playbtn" onclick="togglePlay()"><svg class="ic" width="26" height="26" style="stroke:none;fill:#fff"><use href="#i-play"/></svg></button>
+      <div style="flex:1">
+        <div class="progress"><i id="rd-progress" style="width:0%"></i></div>
+        <div style="display:flex;justify-content:space-between;margin-top:7px">
+          <span id="rd-sentlabel" style="font-size:12px;color:var(--text-soft);font-weight:600">0 / 7 sentences</span>
+          <span id="rd-speed" style="font-size:12px;color:var(--text-dim)">1.0×</span>
+        </div>
+      </div>
+      <button class="pill slow" id="pill-slow" onclick="toggleSlow()"><span style="font-size:16px;line-height:1">🐢</span> Slow</button>
+    </div>
+
+    <nav class="tabbar" data-tabbar></nav>
+
+    <!-- sheets -->
+    <div class="scrim" id="scrim" onclick="closeSheets()"></div>
+    <div class="sheet" id="sheet-voice">
+      <div class="grab"></div>
+      <div style="font-size:18px;font-weight:800">Choose a voice</div>
+      <div style="font-size:13px;color:var(--text-soft);margin:4px 0 16px">Pick the narrator for text-to-speech.</div>
+      <div id="voice-list"></div>
+    </div>
+    <div class="sheet" id="sheet-word">
+      <div class="grab"></div>
+      <div style="display:flex;align-items:flex-start;gap:16px">
+        <div>
+          <div class="zh" id="w-hz" style="font-size:40px;font-weight:700;color:var(--cyan-ink);line-height:1"></div>
+          <div id="w-py" style="font-size:15px;color:var(--text-soft);font-weight:600;margin-top:6px"></div>
+        </div>
+        <button class="iconbtn" style="width:46px;height:46px;border-radius:13px" onclick="/* INTEGRATION: TTS this word */"><svg class="ic" width="20" height="20" style="stroke:var(--cyan)"><use href="#i-vol"/></svg></button>
+        <div style="flex:1"></div>
+        <button id="w-save" class="btn" onclick="saveWord()"></button>
+      </div>
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--surface-2)">
+        <span id="w-pos" style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim);background:var(--surface-2);padding:3px 9px;border-radius:6px"></span>
+        <div id="w-en" style="font-size:19px;font-weight:700;margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ EXERCISES ============================ -->
+  <section class="app-screen" id="read-exercise">
+    <div class="appbar">
+      <button class="iconbtn" id="ex-back" onclick="exBack()"><svg class="ic" width="20" height="20"><use href="#i-left"/></svg></button>
+      <div class="ttl" style="text-align:center"><b>Practice</b><span id="ex-steplabel">0 of 2 completed</span></div>
+      <div style="width:40px"></div>
+    </div>
+    <div style="display:flex;gap:7px;padding:8px 22px 0">
+      <div id="ex-seg0" style="flex:1;height:6px;border-radius:4px;background:var(--border)"></div>
+      <div id="ex-seg1" style="flex:1;height:6px;border-radius:4px;background:var(--border)"></div>
+    </div>
+    <div class="scroll" style="padding:20px 22px 24px" id="ex-body"></div>
+    <nav class="tabbar" data-tabbar></nav>
+  </section>
+
+</div>
+
+<script>
+/* ============================================================================
+   DATA  (INTEGRATION #3 / #6 / #7 — replace with Supabase + tokeniser output)
+   ============================================================================ */
+const W = (hz,py,en,pos)=>({hz,py,en,pos,word:true});
+const P = (hz)=>({hz,word:false});
+
+// passage: paragraphs -> sentences -> tokens   (each word carries pinyin/meaning/POS)
+const PASSAGE = [
+  { trans:'My name is Xiaoming. I’m Chinese and I live in Beijing. I’m twenty years old and a university student.',
+    sentences:[
+      [W('我','wǒ','I','pronoun'),W('叫','jiào','to be called','verb'),W('小明','Xiǎomíng','Xiaoming (a name)','noun'),P('。')],
+      [W('我','wǒ','I','pronoun'),W('是','shì','to be','verb'),W('中国人','Zhōngguórén','Chinese (person)','noun'),P('，'),W('住','zhù','to live','verb'),W('在','zài','in / at','prep'),W('北京','Běijīng','Beijing','noun'),P('。')],
+      [W('我','wǒ','I','pronoun'),W('今年','jīnnián','this year','noun'),W('二十','èrshí','twenty','number'),W('岁','suì','years old','noun'),P('，'),W('是','shì','to be','verb'),W('一名','yì míng','a (measure word)','phrase'),W('大学生','dàxuéshēng','university student','noun'),P('。')],
+    ]},
+  { trans:'I like studying foreign languages, and I also enjoy reading and listening to music. On weekends I often go to the park to run with friends. I think exercise makes me happy and healthier. I hope I can travel to many countries in the future.',
+    sentences:[
+      [W('我','wǒ','I','pronoun'),W('喜欢','xǐhuān','to like','verb'),W('学习','xuéxí','to study','verb'),W('外语','wàiyǔ','foreign language','noun'),P('，'),W('也','yě','also','adverb'),W('喜欢','xǐhuān','to like','verb'),W('看书','kàn shū','to read','verb'),W('和','hé','and','conj'),W('听','tīng','to listen','verb'),W('音乐','yīnyuè','music','noun'),P('。')],
+      [W('周末','zhōumò','weekend','noun'),W('的','de','(particle)','particle'),W('时候','shíhou','time / moment','noun'),P('，'),W('我','wǒ','I','pronoun'),W('常常','chángcháng','often','adverb'),W('和','hé','with','prep'),W('朋友','péngyou','friend','noun'),W('一起','yìqǐ','together','adverb'),W('去','qù','to go','verb'),W('公园','gōngyuán','park','noun'),W('跑步','pǎobù','to run','verb'),P('。')],
+      [W('我','wǒ','I','pronoun'),W('觉得','juéde','to feel / think','verb'),W('运动','yùndòng','exercise','noun'),W('让','ràng','to make / let','verb'),W('我','wǒ','me','pronoun'),W('很','hěn','very','adverb'),W('快乐','kuàilè','happy','adj'),P('，'),W('也','yě','also','adverb'),W('让','ràng','to make / let','verb'),W('我','wǒ','me','pronoun'),W('更','gèng','more','adverb'),W('健康','jiànkāng','healthy','adj'),P('。')],
+      [W('我','wǒ','I','pronoun'),W('希望','xīwàng','to hope','verb'),W('以后','yǐhòu','in the future','noun'),W('能','néng','to be able to','verb'),W('去','qù','to go','verb'),W('很多','hěnduō','many','adj'),W('国家','guójiā','country','noun'),W('旅行','lǚxíng','to travel','verb'),P('。')],
+    ]},
+];
+const TOTAL_SENTS = PASSAGE.reduce((n,p)=>n+p.sentences.length,0);
+
+const VOICES = [
+  {initial:'美',name:'Xiǎoměi · 小美',tag:'Female · Mainland · warm',color:'#0AB4D6'},
+  {initial:'轩',name:'Zǐxuān · 子轩',tag:'Male · Mainland · clear',color:'#E5267E'},
+  {initial:'婷',name:'Yǎtíng · 雅婷',tag:'Female · Taiwan',color:'#F5B400'},
+  {initial:'强',name:'Guóqiáng · 国强',tag:'Male · slow & articulate',color:'#16A34A'},
+];
+const LIBRARY = [
+  {glyph:'我',title:'自我介绍',sub:'About Me',level:'A2',len:'98 字',hue:'#E5267E'},
+  {glyph:'天',title:'我的一天',sub:'My Day',level:'A1',len:'120 字',hue:'#0AB4D6'},
+  {glyph:'茶',title:'老舍 · 茶馆',sub:'Teahouse (excerpt)',level:'B1',len:'340 字',hue:'#F5B400'},
+  {glyph:'园',title:'在公园',sub:'At the Park',level:'A2',len:'150 字',hue:'#16A34A'},
+];
+const SAVED = [
+  {glyph:'好',title:'我的爱好',sub:'My Hobbies',level:'A2',pct:60},
+  {glyph:'划',title:'周末计划',sub:'Weekend Plans',level:'A2',pct:25},
+];
+
+// exercise content (INTEGRATION #7 — generate from the active text)
+const EX1_TARGET = ['我','喜欢','学习','中文'];
+const EX1_BANK   = [{id:0,t:'学习'},{id:1,t:'我'},{id:2,t:'中文'},{id:3,t:'喜欢'}];
+const EX2 = { pre:'周末我常常去公园', post:'。', en:'“On weekends I often go to the park to ___.”', answer:0,
+  options:[{t:'跑步',py:'pǎobù'},{t:'唱歌',py:'chànggē'},{t:'睡觉',py:'shuìjiào'},{t:'游泳',py:'yóuyǒng'}] };
+
+/* ============================================================================
+   STATE
+   ============================================================================ */
+const S = {
+  setupTab:'library', sel:{kind:'library', i:0},
+  playing:false, active:-1, slow:false, pinyin:false, trans:false,
+  voice:0, sheet:null, popWord:null, savedWords:{}, textSaved:false,
+  exView:'menu', exDone:{order:false,choice:false},
+  ex1Slots:[null,null,null,null], ex1Fb:null,
+  ex2Choice:null, ex2Fb:null,
+};
+let playTimer=null, toastTimer=null;
+
+/* ============================================================================
+   ROUTER  (replace with your existing showScreen())
+   ============================================================================ */
+function showScreen(id){
+  document.querySelectorAll('.app-screen').forEach(s=>s.classList.toggle('is-active', s.id===id));
+  const map={setup:'read-setup',reader:'read-reader',exercise:'read-exercise'};
+  document.querySelectorAll('.devbar button').forEach(b=>b.classList.toggle('on', map[b.dataset.jump]===id));
+  if(id==='read-reader') renderReader();
+  if(id==='read-exercise') renderExercise();
+}
+
+/* ============================================================================
+   SETUP
+   ============================================================================ */
+function renderSetup(){
+  document.getElementById('tab-library').innerHTML = LIBRARY.map((it,i)=>{
+    const on = S.sel.kind==='library'&&S.sel.i===i;
+    return `<button class="libcard ${on?'sel':''}" onclick="pickItem('library',${i})">
+      <div class="libthumb" style="background:linear-gradient(135deg,${it.hue},rgba(28,18,51,.25))"><span class="zh" style="font-weight:900;font-size:30px;color:#fff">${it.glyph}</span></div>
+      <div style="padding:12px 13px"><div class="zh" style="font-weight:700;font-size:16px">${it.title}</div>
+      <div style="font-size:12px;color:var(--text-soft);margin-top:2px">${it.sub}</div>
+      <div style="display:flex;gap:6px;margin-top:9px"><span style="font-size:11px;font-weight:700;color:var(--cyan-ink);background:rgba(10,180,214,.12);padding:3px 8px;border-radius:6px">${it.level}</span><span style="font-size:11px;color:var(--text-dim);padding:3px 4px">${it.len}</span></div></div>
+    </button>`;
+  }).join('');
+  document.getElementById('tab-saved').innerHTML = SAVED.map((it,i)=>{
+    const on = S.sel.kind==='saved'&&S.sel.i===i;
+    return `<button class="savedrow ${on?'sel':''}" onclick="pickItem('saved',${i})">
+      <div style="width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,var(--cyan),var(--cyan-ink));flex:none;align-self:flex-start"><span class="zh" style="font-weight:900;font-size:22px;color:#fff">${it.glyph}</span></div>
+      <div style="flex:1"><div class="zh" style="font-weight:700;font-size:16px">${it.title}</div>
+      <div style="font-size:12px;color:var(--text-soft);margin:2px 0 8px">${it.sub} · ${it.level}</div>
+      <div style="height:6px;border-radius:99px;background:var(--lav);overflow:hidden"><i style="display:block;height:100%;width:${it.pct}%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--primary-soft))"></i></div></div>
+      <div style="font-size:13px;font-weight:700;color:var(--primary);align-self:flex-start">${it.pct}%</div>
+    </button>`;
+  }).join('');
+  // start button label
+  const it = (S.sel.kind==='library'?LIBRARY:SAVED)[S.sel.i] || LIBRARY[0];
+  document.getElementById('start-label').textContent = S.setupTab==='paste' ? 'Start reading' : 'Start reading · '+it.sub;
+}
+function setSetupTab(t){
+  S.setupTab=t;
+  document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+  document.getElementById('tab-paste').style.display = t==='paste'?'block':'none';
+  document.getElementById('tab-library').style.display = t==='library'?'grid':'none';
+  document.getElementById('tab-saved').style.display = t==='saved'?'flex':'none';
+  renderSetup();
+}
+function pickItem(kind,i){ S.sel={kind,i}; renderSetup(); }
+function openReader(){ showScreen('read-reader'); }
+
+/* ============================================================================
+   READER
+   ============================================================================ */
+function renderReader(){
+  const it = (S.sel.kind==='library'?LIBRARY:SAVED)[S.sel.i] || LIBRARY[0];
+  document.getElementById('rd-title').textContent = it.title;
+  document.getElementById('rd-sub').textContent = it.sub+' · '+it.level;
+  document.getElementById('rd-level').textContent = it.level;
+
+  let g=0;
+  document.getElementById('han').innerHTML = PASSAGE.map(pa=>{
+    const sents = pa.sentences.map(toks=>{
+      const gi=g++; const active = gi===S.active?'active':'';
+      const inner = toks.map((tk,ti)=>{
+        if(!tk.word) return `<span style="white-space:pre">${tk.hz}</span>`;
+        const sel = (S.popWord && S.popWord.gi===gi && S.popWord.ti===ti)?'sel':'';
+        return `<span class="word ${sel}" onclick="tapWord(${gi},${ti})"><small>${tk.py}</small><span class="hz">${tk.hz}</span></span>`;
+      }).join('');
+      return `<span class="sent ${active}" data-gi="${gi}">${inner}</span>`;
+    }).join('');
+    return `<div class="para">${sents}<div class="trans">${pa.trans}</div></div>`;
+  }).join('');
+
+  const han=document.getElementById('han');
+  han.classList.toggle('show-pinyin', S.pinyin);
+  han.classList.toggle('show-trans', S.trans);
+  document.getElementById('pill-pinyin').classList.toggle('on', S.pinyin);
+  document.getElementById('pill-trans').classList.toggle('on', S.trans);
+  document.getElementById('pill-slow').classList.toggle('on', S.slow);
+  document.getElementById('voice-name').textContent = VOICES[S.voice].name.split(' · ')[0];
+  document.getElementById('rd-speed').textContent = S.slow?'0.6×':'1.0×';
+  // bookmark
+  const bm=document.getElementById('rd-bookmark');
+  bm.querySelector('use').setAttribute('href', '#i-bookmark');
+  bm.style.background = S.textSaved?'rgba(229,38,126,.10)':'var(--surface)';
+  bm.style.borderColor = S.textSaved?'rgba(229,38,126,.5)':'var(--border)';
+  bm.querySelector('svg').style.fill = S.textSaved?'var(--primary)':'none';
+  bm.querySelector('svg').style.stroke = S.textSaved?'var(--primary)':'var(--text)';
+  updatePlayUI();
+  renderVoiceList();
+}
+function updatePlayUI(){
+  document.getElementById('playbtn').querySelector('use').setAttribute('href', S.playing?'#i-pause':'#i-play');
+  const pct = S.active<0?0:((S.active+1)/TOTAL_SENTS*100);
+  document.getElementById('rd-progress').style.width = pct+'%';
+  document.getElementById('rd-sentlabel').textContent = (S.active<0?0:S.active+1)+' / '+TOTAL_SENTS+' sentences';
+  document.querySelectorAll('#han .sent').forEach(el=>el.classList.toggle('active', +el.dataset.gi===S.active));
+}
+
+/* INTEGRATION #1 — TTS playback.
+   Replace this timer with Google TTS playback for the active text and the
+   selected voice (VOICES[S.voice]); advance S.active from real audio boundaries. */
+function togglePlay(){
+  if(S.playing){ stopPlay(); return; }
+  if(S.active<0 || S.active>=TOTAL_SENTS-1) S.active=0;
+  S.playing=true; updatePlayUI(); runPlay();
+}
+function runPlay(){
+  clearInterval(playTimer);
+  playTimer=setInterval(()=>{                         // INTEGRATION #2: slow -> speakingRate
+    S.active++;
+    if(S.active>=TOTAL_SENTS){ stopPlay(); S.active=TOTAL_SENTS-1; updatePlayUI(); return; }
+    updatePlayUI();
+  }, S.slow?2400:1400);
+}
+function stopPlay(){ clearInterval(playTimer); playTimer=null; S.playing=false; updatePlayUI(); }
+function toggleSlow(){ S.slow=!S.slow; document.getElementById('pill-slow').classList.toggle('on',S.slow);
+  document.getElementById('rd-speed').textContent=S.slow?'0.6×':'1.0×'; if(S.playing) runPlay(); }
+function togglePinyin(){ S.pinyin=!S.pinyin; document.getElementById('han').classList.toggle('show-pinyin',S.pinyin);
+  document.getElementById('pill-pinyin').classList.toggle('on',S.pinyin); }
+function toggleTrans(){ S.trans=!S.trans; document.getElementById('han').classList.toggle('show-trans',S.trans);
+  document.getElementById('pill-trans').classList.toggle('on',S.trans); }
+
+/* INTEGRATION #5 — bookmark = save whole text to Supabase saved_texts */
+function toggleBookmark(){ S.textSaved=!S.textSaved; renderReader();
+  if(S.textSaved) showToast('Text saved to your library'); }
+function showToast(msg){ /* could be a shared toast in your app */ }
+
+/* ---- word popover ---- */
+function tapWord(gi,ti){
+  let g=0,tok=null;
+  PASSAGE.forEach(pa=>pa.sentences.forEach(s=>{ if(g===gi) tok=s[ti]; g++; }));
+  S.popWord={gi,ti,tok};
+  document.getElementById('w-hz').textContent=tok.hz;
+  document.getElementById('w-py').textContent=tok.py;
+  document.getElementById('w-pos').textContent=tok.pos;
+  document.getElementById('w-en').textContent=tok.en;
+  renderSaveBtn();
+  renderReader();           // re-highlight selected word
+  openSheet('word');
+}
+function renderSaveBtn(){
+  const tok=S.popWord.tok, saved=!!S.savedWords[tok.hz], b=document.getElementById('w-save');
+  b.style.cssText='padding:12px 16px;border-radius:13px;font-size:14px;'+
+    (saved?'border:1px solid rgba(22,163,74,.5);background:rgba(22,163,74,.12);color:var(--good)'
+          :'border:1px solid rgba(245,180,0,.5);background:rgba(245,180,0,.14);color:var(--amber-ink)');
+  b.innerHTML = `<svg class="ic" width="18" height="18" style="stroke:currentColor"><use href="#${saved?'i-check':'i-plus'}"/></svg> ${saved?'Saved to cards':'Save to cards'}`;
+}
+/* INTEGRATION #4 — save word to Supabase flashcards */
+function saveWord(){ const hz=S.popWord.tok.hz; if(S.savedWords[hz]) delete S.savedWords[hz]; else S.savedWords[hz]=true; renderSaveBtn(); }
+
+/* ---- voice sheet ---- */
+function renderVoiceList(){
+  document.getElementById('voice-list').innerHTML = VOICES.map((v,i)=>`
+    <button class="vrow ${i===S.voice?'sel':''}" onclick="pickVoice(${i})">
+      <div class="vava zh" style="background:${v.color}">${v.initial}</div>
+      <div style="flex:1;text-align:left"><div style="font-weight:700;font-size:15px">${v.name}</div><div style="font-size:12px;color:var(--text-soft)">${v.tag}</div></div>
+      ${i===S.voice?'<svg class="ic" width="22" height="22" style="stroke:var(--primary);stroke-width:2.4"><use href="#i-check"/></svg>':''}
+    </button>`).join('');
+}
+function pickVoice(i){ S.voice=i; document.getElementById('voice-name').textContent=VOICES[i].name.split(' · ')[0]; renderVoiceList(); closeSheets(); }
+
+function openSheet(which){
+  S.sheet=which;
+  document.getElementById('scrim').classList.add('open');
+  document.getElementById('sheet-voice').classList.toggle('open', which==='voice');
+  document.getElementById('sheet-word').classList.toggle('open', which==='word');
+}
+function closeSheets(){
+  S.sheet=null; S.popWord=null;
+  document.getElementById('scrim').classList.remove('open');
+  document.getElementById('sheet-voice').classList.remove('open');
+  document.getElementById('sheet-word').classList.remove('open');
+  document.querySelectorAll('#han .word.sel').forEach(el=>el.classList.remove('sel'));
+}
+
+/* ============================================================================
+   EXERCISES   (menu -> type 1 order / type 2 cloze)
+   ============================================================================ */
+function exBack(){ if(S.exView==='menu'||S.exView==='done') showScreen('read-reader'); else { S.exView='menu'; renderExercise(); } }
+function pickEx(kind){ if(kind==='order'){S.exView='order';S.ex1Slots=[null,null,null,null];S.ex1Fb=null;} else {S.exView='choice';S.ex2Choice=null;S.ex2Fb=null;} renderExercise(); }
+function finishEx(kind){ S.exDone[kind]=true; S.exView = (S.exDone.order&&S.exDone.choice)?'done':'menu'; renderExercise(); }
+function restartEx(){ S.exView='menu'; S.exDone={order:false,choice:false}; S.ex1Slots=[null,null,null,null]; S.ex1Fb=null; S.ex2Choice=null; S.ex2Fb=null; renderExercise(); }
+
+function renderExercise(){
+  const nDone=(S.exDone.order?1:0)+(S.exDone.choice?1:0);
+  document.getElementById('ex-steplabel').textContent =
+    S.exView==='done'?'Both complete' : S.exView==='order'?'Type 1 · Word order' : S.exView==='choice'?'Type 2 · Missing word' : nDone+' of 2 completed';
+  const seg=(c,a)=> c?'var(--good)' : a?'var(--primary)' : 'var(--border)';
+  document.getElementById('ex-seg0').style.background=seg(S.exDone.order, S.exView==='order');
+  document.getElementById('ex-seg1').style.background=seg(S.exDone.choice, S.exView==='choice');
+
+  const body=document.getElementById('ex-body');
+  if(S.exView==='menu') body.innerHTML=menuHTML();
+  else if(S.exView==='order') body.innerHTML=orderHTML();
+  else if(S.exView==='choice') body.innerHTML=clozeHTML();
+  else body.innerHTML=doneHTML();
+}
+function menuHTML(){
+  const card=(kind,icon,tag,title,desc,hue)=>{ const done=S.exDone[kind];
+    return `<button class="menucard ${done?'done':''}" onclick="pickEx('${kind}')">
+      <div class="menuicon" style="background:${hue}"><svg class="ic" width="24" height="24" style="stroke:#fff;stroke-width:2"><use href="#${icon}"/></svg></div>
+      <div style="flex:1;text-align:left"><div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim)">${tag}</div>
+      <div style="font-size:17px;font-weight:800;margin-top:2px">${title}</div>
+      <div style="font-size:13px;color:var(--text-soft);margin-top:3px">${desc}</div></div>
+      <div style="width:30px;height:30px;border-radius:999px;flex:none;display:grid;place-items:center;background:${done?'rgba(22,163,74,.12)':'rgba(229,38,126,.10)'}">
+        <svg class="ic" width="18" height="18" style="stroke:${done?'var(--good)':'var(--primary)'};stroke-width:2.5"><use href="#${done?'i-check':'i-right'}"/></svg></div>
+    </button>`;
+  };
+  return `<div style="font-size:22px;font-weight:800;letter-spacing:-.01em">Choose an exercise</div>
+    <div style="font-size:14px;color:var(--text-soft);margin-top:6px">Two ways to practise the text you just read.</div>
+    <div style="margin-top:20px">
+      ${card('order','i-order','Type 1','Put the words in order','Rebuild a scrambled sentence tile by tile.','linear-gradient(135deg,#E5267E,#FF4D9D)')}
+      ${card('choice','i-cloze','Type 2','Choose the missing word','Pick the word that completes the sentence.','linear-gradient(135deg,#0AB4D6,#0E7490)')}
+    </div>`;
+}
+function orderHTML(){
+  const placed=S.ex1Slots.map(id=> id==null?null:EX1_BANK.find(b=>b.id===id).t);
+  const slots=S.ex1Slots.map((id,pos)=> id==null
+    ? `<span class="slot empty"></span>`
+    : `<button class="slot" onclick="tapSlot(${pos})">${EX1_BANK.find(b=>b.id===id).t}</button>`).join('');
+  const bank=EX1_BANK.map(b=>`<button class="chip ${S.ex1Slots.includes(b.id)?'used':''}" onclick="tapBank(${b.id})">${b.t}</button>`).join('');
+  const fb = S.ex1Fb? `<div class="fb ${S.ex1Fb==='correct'?'ok':'no'}">${S.ex1Fb==='correct'?'太好了！That’s the correct order.':'Not quite — tap a tile to send it back and retry.'}</div>`:'';
+  return `<div class="excard">
+    <div style="display:flex;align-items:center;gap:9px"><span class="extag">Exercise 1</span><span style="font-size:16px;font-weight:800">Put the words in order</span></div>
+    <p style="font-size:14px;color:var(--text-soft);margin:10px 0 18px">Build the sentence that means <b style="color:var(--text)">“I like learning Chinese.”</b></p>
+    <div class="slots ${S.ex1Fb==='wrong'?'wrong':''}">${slots}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:9px;margin-top:16px">${bank}</div>
+    ${fb}
+    <div style="display:flex;align-items:center;gap:14px;margin-top:18px">
+      <button class="btn btn-primary" style="flex:1;height:50px;font-size:15px" onclick="checkEx1()"><svg class="ic" width="18" height="18" style="stroke:#fff;stroke-width:2.3"><use href="#i-check"/></svg> Check</button>
+      <button style="background:none;border:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text-soft);cursor:pointer" onclick="skipEx('order')">Skip</button>
+    </div></div>`;
+}
+function clozeHTML(){
+  const fb=S.ex2Fb, chosen=S.ex2Choice;
+  const blankCol = fb==='correct'?'var(--good)':fb==='wrong'?'var(--bad)':'var(--primary)';
+  const blank = `<span style="display:inline-block;min-width:56px;text-align:center;border-bottom:3px solid ${blankCol};color:${chosen==null?'#B9B4C7':blankCol};font-weight:700;margin:0 2px;padding:0 4px">${chosen==null?'＿＿':EX2.options[chosen].t}</span>`;
+  const opts=EX2.options.map((op,i)=>{
+    let bd='var(--border)',bg='#fff',col='var(--text)';
+    if(fb && i===EX2.answer){bd='var(--good)';bg='rgba(22,163,74,.10)';col='var(--good)';}
+    else if(fb==='wrong'&&chosen===i){bd='var(--bad)';bg='rgba(220,38,38,.07)';col='var(--bad)';}
+    else if(chosen===i){bd='var(--primary)';bg='rgba(229,38,126,.06)';col='var(--primary)';}
+    return `<button class="opt" style="border-color:${bd};background:${bg};color:${col}" onclick="chooseEx2(${i})">
+      <span class="zh" style="font-size:22px;font-weight:700">${op.t}</span><span class="opy">${op.py}</span></button>`;
+  }).join('');
+  const fbHtml = fb? `<div class="fb ${fb==='correct'?'ok':'no'}">${fb==='correct'?'对了！“跑步” means “to run”.':'Try again — think about what you do at the park.'}</div>`:'';
+  const canCheck = chosen!=null;
+  return `<div class="excard">
+    <div style="display:flex;align-items:center;gap:9px"><span class="extag">Exercise 2</span><span style="font-size:16px;font-weight:800">Choose the missing word</span></div>
+    <p style="font-size:14px;color:var(--text-soft);margin:10px 0 16px">Which word completes the sentence?</p>
+    <div class="zh" style="background:var(--surface-2);border-radius:14px;padding:20px 18px;font-size:24px;font-weight:500;line-height:1.7">${EX2.pre}${blank}${EX2.post}</div>
+    <div style="font-size:13px;color:var(--text-dim);margin-top:8px">${EX2.en}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px">${opts}</div>
+    ${fbHtml}
+    <div style="display:flex;align-items:center;gap:14px;margin-top:18px">
+      <button class="btn btn-primary" style="flex:1;height:50px;font-size:15px;${canCheck?'':'background:#C9C4D4;box-shadow:none'}" onclick="checkEx2()"><svg class="ic" width="18" height="18" style="stroke:#fff;stroke-width:2.3"><use href="#i-check"/></svg> ${fb==='correct'?'Correct':'Check'}</button>
+      <button style="background:none;border:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text-soft);cursor:pointer" onclick="skipEx('choice')">Skip</button>
+    </div></div>`;
+}
+function doneHTML(){
+  const cols=['#E5267E','#0AB4D6','#16A34A','#F5B400'];
+  const conf=Array.from({length:14},(_,i)=>{const a=(i/14)*6.28,d=64+((i*37)%46);
+    return `<i style="border-radius:${i%2?'999px':'3px'};background:${cols[i%4]};--tx:${(Math.cos(a)*d).toFixed(1)}px;--ty:${(Math.sin(a)*d).toFixed(1)}px;animation-delay:${(i%5)*0.03}s"></i>`;}).join('');
+  return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;position:relative">
+    <div class="confetti">${conf}</div>
+    <div style="width:96px;height:96px;border-radius:999px;background:rgba(22,163,74,.12);display:grid;place-items:center;animation:pop .5s cubic-bezier(.2,.9,.3,1.2) both"><svg class="ic" width="50" height="50" style="stroke:var(--good);stroke-width:2.6"><use href="#i-check"/></svg></div>
+    <div style="font-size:28px;font-weight:800;margin-top:22px">Exercises complete!</div>
+    <div style="font-size:16px;color:var(--text-soft);margin-top:8px;max-width:360px;line-height:1.5">Nice work — you ordered the sentence and filled the blank correctly.</div>
+    <div style="display:flex;flex-direction:column;gap:11px;width:100%;max-width:340px;margin-top:28px">
+      <button class="btn btn-primary" style="height:54px;font-size:16px" onclick="showScreen('read-reader')">Back to reading</button>
+      <button class="btn" style="height:50px;font-size:15px;border:1px solid var(--border);background:#fff;color:var(--text)" onclick="restartEx()">Try again</button>
+    </div></div>`;
+}
+/* ex1 handlers */
+function tapBank(id){ if(S.ex1Slots.includes(id))return; const i=S.ex1Slots.indexOf(null); if(i<0)return; S.ex1Slots[i]=id; S.ex1Fb=null; renderExercise(); }
+function tapSlot(pos){ S.ex1Slots[pos]=null; S.ex1Fb=null; renderExercise(); }
+function checkEx1(){ const placed=S.ex1Slots.map(id=>id==null?null:EX1_BANK.find(b=>b.id===id).t);
+  const ok=JSON.stringify(placed)===JSON.stringify(EX1_TARGET); S.ex1Fb=ok?'correct':'wrong'; renderExercise();
+  if(ok) setTimeout(()=>finishEx('order'),900); }
+/* ex2 handlers */
+function chooseEx2(i){ if(S.ex2Fb==='correct')return; S.ex2Choice=i; S.ex2Fb=null; renderExercise(); }
+function checkEx2(){ if(S.ex2Choice==null)return; const ok=S.ex2Choice===EX2.answer; S.ex2Fb=ok?'correct':'wrong'; renderExercise();
+  if(ok) setTimeout(()=>finishEx('choice'),900); }
+function skipEx(){ S.exView='menu'; S.ex1Fb=null; S.ex2Fb=null; renderExercise(); }
+
+/* ============================================================================
+   SHARED TAB BAR  (you already have one)
+   ============================================================================ */
+function renderTabbar(){
+  const items=[['i-home','Home'],['i-book','Read','on'],['i-mic','Speak'],['i-cards','Cards'],['i-video','Video']];
+  const html=items.map(([ic,label,on])=>`<button class="tab ${on||''}"><svg class="ic" width="22" height="22"><use href="#${ic}"/></svg>${label}</button>`).join('');
+  document.querySelectorAll('[data-tabbar]').forEach(t=>t.innerHTML=html);
+}
+
+/* dev jump bar — REMOVE on integration */
+document.querySelector('.devbar').addEventListener('click', e=>{ const j=e.target.dataset.jump; if(!j)return;
+  showScreen(j==='setup'?'read-setup':j==='reader'?'read-reader':'read-exercise'); });
+
+/* init */
+renderTabbar(); renderSetup(); setSetupTab('library'); showScreen('read-setup');
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+</body>
+</html>
