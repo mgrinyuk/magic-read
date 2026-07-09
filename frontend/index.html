@@ -442,7 +442,6 @@
               <div class="hd-action-nm">Video</div>
             </button>
             <button class="hd-action" type="button" data-hd-target="cards">
-              <span class="hd-action-badge" id="homeCardsDue" hidden></span>
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-cards"/></svg></div>
               <div class="hd-action-nm">Cards</div>
             </button>
@@ -889,6 +888,16 @@
           </div>
 
           <div id="flashcardDeck" class="flashcard-deck" hidden>
+            <div class="fc-mode-tabs" id="fcModeTabs">
+              <button class="fc-mode-tab on" data-fc-mode="browse" type="button">Browse</button>
+              <button class="fc-mode-tab" data-fc-mode="learn" type="button">Learn</button>
+              <button class="fc-mode-tab" data-fc-mode="check" type="button">Check</button>
+            </div>
+
+            <div id="fcLearnPanel" class="fc-quiz" hidden></div>
+            <div id="fcCheckPanel" class="fc-quiz" hidden></div>
+
+            <div id="fcBrowsePanel">
             <div class="flashcard-meta">
               <span id="flashcardCounter">Card 1 of 1</span>
               <button id="flashcardDeleteBtn" class="flashcard-delete-btn" type="button" data-i18n="deleteCard">Delete card</button>
@@ -931,15 +940,7 @@
             </div>
 
             <div id="flashcardSpeakingResult" class="flashcard-speaking-result" hidden></div>
-
-            <div id="flashcardSrsReview" class="fc-review" hidden>
-              <p class="fc-review-q">How well do you know it?</p>
-              <div class="fc-review-btns">
-                <button id="srsAgainBtn" class="fc-rb fc-rb-again" type="button">Again<small>&lt; 1 min</small></button>
-                <button id="srsGoodBtn"  class="fc-rb fc-rb-good"  type="button">Good<small>2 days</small></button>
-                <button id="srsEasyBtn"  class="fc-rb fc-rb-easy"  type="button">Easy<small>6 days</small></button>
-              </div>
-            </div>
+            </div><!-- /#fcBrowsePanel -->
           </div>
         </section>
       </section>

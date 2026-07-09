@@ -1905,8 +1905,6 @@ function renderHomeScreen() {
   if (spokenEl)    spokenEl.textContent    = fmt(userPlan.wordsSpoken);
   if (practicedEl) practicedEl.textContent = fmt(userPlan.wordsPracticed);
 
-  updateHomeCardsBadge();
-
   syncHomeLangControls();
   loadRecentProgress();
   loadVideoHistory();
@@ -6694,13 +6692,7 @@ async function loadFlashcardsFromStorage() {
         sentence,
         sentence_pinyin,
         translation,
-        lang,
-        srs_ease,
-        srs_interval,
-        srs_due,
-        srs_reps,
-        srs_lapses,
-        srs_last_reviewed
+        lang
       )
     `)
     .eq("user_id", user.id)
@@ -6722,18 +6714,11 @@ async function loadFlashcardsFromStorage() {
       sentence: card.sentence,
       sentencePinyin: card.sentence_pinyin,
       translation: card.translation,
-      lang: card.lang,
-      srs_ease: card.srs_ease,
-      srs_interval: card.srs_interval,
-      srs_due: card.srs_due,
-      srs_reps: card.srs_reps,
-      srs_lapses: card.srs_lapses,
-      srs_last_reviewed: card.srs_last_reviewed
+      lang: card.lang
     }))
   }));
 
   await ensureDefaultDeck();
-  updateHomeCardsBadge();
 }
 
 async function ensureDefaultDeck() {
@@ -6774,35 +6759,8 @@ function getCurrentDeck() {
   return flashcardDecks.find(deck => deck.id === currentDeckId) || null;
 }
 
-function isDueCard(card) {
-  if (!card.srs_due) return true; // never reviewed → always due
-  return card.srs_due <= new Date().toISOString().slice(0, 10);
-}
-
-function getDueCount() {
-  return flashcardDecks.reduce(
-    (sum, deck) => sum + deck.cards.filter(isDueCard).length,
-    0
-  );
-}
-
-function updateHomeCardsBadge() {
-  const badge = document.getElementById("homeCardsDue");
-  if (!badge) return;
-  const due = getDueCount();
-  if (due > 0) {
-    badge.textContent = `${due} due`;
-    badge.hidden = false;
-  } else {
-    badge.hidden = true;
-  }
-}
-
 function getCurrentCards() {
-  const cards = getCurrentDeck()?.cards || [];
-  const due    = cards.filter(isDueCard);
-  const future = cards.filter(c => !isDueCard(c));
-  return [...due, ...future];
+  return getCurrentDeck()?.cards || [];
 }
 
 async function addFlashcard(cardData) {
@@ -6855,13 +6813,7 @@ async function addFlashcard(cardData) {
     sentence: data.sentence,
     sentencePinyin: data.sentence_pinyin,
     translation: data.translation,
-    lang: data.lang,
-    srs_ease: null,
-    srs_interval: null,
-    srs_due: null,
-    srs_reps: 0,
-    srs_lapses: 0,
-    srs_last_reviewed: null
+    lang: data.lang
   });
 
   renderDeckSelector();
@@ -6904,7 +6856,6 @@ async function renderFlashcards() {
   const wordPinyinEl = document.getElementById("flashcardWordPinyin");
   const wordBackEl = document.getElementById("flashcardWordBack");
   const translationEl = document.getElementById("flashcardTranslation");
-  const srsReviewEl = document.getElementById("flashcardSrsReview");
 
   if (!emptyEl || !deckEl || !cardEl) return;
 
@@ -6914,30 +6865,46 @@ async function renderFlashcards() {
     return;
   }
 
+  emptyEl.hidden = true;
+  deckEl.hidden = false;
+
+  // ── Mode tabs (Browse · Learn · Check) ───────────
+  // A deck switch invalidates a running quiz session; too-small decks lose Learn.
+  if (fcMode === "learn" && (cards.length < FC_LEARN_MIN_CARDS || fcLearn?.deckId !== deck?.id)) {
+    if (cards.length < FC_LEARN_MIN_CARDS) fcMode = "browse";
+    else fcStartLearn();
+  }
+  if (fcMode === "check" && fcCheck?.deckId !== deck?.id) fcStartCheck();
+
+  document.querySelectorAll(".fc-mode-tab").forEach(b => {
+    b.classList.toggle("on", b.dataset.fcMode === fcMode);
+    if (b.dataset.fcMode === "learn") {
+      b.classList.toggle("locked", cards.length < FC_LEARN_MIN_CARDS);
+      b.title = cards.length < FC_LEARN_MIN_CARDS ? `Add at least ${FC_LEARN_MIN_CARDS} cards to unlock Learn` : "";
+    }
+  });
+
+  const browsePanel = document.getElementById("fcBrowsePanel");
+  const learnPanel = document.getElementById("fcLearnPanel");
+  const checkPanel = document.getElementById("fcCheckPanel");
+  if (browsePanel) browsePanel.hidden = fcMode !== "browse";
+  if (learnPanel) learnPanel.hidden = fcMode !== "learn";
+  if (checkPanel) checkPanel.hidden = fcMode !== "check";
+  if (fcMode === "learn") { renderFcLearn(); return; }
+  if (fcMode === "check") { renderFcCheck(); return; }
+
   if (currentFlashcardIndex >= cards.length) {
     currentFlashcardIndex = cards.length - 1;
   }
 
   const card = cards[currentFlashcardIndex];
 
-  emptyEl.hidden = true;
-  deckEl.hidden = false;
-
   const t = getT();
-  const dueNow = cards.filter(isDueCard).length;
-  const dueLabel = dueNow > 0 ? ` · ${dueNow} due` : "";
-  counterEl.textContent = `${deck?.name || t.deck}${dueLabel} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
+  counterEl.textContent = `${deck?.name || t.deck} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
   if (wordBackEl) wordBackEl.textContent = card.word || "";
   if (translationEl) translationEl.textContent = cleanTranslation(card.translation);
-
-  // Update SRS button labels to show the projected interval for this specific card.
-  const fmtDays = d => d === 1 ? "1 day" : `${d} days`;
-  const setSmall = (id, text) => { const s = document.getElementById(id)?.querySelector("small"); if (s) s.textContent = text; };
-  setSmall("srsAgainBtn", fmtDays(computeNextSRS(card, "again").srs_interval));
-  setSmall("srsGoodBtn",  fmtDays(computeNextSRS(card, "good").srs_interval));
-  setSmall("srsEasyBtn",  fmtDays(computeNextSRS(card, "easy").srs_interval));
 
   flashcardFlipped = false;
   cardEl.classList.remove("is-flipped");
@@ -6957,7 +6924,6 @@ async function renderFlashcards() {
     if (speakHardBtn) speakHardBtn.hidden = true;
     if (speakExitBtn) speakExitBtn.hidden = false;
     if (nextBtn) nextBtn.disabled = !flashcardSpeakingUnlocked;
-    if (srsReviewEl) srsReviewEl.hidden = true;
 
     if (flashcardSpeakingMode === "easy") {
       if (hardTranslEl)  hardTranslEl.hidden = true;
@@ -6987,7 +6953,6 @@ async function renderFlashcards() {
     if (speakPromptEl) speakPromptEl.hidden = true;
     if (hardTranslEl)  hardTranslEl.hidden = true;
     if (nextBtn)       nextBtn.disabled = false;
-    if (srsReviewEl)   srsReviewEl.hidden = false;
   }
 }
 
@@ -7393,6 +7358,7 @@ document.getElementById("flashcardDeckSelect")?.addEventListener("change", (e) =
 
 document.getElementById("flashcardSpeakEasyBtn")?.addEventListener("click", () => {
   if (!getCurrentCards().length) { showToast("No cards in deck.", "error"); return; }
+  fcMode = "browse";
   flashcardSpeakingMode = "easy";
   flashcardSpeakingUnlocked = false;
   stopFlashcardRecognition();
@@ -7403,6 +7369,7 @@ document.getElementById("flashcardSpeakEasyBtn")?.addEventListener("click", () =
 
 document.getElementById("flashcardSpeakHardBtn")?.addEventListener("click", () => {
   if (!getCurrentCards().length) { showToast("No cards in deck.", "error"); return; }
+  fcMode = "browse";
   flashcardSpeakingMode = "hard";
   flashcardSpeakingUnlocked = false;
   stopFlashcardRecognition();
@@ -7442,83 +7409,227 @@ document.getElementById("flashcardPlayWordBtn")?.addEventListener("click", async
   }
 });
 
-// SM-2 simplified: computes the next SRS state from the current card state + rating.
-function computeNextSRS(card, rating) {
-  const ease     = card.srs_ease     ?? 2.5;
-  const interval = card.srs_interval ?? 0;
-  const reps     = card.srs_reps     ?? 0;
-  const lapses   = card.srs_lapses   ?? 0;
+/* -----------------------------
+   FLASHCARD MODES: Learn (4-choice quiz) & Check (type the term)
+----------------------------- */
 
-  let newEase = ease, newInterval, newReps, newLapses;
+let fcMode = "browse";        // "browse" | "learn" | "check"
+let fcLearn = null;           // learn-session state
+let fcCheck = null;           // check-session state
 
-  if (rating === "again") {
-    newLapses   = lapses + 1;
-    newReps     = 0;
-    newInterval = 1;
-    newEase     = Math.max(1.3, ease - 0.2);
-  } else if (rating === "good") {
-    newLapses   = lapses;
-    newReps     = reps + 1;
-    newInterval = newReps === 1 ? 2 : newReps === 2 ? 6 : Math.round(interval * ease);
-    newEase     = ease;
-  } else { // easy
-    newLapses   = lapses;
-    newReps     = reps + 1;
-    newInterval = newReps === 1 ? 6 : newReps === 2 ? 15 : Math.round(interval * ease * 1.3);
-    newEase     = Math.min(2.5, ease + 0.15);
+const FC_LEARN_MIN_CARDS = 5;
+
+function fcShuffle(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function setFcMode(mode) {
+  fcMode = mode;
+  // Any mode switch leaves speaking practice.
+  flashcardSpeakingMode = null;
+  flashcardSpeakingUnlocked = true;
+  stopFlashcardRecognition();
+  const resultEl = document.getElementById("flashcardSpeakingResult");
+  if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
+  if (mode === "learn") fcStartLearn();
+  if (mode === "check") fcStartCheck();
+  renderFlashcards();
+}
+
+document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("click", () => {
+  const mode = btn.dataset.fcMode;
+  if (mode === fcMode) return;
+  if (mode === "learn" && (getCurrentDeck()?.cards.length || 0) < FC_LEARN_MIN_CARDS) {
+    showToast(`Learn needs at least ${FC_LEARN_MIN_CARDS} cards in the deck.`, "info");
+    return;
   }
+  if (mode === "check" && !(getCurrentDeck()?.cards.length)) {
+    showToast("No cards in deck.", "error");
+    return;
+  }
+  setFcMode(mode);
+}));
 
-  const due = new Date();
-  due.setDate(due.getDate() + newInterval);
-  const today = new Date().toISOString().slice(0, 10);
+/* ── Learn: multiple choice, alternating direction ── */
 
-  return {
-    srs_ease:          Math.round(newEase * 100) / 100,
-    srs_interval:      newInterval,
-    srs_due:           due.toISOString().slice(0, 10),
-    srs_reps:          newReps,
-    srs_lapses:        newLapses,
-    srs_last_reviewed: today
+function fcStartLearn() {
+  const deck = getCurrentDeck();
+  fcLearn = {
+    deckId: deck?.id,
+    queue: fcShuffle(deck?.cards || []),
+    idx: 0,
+    correct: 0,
+    current: null
   };
 }
 
-async function scheduleCard(rating) {
-  recordActivity("words_practiced", 1);
-
-  const sorted = getCurrentCards();
-  const card = sorted[currentFlashcardIndex];
-  if (!card) { goToNextFlashcard(); return; }
-
-  const next = computeNextSRS(card, rating);
-
-  // Optimistically update in-memory card (deck.cards holds the originals).
+function fcBuildLearnQuestion() {
+  const q = fcLearn.queue[fcLearn.idx];
   const deck = getCurrentDeck();
-  if (deck) {
-    const orig = deck.cards.find(c => c.id === card.id);
-    if (orig) Object.assign(orig, next);
+  // Alternate direction: even questions show the term, odd show the translation.
+  const reverse = fcLearn.idx % 2 === 1;
+  const answerOf = c => reverse ? (c.word || "") : cleanTranslation(c.translation || "");
+  const correctText = answerOf(q);
+
+  const seen = new Set([correctText]);
+  const distractors = [];
+  for (const c of fcShuffle(deck?.cards || [])) {
+    if (c.id === q.id) continue;
+    const t = answerOf(c);
+    if (t && !seen.has(t)) { seen.add(t); distractors.push(t); }
+    if (distractors.length === 3) break;
   }
 
-  // Persist to Supabase — fire and forget (failure doesn't block navigation).
-  supabase.from("flashcards").update({
-    srs_ease:          next.srs_ease,
-    srs_interval:      next.srs_interval,
-    srs_due:           next.srs_due,
-    srs_reps:          next.srs_reps,
-    srs_lapses:        next.srs_lapses,
-    srs_last_reviewed: next.srs_last_reviewed
-  }).eq("id", card.id).then(({ error }) => {
-    if (error) console.error("[SRS] update error:", error.message);
-  });
-
-  goToNextFlashcard();
-  updateHomeCardsBadge();
-  const _sdeck = getCurrentDeck();
-  if (_sdeck) saveProgress("flashcards", _sdeck.id, { card: currentFlashcardIndex }, _sdeck.name);
+  fcLearn.current = {
+    prompt: reverse ? cleanTranslation(q.translation || "") : (q.word || ""),
+    promptPinyin: reverse ? "" : (q.pinyin || ""),
+    correctText,
+    options: fcShuffle([correctText, ...distractors]),
+    choice: null
+  };
 }
 
-document.getElementById("srsAgainBtn")?.addEventListener("click", () => scheduleCard("again"));
-document.getElementById("srsGoodBtn")?.addEventListener("click",  () => scheduleCard("good"));
-document.getElementById("srsEasyBtn")?.addEventListener("click",  () => scheduleCard("easy"));
+function renderFcLearn() {
+  const panel = document.getElementById("fcLearnPanel");
+  if (!panel || !fcLearn) return;
+
+  if (fcLearn.idx >= fcLearn.queue.length) {
+    panel.innerHTML = `
+      <div class="fcq-summary">
+        <p class="fcq-score">${fcLearn.correct} / ${fcLearn.queue.length}</p>
+        <p class="fcq-score-sub">answered correctly</p>
+        <button class="primary-btn" id="fcLearnAgainBtn" type="button">Practice again</button>
+      </div>`;
+    document.getElementById("fcLearnAgainBtn")?.addEventListener("click", () => { fcStartLearn(); renderFcLearn(); });
+    return;
+  }
+
+  if (!fcLearn.current) fcBuildLearnQuestion();
+  const cur = fcLearn.current;
+  const answered = cur.choice != null;
+
+  panel.innerHTML = `
+    <p class="fcq-progress">${fcLearn.idx + 1} of ${fcLearn.queue.length}</p>
+    <div class="fcq-prompt">
+      <h3>${escapeHtml(cur.prompt)}</h3>
+      ${cur.promptPinyin ? `<p class="fcq-pinyin">${escapeHtml(cur.promptPinyin)}</p>` : ""}
+    </div>
+    <div class="fcq-opts">
+      ${cur.options.map((op, i) => {
+        let cls = "fcq-opt";
+        if (answered && op === cur.correctText) cls += " correct";
+        else if (answered && i === cur.choice) cls += " wrong";
+        return `<button class="${cls}" data-opt="${i}" type="button" ${answered ? "disabled" : ""}>${escapeHtml(op)}</button>`;
+      }).join("")}
+    </div>
+    ${answered ? `<button class="primary-btn fcq-next" id="fcLearnNextBtn" type="button">${fcLearn.idx + 1 >= fcLearn.queue.length ? "See result" : "Next"}</button>` : ""}
+  `;
+
+  panel.querySelectorAll(".fcq-opt").forEach(btn => btn.addEventListener("click", () => {
+    if (fcLearn.current.choice != null) return;
+    const i = Number(btn.dataset.opt);
+    fcLearn.current.choice = i;
+    if (fcLearn.current.options[i] === fcLearn.current.correctText) {
+      fcLearn.correct++;
+      recordActivity("words_practiced", 1);
+    }
+    renderFcLearn();
+  }));
+
+  document.getElementById("fcLearnNextBtn")?.addEventListener("click", () => {
+    fcLearn.idx++;
+    fcLearn.current = null;
+    renderFcLearn();
+  });
+}
+
+/* ── Check: type the term for the shown translation ── */
+
+function fcStartCheck() {
+  const deck = getCurrentDeck();
+  fcCheck = {
+    deckId: deck?.id,
+    queue: fcShuffle(deck?.cards || []),
+    idx: 0,
+    correct: 0,
+    state: null // null = typing, "correct" | "wrong" after submit
+  };
+}
+
+// Trim + collapse spaces; case-insensitive for scripts that have case.
+function fcNormalizeAnswer(s) {
+  return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function renderFcCheck() {
+  const panel = document.getElementById("fcCheckPanel");
+  if (!panel || !fcCheck) return;
+
+  if (fcCheck.idx >= fcCheck.queue.length) {
+    panel.innerHTML = `
+      <div class="fcq-summary">
+        <p class="fcq-score">${fcCheck.correct} / ${fcCheck.queue.length}</p>
+        <p class="fcq-score-sub">typed correctly</p>
+        <button class="primary-btn" id="fcCheckAgainBtn" type="button">Practice again</button>
+      </div>`;
+    document.getElementById("fcCheckAgainBtn")?.addEventListener("click", () => { fcStartCheck(); renderFcCheck(); });
+    return;
+  }
+
+  const card = fcCheck.queue[fcCheck.idx];
+  const answered = fcCheck.state != null;
+
+  panel.innerHTML = `
+    <p class="fcq-progress">${fcCheck.idx + 1} of ${fcCheck.queue.length}</p>
+    <div class="fcq-prompt">
+      <h3>${escapeHtml(cleanTranslation(card.translation || ""))}</h3>
+      <p class="fcq-pinyin">Type the word</p>
+    </div>
+    <input id="fcCheckInput" class="fcq-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" ${answered ? "disabled" : ""} />
+    ${answered ? `
+      <div class="fcq-feedback ${fcCheck.state === "correct" ? "ok" : "no"}">
+        ${fcCheck.state === "correct"
+          ? "Correct!"
+          : `Correct answer: <b>${escapeHtml(card.word || "")}</b>${card.pinyin ? ` <span class="fcq-pinyin-inline">${escapeHtml(card.pinyin)}</span>` : ""}`}
+      </div>
+      <button class="primary-btn fcq-next" id="fcCheckNextBtn" type="button">${fcCheck.idx + 1 >= fcCheck.queue.length ? "See result" : "Next"}</button>`
+    : `<button class="primary-btn fcq-next" id="fcCheckSubmitBtn" type="button">Check</button>`}
+  `;
+
+  const input = document.getElementById("fcCheckInput");
+  if (answered) {
+    input.value = fcCheck.lastAnswer || "";
+  } else {
+    input.focus();
+  }
+
+  const submit = () => {
+    if (fcCheck.state != null) return;
+    const typed = input.value;
+    if (!fcNormalizeAnswer(typed)) return;
+    fcCheck.lastAnswer = typed;
+    const ok = fcNormalizeAnswer(typed) === fcNormalizeAnswer(card.word);
+    fcCheck.state = ok ? "correct" : "wrong";
+    if (ok) {
+      fcCheck.correct++;
+      recordActivity("words_practiced", 1);
+    }
+    renderFcCheck();
+  };
+
+  document.getElementById("fcCheckSubmitBtn")?.addEventListener("click", submit);
+  input?.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    if (fcCheck.state == null) submit();
+    else document.getElementById("fcCheckNextBtn")?.click();
+  });
+  document.getElementById("fcCheckNextBtn")?.addEventListener("click", () => {
+    fcCheck.idx++;
+    fcCheck.state = null;
+    fcCheck.lastAnswer = "";
+    renderFcCheck();
+  });
+}
 
 /* -----------------------------
    CALLIGRAPHY
