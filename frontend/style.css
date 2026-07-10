@@ -736,6 +736,91 @@ body.auth-active > .footer {
   }
 }
 
+/* Landing pricing — Free vs Pro cards */
+.landing-pricing { margin: 0 auto 80px; }
+
+.plan-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  max-width: 760px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+.plan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 26px 24px 24px;
+}
+
+.plan-card-pro {
+  border: 2px solid var(--primary);
+  box-shadow: 0 18px 44px -18px rgba(229, 38, 126, 0.35);
+}
+
+.plan-ribbon {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.plan-card h3 { margin: 0 0 2px; font-size: 1.35rem; font-weight: 900; }
+.plan-card-pro h3 { color: var(--primary); }
+
+.plan-sub { margin: 0 0 14px; color: var(--text-soft); font-size: 0.9rem; }
+
+.plan-price { margin: 0; font-size: 2.1rem; font-weight: 900; letter-spacing: -0.02em; }
+.plan-price span { font-size: 1rem; font-weight: 700; color: var(--text-soft); }
+.plan-price-alt { margin: 2px 0 0; color: var(--text-soft); font-size: 0.85rem; font-weight: 600; }
+
+.plan-feats {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 0.93rem;
+  color: var(--text);
+  flex: 1;
+}
+.plan-feats li::before { content: "✓ "; color: var(--text-dim); font-weight: 800; }
+.plan-card-pro .plan-feats li::before { color: var(--primary); }
+.plan-feats .plan-feat-off { color: var(--text-dim); }
+.plan-feats .plan-feat-off::before { content: "— "; }
+
+.plan-cta { width: 100%; }
+
+.plan-shared {
+  max-width: 640px;
+  margin: 22px auto 0;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .plan-cards { grid-template-columns: 1fr; max-width: 420px; }
+  /* Pro first when stacked */
+  .plan-card-pro { order: -1; }
+}
+
 .landing-section-head {
   max-width: 760px;
   margin: 0 auto 34px;
@@ -4364,23 +4449,28 @@ body.is-logged-in .top-ui-language {
   color: var(--text-soft);
   margin: 0 0 16px !important;
 }
-.upgrade-modal-unlocks {
-  list-style: none;
-  padding: 13px 14px;
+/* Compact Free vs Pro comparison inside the upgrade modal */
+.upgrade-compare {
+  padding: 10px 14px 12px;
   background: var(--surface-2);
   border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
   margin-bottom: 18px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
 }
-.upgrade-modal-unlocks li::before {
-  content: "✓ ";
-  color: var(--primary);
-  font-weight: 700;
+.uc-row {
+  display: grid;
+  grid-template-columns: 1fr 52px 52px;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 0;
 }
+.uc-row + .uc-row { border-top: 1px solid var(--border); }
+.uc-row > span:first-child { color: var(--text-soft); font-weight: 600; text-align: left; }
+.uc-row > span { text-align: center; font-weight: 700; color: var(--text-dim); }
+.uc-row .uc-pro { color: var(--primary); font-weight: 900; }
+.uc-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.uc-head > span { color: var(--text-dim); }
+.uc-head .uc-pro { color: var(--primary); }
 .upgrade-modal-plans {
   display: flex;
   flex-direction: column;

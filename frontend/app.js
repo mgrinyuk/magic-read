@@ -1049,11 +1049,14 @@ function showUpgradePrompt(code) {
     <div class="modal-box upgrade-modal">
       <h3 class="upgrade-modal-title">${escapeHtml(msg.title)}</h3>
       <p class="upgrade-modal-sub">${escapeHtml(msg.sub)}</p>
-      <ul class="upgrade-modal-unlocks">
-        <li>Unlimited pronunciation checks</li>
-        <li>Videos with smart captions</li>
-        <li>Calligraphy worksheet export</li>
-      </ul>
+      <div class="upgrade-compare">
+        <div class="uc-row uc-head"><span></span><span>Free</span><span class="uc-pro">Pro</span></div>
+        <div class="uc-row"><span>Texts / day</span><span>3</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>Pronunciation checks / day</span><span>20</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>Saved texts</span><span>5</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>Decks · cards</span><span>2 · 100</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>Videos with captions</span><span>—</span><span class="uc-pro">✓</span></div>
+      </div>
       <div class="upgrade-modal-plans">
         <button class="upgrade-plan-btn" data-price-type="annual" type="button">
           Annual — $49/yr <span class="upgrade-plan-save">Save 41%</span>
@@ -2267,6 +2270,14 @@ document.getElementById("heroCtaBtn")?.addEventListener("click", () => {
 });
 
 document.getElementById("finalCtaBtn")?.addEventListener("click", () => {
+  openAuthFromOverlay("signup");
+});
+
+// Landing pricing cards — visitors need an account first either way.
+document.getElementById("pricingFreeBtn")?.addEventListener("click", () => {
+  openAuthFromOverlay("signup");
+});
+document.getElementById("pricingProBtn")?.addEventListener("click", () => {
   openAuthFromOverlay("signup");
 });
 
