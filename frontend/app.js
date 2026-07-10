@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260622.6";
+import { UI_TEXT } from "./ui-text.js?v=20260710.1";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -1003,49 +1003,51 @@ document.getElementById("welcomeWeekDismiss")?.addEventListener("click", () => {
 
 function getUpgradeMessage(code) {
   const lim = userPlan.limits;
+  const t = getT();
+  const fill = (str, n) => String(str || "").replace("{n}", n);
   const msgs = {
     QUOTA_EXCEEDED: {
-      title: "You're out of today's free checks",
-      sub: `You've used all ${lim.pronunciationPerDay} pronunciation checks for today. Go Pro for unlimited practice — no daily cap.`,
-      reassurance: "Your free checks reset tomorrow."
+      title: t.quotaChecksTitle,
+      sub: fill(t.quotaChecksSub, lim.pronunciationPerDay),
+      reassurance: t.quotaResetTomorrow
     },
     TEXT_QUOTA_EXCEEDED: {
-      title: "That's your free texts for today",
-      sub: `You've added ${lim.textPerDay} texts today. Go Pro to add as many as you like.`,
+      title: t.quotaTextsTitle,
+      sub: fill(t.quotaTextsSub, lim.textPerDay),
       reassurance: null
     },
     SAVE_TEXT_QUOTA_EXCEEDED: {
-      title: "That's your free texts for today",
-      sub: `You've saved ${lim.savedTexts} texts (free limit). Go Pro to save as many as you like.`,
+      title: t.quotaTextsTitle,
+      sub: fill(t.quotaSavedSub, lim.savedTexts),
       reassurance: null
     },
     DECK_QUOTA_EXCEEDED: {
-      title: "You've reached the free limit",
-      sub: `Free decks are capped at ${lim.decks}. Go Pro for unlimited decks and cards.`,
+      title: t.quotaLimitTitle,
+      sub: fill(t.quotaDeckSub, lim.decks),
       reassurance: null
     },
     CARD_QUOTA_EXCEEDED: {
-      title: "You've reached the free limit",
-      sub: `Your deck has ${lim.cards} cards (free limit). Go Pro for unlimited cards.`,
+      title: t.quotaLimitTitle,
+      sub: fill(t.quotaCardSub, lim.cards),
       reassurance: null
     },
     VIDEO_QUOTA_EXCEEDED: {
-      title: "Videos are a Pro feature",
-      sub: `You've used your ${lim.videosPerTrial} trial videos. Go Pro to keep learning from any video.`,
+      title: t.quotaVideoTitle,
+      sub: fill(t.quotaVideoSub, lim.videosPerTrial),
       reassurance: null
     },
     TTS_QUOTA_EXCEEDED: {
-      title: "You've used today's free audio",
-      sub: "Go Pro for unlimited listening — no daily cap.",
-      reassurance: "Your free audio resets tomorrow."
+      title: t.quotaTtsTitle,
+      sub: t.quotaTtsSub,
+      reassurance: t.quotaTtsReset
     },
     TRANSLATE_QUOTA_EXCEEDED: {
-      title: "You've used today's free translations",
-      sub: "Go Pro for unlimited translations — no daily cap.",
-      reassurance: "Your free translations reset tomorrow."
+      title: t.quotaTransTitle,
+      sub: t.quotaTransSub,
+      reassurance: t.quotaTransReset
     }
   };
-  return msgs[code] || { title: "Upgrade to Pro", sub: "Go Pro for unlimited access.", reassurance: null };
+  return msgs[code] || { title: t.upgradeDefaultTitle, sub: t.upgradeDefaultSub, reassurance: null };
 }
 
 // Show a dismissible upgrade modal at hard limits. The inline usage meter
@@ -1053,6 +1055,7 @@ function getUpgradeMessage(code) {
 function showUpgradePrompt(code) {
   document.querySelectorAll(".upgrade-modal-overlay, .upgrade-inline").forEach(el => el.remove());
   const msg = getUpgradeMessage(code);
+  const t = getT();
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay upgrade-modal-overlay";
@@ -1061,19 +1064,19 @@ function showUpgradePrompt(code) {
       <h3 class="upgrade-modal-title">${escapeHtml(msg.title)}</h3>
       <p class="upgrade-modal-sub">${escapeHtml(msg.sub)}</p>
       <div class="upgrade-compare">
-        <div class="uc-row uc-head"><span></span><span>Free</span><span class="uc-pro">Pro</span></div>
-        <div class="uc-row"><span>Texts / day</span><span>3</span><span class="uc-pro">∞</span></div>
-        <div class="uc-row"><span>Pronunciation checks / day</span><span>20</span><span class="uc-pro">∞</span></div>
-        <div class="uc-row"><span>Saved texts</span><span>5</span><span class="uc-pro">∞</span></div>
-        <div class="uc-row"><span>Decks · cards</span><span>2 · 100</span><span class="uc-pro">∞</span></div>
-        <div class="uc-row"><span>Videos with captions</span><span>—</span><span class="uc-pro">✓</span></div>
+        <div class="uc-row uc-head"><span></span><span>${escapeHtml(t.freeLabel)}</span><span class="uc-pro">${escapeHtml(t.proLabel)}</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpTextsDay)}</span><span>3</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpChecksDay)}</span><span>20</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpSavedTexts)}</span><span>5</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpDecksCards)}</span><span>2 · 100</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpVideos)}</span><span>—</span><span class="uc-pro">✓</span></div>
       </div>
       <div class="upgrade-modal-plans">
         <button class="upgrade-plan-btn" data-price-type="annual" type="button">
-          Annual — $49/yr <span class="upgrade-plan-save">Save 41%</span>
+          ${escapeHtml(t.annualPlanBtn)} <span class="upgrade-plan-save">${escapeHtml(t.savePct)}</span>
         </button>
         <button class="upgrade-plan-btn upgrade-plan-secondary" data-price-type="monthly" type="button">
-          Monthly — $6.99/mo
+          ${escapeHtml(t.monthlyPlanBtn)}
         </button>
         ${userPlan.tbankAvailable ? `
           <div class="tbank-plan-label">${escapeHtml(getT().tbankPaymentLabel || "Russian card or SBP")}</div>
@@ -1085,9 +1088,9 @@ function showUpgradePrompt(code) {
           </button>
         ` : ""}
       </div>
-      <button class="upgrade-modal-cta" data-price-type="annual" type="button">Upgrade to Pro</button>
+      <button class="upgrade-modal-cta" data-price-type="annual" type="button">${escapeHtml(t.upgradeDefaultTitle)}</button>
       ${msg.reassurance ? `<p class="upgrade-modal-reset">${escapeHtml(msg.reassurance)}</p>` : ""}
-      <button class="upgrade-modal-dismiss" type="button">Maybe later</button>
+      <button class="upgrade-modal-dismiss" type="button">${escapeHtml(t.maybeLater)}</button>
     </div>
   `;
 
@@ -1656,7 +1659,7 @@ function renderAccountScreen() {
         const days = trialDaysLeft();
         pillEl.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
       } else {
-        pillEl.textContent = "Free plan";
+        pillEl.textContent = getT().freePlanLabel;
       }
     }
 
@@ -1890,7 +1893,7 @@ function renderHomeScreen() {
         badgeEl.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
         badgeEl.dataset.variant = "trial";
       } else {
-        badgeEl.textContent = "Free plan";
+        badgeEl.textContent = getT().freePlanLabel;
         delete badgeEl.dataset.variant;
       }
       badgeEl.hidden = false;
@@ -2886,10 +2889,11 @@ function spRenderMic() {
     : spState.phase === "scoring" ? "is-scoring"
     : spState.phase === "listening" ? "is-listening" : "is-idle");
   if (label) {
-    label.textContent = spState.phase === "recording" ? "Speak now — tap again when you're done"
-      : spState.phase === "scoring" ? "Scoring…"
-      : spState.phase === "listening" ? "Playing audio…"
-      : "Tap to speak, tap again when you're done";
+    const t = getT();
+    label.textContent = spState.phase === "recording" ? t.speakNowTapDone
+      : spState.phase === "scoring" ? t.scoringLabel
+      : spState.phase === "listening" ? t.playingAudio
+      : t.tapToSpeak;
   }
 }
 
@@ -3482,18 +3486,18 @@ async function rdRenderPassage() {
 }
 
 function rdUpdateToolbar() {
-  const title = currentTextTitle || (R.lang === "zh" ? "阅读" : "Reading");
+  const title = currentTextTitle || (R.lang === "zh" ? "阅读" : getT().readingTitle);
   const titleEl = document.getElementById("rdTitle");
   const subEl = document.getElementById("rdSub");
   if (titleEl) titleEl.textContent = title;
-  if (subEl) subEl.textContent = `${R.sentences.length} sentence${R.sentences.length === 1 ? "" : "s"}`;
+  if (subEl) subEl.textContent = `${R.sentences.length} ${R.sentences.length === 1 ? getT().sentenceOne : getT().sentenceMany}`;
   document.getElementById("rdPinyinPill")?.classList.toggle("on", R.pinyin);
   document.getElementById("rdTransPill")?.classList.toggle("on", R.trans);
   // Reading-aid pill: pinyin for Chinese, romaji for Japanese.
   const pinyinPill = document.getElementById("rdPinyinPill");
   if (pinyinPill) {
     pinyinPill.style.display = (R.lang === "zh" || R.lang === "ja") ? "" : "none";
-    pinyinPill.textContent = R.lang === "ja" ? "ロ Romaji" : "拼 Pinyin";
+    pinyinPill.textContent = R.lang === "ja" ? `ロ ${getT().romajiPill}` : `拼 ${getT().pinyinPill}`;
   }
   // Level badge from the selected library/setup item.
   const lvl = document.getElementById("rdLevel");
@@ -3804,9 +3808,9 @@ function rdRenderExercise() {
   const current = Math.min(total, rdExState.idx + 1);
   const stepLabel = document.getElementById("rdExStepLabel");
   if (stepLabel) {
-    stepLabel.textContent = rdExState.view === "done" ? `${total} of ${total} completed`
-      : rdExState.view === "empty" ? "No exercises available"
-      : `${current} of ${total} completed`;
+    stepLabel.textContent = rdExState.view === "done" ? `${total} ${getT().of} ${total} ${getT().completedLabel}`
+      : rdExState.view === "empty" ? getT().notEnoughText
+      : `${current} ${getT().of} ${total} ${getT().completedLabel}`;
   }
 
   const segWrap = document.querySelector(".rd-ex-segs");
@@ -3819,7 +3823,7 @@ function rdRenderExercise() {
   }
 
   if (rdExState.view === "empty") {
-    body.innerHTML = '<p class="rd-loading" style="padding:12px">Not enough text for this exercise.</p>';
+    body.innerHTML = `<p class="rd-loading" style="padding:12px">${escapeHtml(getT().notEnoughText)}</p>`;
     return;
   }
   if (rdExState.view === "done") { rdRenderExDone(body); return; }
@@ -3852,18 +3856,18 @@ function rdRenderSequentialOrder(body, item) {
     id == null ? `<span class="rd-slot empty" data-slot="${pos}"></span>`
       : `<button class="rd-slot" data-slot="${pos}" type="button">${escapeHtml(item.bank.find(b => b.id === id)?.t || "")}</button>`).join("");
   const bank = item.bank.map(b => `<button class="rd-chip${item.slots.includes(b.id) ? " used" : ""}" data-bank-id="${b.id}" type="button">${escapeHtml(b.t)}</button>`).join("");
-  const fb = item.fb ? `<div class="rd-exfb ${item.fb === "correct" ? "ok" : "no"}">${item.fb === "correct" ? "太好了！Correct order." : "Not quite — tap a tile to send it back."}</div>` : "";
+  const fb = item.fb ? `<div class="rd-exfb ${item.fb === "correct" ? "ok" : "no"}">${item.fb === "correct" ? escapeHtml(getT().correctOrder) : escapeHtml(getT().notQuiteTapBack)}</div>` : "";
   body.innerHTML = `
     <div class="rd-excard">
-      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise ${rdExState.idx + 1} of ${rdExState.items.length}</span><span class="rd-extitle">Put the words in order</span></div>
-      <p class="rd-exdesc">Rebuild the scrambled sentence.</p>
+      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">${escapeHtml(getT().exerciseWord)} ${rdExState.idx + 1} ${escapeHtml(getT().of)} ${rdExState.items.length}</span><span class="rd-extitle">${escapeHtml(getT().putWordsInOrder)}</span></div>
+      <p class="rd-exdesc">${escapeHtml(getT().rebuildScrambled)}</p>
       <p class="rd-extrans" id="rdExTrans">${escapeHtml(item.trans || "")}</p>
       <div class="rd-slots${item.fb === "wrong" ? " wrong" : ""}">${slots}</div>
       <div class="rd-bank">${bank}</div>
       ${fb}
       <div class="rd-exrow">
-        <button class="rd-excheck" id="rdExCheck" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> Check</button>
-        <button class="rd-exskip" id="rdExSkip" type="button">Skip</button>
+        <button class="rd-excheck" id="rdExCheck" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> ${escapeHtml(getT().check)}</button>
+        <button class="rd-exskip" id="rdExSkip" type="button">${escapeHtml(getT().skip)}</button>
       </div>
     </div>`;
 
@@ -3900,17 +3904,17 @@ function rdRenderSequentialCloze(body, item) {
     else if (item.choice === i) cls += " sel";
     return `<button class="${cls}" data-opt="${i}" type="button"><span class="zh" style="font-size:22px;font-weight:700">${escapeHtml(op.t)}</span></button>`;
   }).join("");
-  const fb = item.fb ? `<div class="rd-exfb ${item.fb === "correct" ? "ok" : "no"}">${item.fb === "correct" ? "对了！" : "Not quite — try again."}</div>` : "";
+  const fb = item.fb ? `<div class="rd-exfb ${item.fb === "correct" ? "ok" : "no"}">${item.fb === "correct" ? escapeHtml(getT().correctExcl) : escapeHtml(getT().notQuiteTryAgain)}</div>` : "";
   body.innerHTML = `
     <div class="rd-excard">
-      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">Exercise ${rdExState.idx + 1} of ${rdExState.items.length}</span><span class="rd-extitle">Choose the missing word</span></div>
-      <p class="rd-exdesc">Which word completes the sentence?</p>
+      <div style="display:flex;align-items:center;gap:9px"><span class="rd-extag">${escapeHtml(getT().exerciseWord)} ${rdExState.idx + 1} ${escapeHtml(getT().of)} ${rdExState.items.length}</span><span class="rd-extitle">${escapeHtml(getT().chooseMissingWord)}</span></div>
+      <p class="rd-exdesc">${escapeHtml(getT().whichWordCompletes)}</p>
       <div class="rd-cloze-sent zh">${sentDisplay}</div>
       <div class="rd-opts">${opts}</div>
       ${fb}
       <div class="rd-exrow">
-        <button class="rd-excheck" id="rdExCheck" type="button" ${item.choice == null && !item.fb ? "disabled" : ""}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> ${item.fb === "correct" ? "Correct ✓" : "Check"}</button>
-        <button class="rd-exskip" id="rdExSkip" type="button">Skip</button>
+        <button class="rd-excheck" id="rdExCheck" type="button" ${item.choice == null && !item.fb ? "disabled" : ""}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg> ${item.fb === "correct" ? escapeHtml(getT().correctExcl) : escapeHtml(getT().check)}</button>
+        <button class="rd-exskip" id="rdExSkip" type="button">${escapeHtml(getT().skip)}</button>
       </div>
     </div>`;
 
@@ -6917,7 +6921,7 @@ async function renderFlashcards() {
     b.classList.toggle("on", b.dataset.fcMode === fcMode);
     if (b.dataset.fcMode === "learn") {
       b.classList.toggle("locked", cards.length < FC_LEARN_MIN_CARDS);
-      b.title = cards.length < FC_LEARN_MIN_CARDS ? `Add at least ${FC_LEARN_MIN_CARDS} cards to unlock Learn` : "";
+      b.title = cards.length < FC_LEARN_MIN_CARDS ? getT().learnLocked : "";
     }
   });
 
@@ -7394,7 +7398,7 @@ document.getElementById("flashcardDeckSelect")?.addEventListener("change", (e) =
 });
 
 document.getElementById("flashcardSpeakEasyBtn")?.addEventListener("click", () => {
-  if (!getCurrentCards().length) { showToast("No cards in deck.", "error"); return; }
+  if (!getCurrentCards().length) { showToast(getT().noCardsInDeck, "error"); return; }
   fcMode = "browse";
   flashcardSpeakingMode = "easy";
   flashcardSpeakingUnlocked = false;
@@ -7405,7 +7409,7 @@ document.getElementById("flashcardSpeakEasyBtn")?.addEventListener("click", () =
 });
 
 document.getElementById("flashcardSpeakHardBtn")?.addEventListener("click", () => {
-  if (!getCurrentCards().length) { showToast("No cards in deck.", "error"); return; }
+  if (!getCurrentCards().length) { showToast(getT().noCardsInDeck, "error"); return; }
   fcMode = "browse";
   flashcardSpeakingMode = "hard";
   flashcardSpeakingUnlocked = false;
@@ -7477,11 +7481,11 @@ document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("c
   const mode = btn.dataset.fcMode;
   if (mode === fcMode) return;
   if (mode === "learn" && (getCurrentDeck()?.cards.length || 0) < FC_LEARN_MIN_CARDS) {
-    showToast(`Learn needs at least ${FC_LEARN_MIN_CARDS} cards in the deck.`, "info");
+    showToast(getT().learnLocked, "info");
     return;
   }
   if (mode === "check" && !(getCurrentDeck()?.cards.length)) {
-    showToast("No cards in deck.", "error");
+    showToast(getT().noCardsInDeck, "error");
     return;
   }
   setFcMode(mode);
@@ -7534,8 +7538,8 @@ function renderFcLearn() {
     panel.innerHTML = `
       <div class="fcq-summary">
         <p class="fcq-score">${fcLearn.correct} / ${fcLearn.queue.length}</p>
-        <p class="fcq-score-sub">answered correctly</p>
-        <button class="primary-btn" id="fcLearnAgainBtn" type="button">Practice again</button>
+        <p class="fcq-score-sub">${escapeHtml(getT().answeredCorrectly)}</p>
+        <button class="primary-btn" id="fcLearnAgainBtn" type="button">${escapeHtml(getT().practiceAgain)}</button>
       </div>`;
     document.getElementById("fcLearnAgainBtn")?.addEventListener("click", () => { fcStartLearn(); renderFcLearn(); });
     return;
@@ -7546,7 +7550,7 @@ function renderFcLearn() {
   const answered = cur.choice != null;
 
   panel.innerHTML = `
-    <p class="fcq-progress">${fcLearn.idx + 1} of ${fcLearn.queue.length}</p>
+    <p class="fcq-progress">${fcLearn.idx + 1} ${escapeHtml(getT().of)} ${fcLearn.queue.length}</p>
     <div class="fcq-prompt">
       <h3>${escapeHtml(cur.prompt)}</h3>
       ${cur.promptPinyin ? `<p class="fcq-pinyin">${escapeHtml(cur.promptPinyin)}</p>` : ""}
@@ -7559,7 +7563,7 @@ function renderFcLearn() {
         return `<button class="${cls}" data-opt="${i}" type="button" ${answered ? "disabled" : ""}>${escapeHtml(op)}</button>`;
       }).join("")}
     </div>
-    ${answered ? `<button class="primary-btn fcq-next" id="fcLearnNextBtn" type="button">${fcLearn.idx + 1 >= fcLearn.queue.length ? "See result" : "Next"}</button>` : ""}
+    ${answered ? `<button class="primary-btn fcq-next" id="fcLearnNextBtn" type="button">${fcLearn.idx + 1 >= fcLearn.queue.length ? escapeHtml(getT().seeResult) : escapeHtml(getT().next)}</button>` : ""}
   `;
 
   panel.querySelectorAll(".fcq-opt").forEach(btn => btn.addEventListener("click", () => {
@@ -7606,8 +7610,8 @@ function renderFcCheck() {
     panel.innerHTML = `
       <div class="fcq-summary">
         <p class="fcq-score">${fcCheck.correct} / ${fcCheck.queue.length}</p>
-        <p class="fcq-score-sub">typed correctly</p>
-        <button class="primary-btn" id="fcCheckAgainBtn" type="button">Practice again</button>
+        <p class="fcq-score-sub">${escapeHtml(getT().typedCorrectly)}</p>
+        <button class="primary-btn" id="fcCheckAgainBtn" type="button">${escapeHtml(getT().practiceAgain)}</button>
       </div>`;
     document.getElementById("fcCheckAgainBtn")?.addEventListener("click", () => { fcStartCheck(); renderFcCheck(); });
     return;
@@ -7617,20 +7621,20 @@ function renderFcCheck() {
   const answered = fcCheck.state != null;
 
   panel.innerHTML = `
-    <p class="fcq-progress">${fcCheck.idx + 1} of ${fcCheck.queue.length}</p>
+    <p class="fcq-progress">${fcCheck.idx + 1} ${escapeHtml(getT().of)} ${fcCheck.queue.length}</p>
     <div class="fcq-prompt">
       <h3>${escapeHtml(cleanTranslation(card.translation || ""))}</h3>
-      <p class="fcq-pinyin">Type the word</p>
+      <p class="fcq-pinyin">${escapeHtml(getT().typeTheWord)}</p>
     </div>
     <input id="fcCheckInput" class="fcq-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" ${answered ? "disabled" : ""} />
     ${answered ? `
       <div class="fcq-feedback ${fcCheck.state === "correct" ? "ok" : "no"}">
         ${fcCheck.state === "correct"
-          ? "Correct!"
-          : `Correct answer: <b>${escapeHtml(card.word || "")}</b>${card.pinyin ? ` <span class="fcq-pinyin-inline">${escapeHtml(card.pinyin)}</span>` : ""}`}
+          ? escapeHtml(getT().correctExcl)
+          : `${escapeHtml(getT().correctAnswerIs)} <b>${escapeHtml(card.word || "")}</b>${card.pinyin ? ` <span class="fcq-pinyin-inline">${escapeHtml(card.pinyin)}</span>` : ""}`}
       </div>
-      <button class="primary-btn fcq-next" id="fcCheckNextBtn" type="button">${fcCheck.idx + 1 >= fcCheck.queue.length ? "See result" : "Next"}</button>`
-    : `<button class="primary-btn fcq-next" id="fcCheckSubmitBtn" type="button">Check</button>`}
+      <button class="primary-btn fcq-next" id="fcCheckNextBtn" type="button">${fcCheck.idx + 1 >= fcCheck.queue.length ? escapeHtml(getT().seeResult) : escapeHtml(getT().next)}</button>`
+    : `<button class="primary-btn fcq-next" id="fcCheckSubmitBtn" type="button">${escapeHtml(getT().check)}</button>`}
   `;
 
   const input = document.getElementById("fcCheckInput");
@@ -8089,11 +8093,11 @@ function renderCaptions(captions, lang) {
         <div class="vid-line-acts">
           <button class="vid-replay-btn" type="button" data-cap-index="${i}" aria-label="Replay line">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-play"/></svg>
-            Listen
+            ${escapeHtml(getT().listen)}
           </button>
           <button class="vid-speak-btn" type="button" data-cap-index="${i}" aria-label="Speak this line">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
-            Speak this line
+            ${escapeHtml(getT().speakThisLine)}
           </button>
         </div>
         <div class="vid-result-box" hidden></div>
@@ -8280,7 +8284,7 @@ async function loadVideoById(videoId) {
     }
     if (pinyinBtn) {
       pinyinBtn.hidden = videoLang !== "zh" && videoLang !== "ja";
-      pinyinBtn.textContent = videoLang === "ja" ? "Romaji" : "Pinyin";
+      pinyinBtn.textContent = videoLang === "ja" ? getT().romajiPill : getT().pinyinPill;
       pinyinBtn.classList.toggle("on", vidPinyinOn);
     }
     const transBtn = document.getElementById("vidTransToggle");

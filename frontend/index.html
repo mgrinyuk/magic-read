@@ -613,9 +613,9 @@
           <div class="sp-sub">Paste homework, a dialogue or an exam text. We split it into sentences and coach you one at a time.</div>
 
           <div class="rd-setup-seg sp-setup-seg" id="spSetupSeg">
-            <button class="rd-setup-seg-btn on" data-tab="paste" type="button">Paste text</button>
-            <button class="rd-setup-seg-btn" data-tab="library" type="button">Library</button>
-            <button class="rd-setup-seg-btn" data-tab="saved" type="button">Saved</button>
+            <button class="rd-setup-seg-btn on" data-tab="paste" type="button" data-i18n="pasteTextTab">Paste text</button>
+            <button class="rd-setup-seg-btn" data-tab="library" type="button" data-i18n="libraryTab">Library</button>
+            <button class="rd-setup-seg-btn" data-tab="saved" type="button" data-i18n="savedTab">Saved</button>
           </div>
 
           <div id="spSetupPasteTab" class="rd-setup-tab">
@@ -644,7 +644,7 @@
             <button class="sp-iconbtn" id="spBackBtn" type="button" aria-label="Back">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
             </button>
-            <div class="sp-counter">Sentence <b id="spNum">1</b> of <span id="spTotal">1</span></div>
+            <div class="sp-counter"><span data-i18n="sentenceWord">Sentence</span> <b id="spNum">1</b> <span data-i18n="of">of</span> <span id="spTotal">1</span></div>
             <div class="sp-lang-pill" id="spLangPill">中文</div>
           </div>
           <div class="sp-segments" id="spSegments"></div>
@@ -664,9 +664,9 @@
                 <div class="sp-fill"></div>
                 <svg class="sp-mic-ic" width="62" height="62" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
               </div>
-              <div class="sp-mic-label" id="spMicLabel">Tap to speak, tap again when you're done</div>
+              <div class="sp-mic-label" id="spMicLabel" data-i18n="tapToSpeak">Tap to speak, tap again when you're done</div>
               <button class="sp-listen-btn" id="spListenBtn" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--cyan)" aria-hidden="true"><use href="#sonic-i-play"/></svg> Listen first
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--cyan)" aria-hidden="true"><use href="#sonic-i-play"/></svg> <span data-i18n="listenFirst">Listen first</span>
               </button>
             </div>
 
@@ -703,9 +703,9 @@
       <section id="screen-speak-complete" class="app-screen">
         <div class="sp-complete-body">
           <div class="sp-confetti" id="spcConfetti" style="top:30%"></div>
-          <div class="sp-eyebrow">Text complete</div>
-          <div class="sp-h1" style="margin-top:8px;text-align:center">Nicely done!</div>
-          <div class="sp-sub" style="margin-top:8px;text-align:center">You spoke all <span id="spcTotal">4</span> sentences out loud.</div>
+          <div class="sp-eyebrow" data-i18n="textComplete">Text complete</div>
+          <div class="sp-h1" style="margin-top:8px;text-align:center" data-i18n="nicelyDone">Nicely done!</div>
+          <div class="sp-sub" style="margin-top:8px;text-align:center"><span data-i18n="youSpokeAll">You spoke all</span> <span id="spcTotal">4</span> <span data-i18n="sentencesOutLoud">sentences out loud.</span></div>
 
           <div class="sp-ring-wrap sp-ring-big" style="margin-top:24px">
             <svg width="220" height="220" viewBox="0 0 120 120">
@@ -714,16 +714,16 @@
             </svg>
             <div class="sp-ring-center">
               <div class="sp-ring-score" id="spcScore"></div>
-              <div class="sp-ring-cap">Overall</div>
+              <div class="sp-ring-cap" data-i18n="overallLabel">Overall</div>
             </div>
           </div>
 
           <div class="sp-recap" id="spcRecap"></div>
-          <div class="sp-recap-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> Tap a sentence to practise it again</div>
+          <div class="sp-recap-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> <span data-i18n="tapToRetrySentence">Tap a sentence to practise it again</span></div>
 
           <div class="sp-complete-cta">
-            <button class="sp-btn sp-btn-primary" id="spcNewBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-plus"/></svg> Paste another text</button>
-            <button class="sp-btn sp-btn-ghost" id="spcLibraryBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg> Choose from Library</button>
+            <button class="sp-btn sp-btn-primary" id="spcNewBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-plus"/></svg> <span data-i18n="pasteAnotherText">Paste another text</span></button>
+            <button class="sp-btn sp-btn-ghost" id="spcLibraryBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg> <span data-i18n="chooseFromLibrary">Choose from Library</span></button>
           </div>
         </div>
       </section>
@@ -733,18 +733,18 @@
       <section id="screen-read-setup" class="app-screen">
         <div class="rd-setup-scroll">
           <div class="rd-setup-eyebrow">Magic Read</div>
-          <div class="rd-setup-h1">What would you like<br>to read today?</div>
+          <div class="rd-setup-h1" data-i18n="rdSetupTitle">What would you like<br>to read today?</div>
 
           <div class="rd-setup-seg" id="rdSetupSeg">
-            <button class="rd-setup-seg-btn" data-tab="paste" type="button">Paste text</button>
-            <button class="rd-setup-seg-btn on" data-tab="library" type="button">Library</button>
-            <button class="rd-setup-seg-btn" data-tab="saved" type="button">Saved</button>
+            <button class="rd-setup-seg-btn" data-tab="paste" type="button" data-i18n="pasteTextTab">Paste text</button>
+            <button class="rd-setup-seg-btn on" data-tab="library" type="button" data-i18n="libraryTab">Library</button>
+            <button class="rd-setup-seg-btn" data-tab="saved" type="button" data-i18n="savedTab">Saved</button>
           </div>
 
           <div id="rdSetupPasteTab" class="rd-setup-tab" hidden>
-            <textarea id="rdSetupInput" class="rd-setup-textarea"
+            <textarea id="rdSetupInput" class="rd-setup-textarea" data-i18n-placeholder="rdSetupPlaceholder"
               placeholder="Paste a text here — an article, a chat, song lyrics or homework. We'll add pinyin, audio and word lookups automatically."></textarea>
-            <div class="rd-setup-charcount"><span id="rdSetupCharCount">0</span> / 2000 characters</div>
+            <div class="rd-setup-charcount"><span id="rdSetupCharCount">0</span> / 2000 <span data-i18n="charactersLabel">characters</span></div>
           </div>
 
           <div id="rdSetupLibraryTab" class="rd-setup-savedlist rd-setup-tab"></div>
@@ -784,7 +784,7 @@
           <div class="rd-han" id="rdHan"></div>
           <div class="rd-practice-wrap">
             <button class="rd-practice-btn" id="rdPracticeBtn" type="button">
-              Comprehension exercise
+              <span data-i18n="comprehensionExercise">Comprehension exercise</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-arrow"/></svg>
             </button>
           </div>
@@ -806,9 +806,9 @@
               <span id="rdSentLabel">0 / 0 sentences</span>
               <span id="rdSpeed">1.0×</span>
             </div>
-            <div class="rd-speed-hint">Tap turtle twice for 0.75×</div>
+            <div class="rd-speed-hint" data-i18n="speedHint">Tap turtle twice for 0.75×</div>
           </div>
-          <button class="rd-pill rd-slow" id="rdSlowPill" type="button" title="Tap once for 0.85×, twice for 0.75×"><span class="rd-slow-icon" aria-hidden="true">🐢</span><span id="rdSlowLabel">Slow</span></button>
+          <button class="rd-pill rd-slow" id="rdSlowPill" type="button" title="Tap once for 0.85×, twice for 0.75×"><span class="rd-slow-icon" aria-hidden="true">🐢</span><span id="rdSlowLabel" data-i18n="slow">Slow</span></button>
         </div>
 
         <!-- reader bottom sheets -->
@@ -860,19 +860,19 @@
         <section class="workspace-card fc-screen">
           <div class="workspace-head fc-head">
             <div>
-              <h3>Cards</h3>
-              <p class="subtle">Save new words from text or upload your own list</p>
+              <h3 data-i18n="cardsTitle">Cards</h3>
+              <p class="subtle" data-i18n="cardsSubtitle">Save new words from text or upload your own list</p>
             </div>
 
             <div class="flashcard-top-actions">
               <select id="flashcardDeckSelect" class="deck-select"></select>
               <button id="flashcardNewDeckBtn" class="game-nav-btn fc-icon-action" type="button" aria-label="New deck">+</button>
-              <button id="flashcardSpeakExitBtn" class="game-nav-btn" type="button" hidden>Exit speaking</button>
+              <button id="flashcardSpeakExitBtn" class="game-nav-btn" type="button" data-i18n="exitSpeaking" hidden>Exit speaking</button>
               <div class="tb-more">
                 <button type="button" class="game-nav-btn tb-more-btn" data-more-toggle aria-expanded="false" aria-haspopup="true" aria-label="More">⋯</button>
                 <div class="tb-more-menu" hidden>
-                  <button id="flashcardSpeakEasyBtn" class="tb-more-item" type="button">Speak: Term</button>
-                  <button id="flashcardSpeakHardBtn" class="tb-more-item" type="button">Speak: Translation</button>
+                  <button id="flashcardSpeakEasyBtn" class="tb-more-item" type="button" data-i18n="speakTermMode">Speak: Term</button>
+                  <button id="flashcardSpeakHardBtn" class="tb-more-item" type="button" data-i18n="speakTranslationMode">Speak: Translation</button>
                   <button id="flashcardExportBtn" class="tb-more-item" data-i18n="exportPDF">Export PDF</button>
                   <button id="flashcardImportBtn" class="tb-more-item" data-i18n="importWords">Import words</button>
                   <button id="flashcardDeleteDeckBtn" class="tb-more-item" data-i18n="deleteDeck">Delete deck</button>
@@ -889,9 +889,9 @@
 
           <div id="flashcardDeck" class="flashcard-deck" hidden>
             <div class="fc-mode-tabs" id="fcModeTabs">
-              <button class="fc-mode-tab on" data-fc-mode="browse" type="button">Browse</button>
-              <button class="fc-mode-tab" data-fc-mode="learn" type="button">Learn</button>
-              <button class="fc-mode-tab" data-fc-mode="check" type="button">Check</button>
+              <button class="fc-mode-tab on" data-fc-mode="browse" type="button" data-i18n="fcBrowse">Browse</button>
+              <button class="fc-mode-tab" data-fc-mode="learn" type="button" data-i18n="fcLearnTab">Learn</button>
+              <button class="fc-mode-tab" data-fc-mode="check" type="button" data-i18n="fcCheckTab">Check</button>
             </div>
 
             <div id="fcLearnPanel" class="fc-quiz" hidden></div>
@@ -917,7 +917,7 @@
                     <div class="fc-audio-row">
                       <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
-                        Play
+                        <span data-i18n="play">Play</span>
                       </button>
                       <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" aria-pressed="false">
                         <span aria-hidden="true">🐢</span><span class="toggle-label" data-i18n="slow">Slow</span>
@@ -1065,8 +1065,8 @@
               <span class="vid-yt-logo" aria-hidden="true">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M8 5v14l11-7z"/></svg>
               </span>
-              <input id="vidUrlInput" class="vid-url-input" type="url" placeholder="Paste YouTube link…" autocomplete="off" spellcheck="false" />
-              <button id="vidLoadBtn" class="vid-go-btn" type="button">Load</button>
+              <input id="vidUrlInput" class="vid-url-input" type="url" data-i18n-placeholder="pasteYouTubeLink" placeholder="Paste YouTube link…" autocomplete="off" spellcheck="false" />
+              <button id="vidLoadBtn" class="vid-go-btn" type="button" data-i18n="loadBtn">Load</button>
             </div>
 
             <div id="vidFreeChip" class="vid-free-chip" hidden>
@@ -1076,7 +1076,7 @@
             <div class="vid-player-wrap">
               <div id="vidPlayerPlaceholder" class="vid-placeholder">
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-video"/></svg>
-                <p class="vid-placeholder-txt">Paste a YouTube link above</p>
+                <p class="vid-placeholder-txt" data-i18n="pasteLinkAbove">Paste a YouTube link above</p>
               </div>
               <div id="vidPlayerContainer"></div>
             </div>
@@ -1105,27 +1105,27 @@
 
             <div id="vidLoadingState" class="vid-state" hidden>
               <div class="vid-spinner"></div>
-              <p class="vid-state-txt">Loading captions…</p>
+              <p class="vid-state-txt" data-i18n="loadingCaptions">Loading captions…</p>
             </div>
 
             <div id="vidNoCapState" class="vid-state vid-nocap" hidden>
               <div class="vid-nocap-icon">📭</div>
-              <p class="vid-nocap-title">No captions found</p>
-              <p class="vid-nocap-sub">The video opened, but we could not find usable captions for the learning language.</p>
-              <button id="vidTryAnotherBtn" class="vid-nocap-btn" type="button">Try another video</button>
+              <p class="vid-nocap-title" data-i18n="noCaptionsTitle">No captions found</p>
+              <p class="vid-nocap-sub" data-i18n="noCaptionsSub">The video opened, but we could not find usable captions for the learning language.</p>
+              <button id="vidTryAnotherBtn" class="vid-nocap-btn" type="button" data-i18n="tryAnotherVideo">Try another video</button>
               <button id="vidAutoGenBtn" class="vid-nocap-btn vid-nocap-btn-pro" type="button">Auto-generate captions (Pro)</button>
             </div>
 
             <div id="vidServiceErrorState" class="vid-state vid-nocap" hidden>
-              <p class="vid-nocap-title">Captions temporarily unavailable</p>
+              <p class="vid-nocap-title" data-i18n="captionsUnavailable">Captions temporarily unavailable</p>
               <p class="vid-nocap-sub" id="vidServiceErrorText">Something went wrong loading captions. Please try again in a moment.</p>
-              <button id="vidRetryBtn" class="vid-nocap-btn" type="button">Try again</button>
+              <button id="vidRetryBtn" class="vid-nocap-btn" type="button" data-i18n="tryAgain">Try again</button>
             </div>
 
             <div id="vidCaptionArea" class="vid-caption-area" hidden>
               <div class="vid-cap-toolbar">
                 <button id="vidPinyinToggle" class="vid-toggle-btn" type="button">Pinyin</button>
-                <button id="vidTransToggle" class="vid-toggle-btn on" type="button">Translate</button>
+                <button id="vidTransToggle" class="vid-toggle-btn on" type="button" data-i18n="translatePill">Translate</button>
               </div>
               <div id="vidCapList" class="vid-capwrap"></div>
             </div>
@@ -1413,7 +1413,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260703.1"></script>
+  <script type="module" src="app.js?v=20260710.1"></script>
 
   <footer class="footer">
     <div>

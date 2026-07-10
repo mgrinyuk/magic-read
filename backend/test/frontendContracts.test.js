@@ -157,7 +157,8 @@ test("reader exercises scale with sentence count up to five", async () => {
   assert.match(app, /function rdBuildExerciseItems\(\)/);
   assert.match(app, /\.slice\(0, target\)/);
   assert.match(app, /Array\.from\(\{ length: Math\.max\(total, 1\) \}/);
-  assert.match(app, /Exercise \$\{rdExState\.idx \+ 1\} of \$\{rdExState\.items\.length\}/);
+  // Localized: "Exercise {i} of {n}" is built from getT() keys.
+  assert.match(app, /getT\(\)\.exerciseWord\)\} \$\{rdExState\.idx \+ 1\}/);
   assert.doesNotMatch(app, /function rdRenderExerciseLegacy/);
   assert.match(css, /\.rd-ex-seg\.done\s*\{\s*background: var\(--good\);/);
   assert.match(css, /\.rd-ex-seg\.active\s*\{\s*background: var\(--primary\);/);
