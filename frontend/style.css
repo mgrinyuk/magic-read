@@ -4995,7 +4995,11 @@ body.video-active .app-shell .main .site-container {
   overflow: hidden;
   background: #160B2C;
   aspect-ratio: 16/9;
-  max-height: 36vh;
+  /* Exactly 16:9, capped by both the available width and 36vh of height,
+     and always horizontally centered (a bare max-height left it either
+     left-hugging or letterboxed depending on the browser). */
+  width: min(100%, calc(36vh * 16 / 9));
+  margin-inline: auto;
 }
 .vid-placeholder {
   position: absolute;
