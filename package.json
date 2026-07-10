@@ -5,9 +5,12 @@
   "scripts": {
     "cap:sync": "cap sync",
     "cap:open:ios": "cap open ios",
-    "cap:run:ios": "cap run ios"
+    "cap:run:ios": "cap run ios",
+    "cap:open:android": "cap open android",
+    "cap:run:android": "cap run android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/ios": "^8.4.1"
   },
