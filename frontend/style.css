@@ -6364,6 +6364,16 @@ body {
   gap: 14px;
 }
 
+/* The browse wrapper must pass the deck's flex sizing through to
+   .flashcard-area, otherwise the card collapses to its min height. */
+#screen-flashcards #fcBrowsePanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 #screen-flashcards .flashcard-meta {
   margin: 0;
   min-height: 30px;
