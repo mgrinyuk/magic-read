@@ -90,6 +90,11 @@ const FREE_MAX_SAVED_TEXTS = Number(process.env.FREE_MAX_SAVED_TEXTS || 5);
 const FREE_MAX_DECKS = Number(process.env.FREE_MAX_DECKS || 2);
 const FREE_MAX_CARDS = Number(process.env.FREE_MAX_CARDS || 100);
 const FREE_VIDEO_TRIAL_LIMIT = Number(process.env.FREE_VIDEO_TRIAL_LIMIT || 3);
+// Abuse caps for third-party-billed APIs (Google TTS / Translate). Generous on
+// purpose: normal free-tier app usage stays far below them; they only stop
+// direct API calls from burning money on a free account.
+const FREE_DAILY_TTS_LIMIT = Number(process.env.FREE_DAILY_TTS_LIMIT || 300);
+const FREE_DAILY_TRANSLATE_LIMIT = Number(process.env.FREE_DAILY_TRANSLATE_LIMIT || 300);
 const LIFETIME_OFFER_ENABLED = process.env.LIFETIME_OFFER_ENABLED === "true";
 const LIFETIME_OFFER_WINDOW_DAYS = Number(process.env.LIFETIME_OFFER_WINDOW_DAYS || 7);
 const TBANK_TERMINAL_KEY = process.env.TBANK_TERMINAL_KEY;
@@ -154,6 +159,51 @@ async function getUserPlan(userId) {
     effectivePlan,
     lifetimeOfferEligible
   };
+}
+
+// Server-side cap for third-party-billed APIs. Pro/trial users are unlimited;
+// free users get a per-day cap per kind ("tts" | "translate"). Returns true if
+// the request may proceed; otherwise it has already sent the 429. Fails open on
+// storage errors so a missing table can't take the feature down for everyone.
+async function enforceFreeApiCap(req, res, kind, limit) {
+  try {
+    const userId = req.user.id;
+    const { effectivePlan } = await getUserPlan(userId);
+    if (effectivePlan === "pro") return true;
+
+    const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    const { data: row, error } = await supabaseAdmin
+      .from("api_usage")
+      .select("count")
+      .eq("user_id", userId)
+      .eq("day", day)
+      .eq("kind", kind)
+      .maybeSingle();
+    if (error) {
+      console.error(`[ApiCap] ${kind} lookup error:`, error.message);
+      return true;
+    }
+
+    const used = row?.count || 0;
+    if (used >= limit) {
+      res.status(429).json({
+        error: "You've reached today's free limit. Upgrade to Pro for unlimited use.",
+        code: "QUOTA_EXCEEDED",
+        used,
+        limit
+      });
+      return false;
+    }
+
+    const { error: incErr } = await supabaseAdmin
+      .from("api_usage")
+      .upsert({ user_id: userId, day, kind, count: used + 1 }, { onConflict: "user_id,day,kind" });
+    if (incErr) console.error(`[ApiCap] ${kind} increment error:`, incErr.message);
+    return true;
+  } catch (e) {
+    console.error(`[ApiCap] ${kind} error:`, e.message);
+    return true;
+  }
 }
 
 // Attaches req.user from a Bearer JWT; silently treats invalid tokens as guests.
@@ -455,7 +505,7 @@ function drawCharacterGrid(doc, items, fontPath, titleText) {
   }
 }
 
-app.post("/api/create-writing-sheet", (req, res) => {
+app.post("/api/create-writing-sheet", extractUser, requireUser, (req, res) => {
   try {
     const { text, sourceLang } = req.body || {};
 
@@ -766,6 +816,9 @@ app.post("/api/tts", extractUser, requireUser, async (req, res) => {
       return res.status(400).json({ error: "text and sourceLang are required" });
     }
 
+    // Google TTS is billed — cap free accounts server-side.
+    if (!(await enforceFreeApiCap(req, res, "tts", FREE_DAILY_TTS_LIMIT))) return;
+
     const voiceMap = {
       zh: { languageCode: "cmn-CN", name: "cmn-CN-Wavenet-D" },
       en: { languageCode: "en-US", name: "en-US-Wavenet-D" },
@@ -822,6 +875,9 @@ app.post("/api/translate", extractUser, requireUser, async (req, res) => {
     if (!sentence) {
       return res.status(400).json({ error: "Sentence is required" });
     }
+
+    // Google Translate is billed — cap free accounts server-side.
+    if (!(await enforceFreeApiCap(req, res, "translate", FREE_DAILY_TRANSLATE_LIMIT))) return;
 
     const translation = await translateText(sentence, sourceLang, targetLang);
 
@@ -1341,6 +1397,29 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
   // YouTube video IDs are exactly 11 chars from [A-Za-z0-9_-]
   if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     return res.status(400).json({ error: "Invalid videoId" });
+  }
+
+  // Entitlement backstop — the app calls /api/check-video-quota first (which
+  // increments the trial counter), but captions burn Supadata credits, so the
+  // route itself must also refuse non-entitled accounts. `>` not `>=`: the
+  // quota check has already counted this open for trial users.
+  try {
+    const { plan, trialActive } = await getUserPlan(req.user.id);
+    if (plan !== "pro") {
+      if (!trialActive) {
+        return res.status(403).json({ error: "Videos are a Pro feature.", code: "VIDEO_QUOTA_EXCEEDED" });
+      }
+      const { data: usageRow } = await supabaseAdmin
+        .from("video_usage")
+        .select("opens")
+        .eq("user_id", req.user.id)
+        .maybeSingle();
+      if ((usageRow?.opens || 0) > FREE_VIDEO_TRIAL_LIMIT) {
+        return res.status(403).json({ error: "You've used your trial videos. Go Pro to keep learning from any video.", code: "VIDEO_QUOTA_EXCEEDED" });
+      }
+    }
+  } catch (entitlementErr) {
+    console.error("[Captions] entitlement check error:", entitlementErr.message);
   }
 
   try {
@@ -2033,7 +2112,7 @@ app.get("/video-player.html", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "frontend", "video-player.html"));
 });
 
-app.post("/api/export-flashcard-deck", (req, res) => {
+app.post("/api/export-flashcard-deck", extractUser, requireUser, (req, res) => {
   try {
     const { deckName, words } = req.body || {};
 
