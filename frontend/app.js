@@ -357,6 +357,7 @@ async function runPronunciationDrill(chunks, shortLang, resultBox, t) {
               outcome.error.info?.error ||
                 tt("drillQuota", "You're out of today's free checks.")
             )}</p>`;
+            showUpgradePrompt("QUOTA_EXCEEDED");
             finish("abort");
             return;
           }
@@ -1032,6 +1033,16 @@ function getUpgradeMessage(code) {
       title: "Videos are a Pro feature",
       sub: `You've used your ${lim.videosPerTrial} trial videos. Go Pro to keep learning from any video.`,
       reassurance: null
+    },
+    TTS_QUOTA_EXCEEDED: {
+      title: "You've used today's free audio",
+      sub: "Go Pro for unlimited listening — no daily cap.",
+      reassurance: "Your free audio resets tomorrow."
+    },
+    TRANSLATE_QUOTA_EXCEEDED: {
+      title: "You've used today's free translations",
+      sub: "Go Pro for unlimited translations — no daily cap.",
+      reassurance: "Your free translations reset tomorrow."
     }
   };
   return msgs[code] || { title: "Upgrade to Pro", sub: "Go Pro for unlimited access.", reassurance: null };
@@ -3684,6 +3695,11 @@ async function rdToggleTrans() {
         body: JSON.stringify({ sentence: pa.text, sourceLang: R.lang, targetLang: targetLangSelect.value || "en" })
       });
       const data = await res.json();
+      if (res.status === 429 && data?.code) {
+        // Free-plan daily translation cap — stop the batch and offer Pro.
+        showUpgradePrompt(data.code);
+        return;
+      }
       pa.en = res.ok ? (data.translation || "") : "";
     } catch { pa.en = ""; }
     const transEl = han?.querySelectorAll(".rd-para")[p]?.querySelector(".rd-trans");
@@ -6134,7 +6150,13 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
         body: JSON.stringify(ttsBody)
       });
 
-      if (response.status === 429) throw new Error("RATE_LIMIT");
+      if (response.status === 429) {
+        let body = null;
+        try { body = await response.json(); } catch { /* non-JSON body */ }
+        // Free-plan daily cap → upgrade modal; plain IP rate limit → toast.
+        if (body?.code) throw Object.assign(new Error("TTS_CAP"), { upgradeCode: body.code });
+        throw new Error("RATE_LIMIT");
+      }
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "TTS failed");
 
@@ -6179,6 +6201,10 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
     currentAudioText = "";
     currentAudioRate = 1.0;
     audioCtxSuspended = false;
+    if (error.upgradeCode) {
+      showUpgradePrompt(error.upgradeCode);
+      return;
+    }
     if (error.message === "RATE_LIMIT") {
       showToast("Too many requests. Please wait a moment.", "error");
       return;

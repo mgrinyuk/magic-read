@@ -188,7 +188,7 @@ async function enforceFreeApiCap(req, res, kind, limit) {
     if (used >= limit) {
       res.status(429).json({
         error: "You've reached today's free limit. Upgrade to Pro for unlimited use.",
-        code: "QUOTA_EXCEEDED",
+        code: `${kind.toUpperCase()}_QUOTA_EXCEEDED`,
         used,
         limit
       });
