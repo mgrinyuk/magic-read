@@ -884,7 +884,7 @@ function renderPlanUI() {
   } else if (userPlan.trialActive && !paidPro) {
     const days = trialDaysLeft();
     if (trialBadge) {
-      trialBadge.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
+      trialBadge.textContent = getT().proTrialDaysLeft.replace("{n}", days);
       trialBadge.hidden = false;
     }
     if (proBadge) proBadge.hidden = true;
@@ -945,9 +945,10 @@ function renderWelcomeBanner() {
     const dateStr = end ? end.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
     const textEl = banner.querySelector(".welcome-week-text");
     if (textEl) {
-      textEl.textContent =
-        `✨ Welcome week — you have Pro access free until ${dateStr}. ` +
-        `After that: ${userPlan.limits.textPerDay} texts/day, ${userPlan.limits.pronunciationPerDay} pronunciation checks/day.`;
+      textEl.textContent = getT().welcomeWeekMsg
+        .replace("{date}", dateStr)
+        .replace("{texts}", userPlan.limits.textPerDay)
+        .replace("{checks}", userPlan.limits.pronunciationPerDay);
     }
     banner.hidden = false;
   } else {
@@ -1811,8 +1812,9 @@ async function loadRecentProgress() {
   if (error || !data) { resumeEl.hidden = true; return; }
 
   _resumeProgress = data;
-  const activityLabels = { reading: "Continue reading", speaking: "Continue speaking", flashcards: "Continue cards", video: "Continue video" };
-  if (resumeLabel) resumeLabel.textContent = activityLabels[data.activity] || "Continue";
+  const _t = getT();
+  const activityLabels = { reading: _t.continueReading, speaking: _t.continueSpeaking, flashcards: _t.continueCards, video: _t.continueVideo };
+  if (resumeLabel) resumeLabel.textContent = activityLabels[data.activity] || _t.continue;
   if (resumeTitle) resumeTitle.textContent = data.title || "Untitled";
   resumeEl.hidden = false;
 }
@@ -1875,17 +1877,17 @@ function renderHomeScreen() {
     const avatarEl = document.getElementById("homeAvatar");
     const badgeEl  = document.getElementById("homePlanBadge");
 
-    if (nameEl)   nameEl.textContent   = `Hello, ${name}`;
+    if (nameEl)   nameEl.textContent   = `${getT().helloName}, ${name}`;
     if (avatarEl) avatarEl.textContent = initial;
 
     if (badgeEl) {
       const paidPro = isPaidProUser();
       if (paidPro) {
-        badgeEl.textContent = isLifetimeProUser() ? "Forever Pro" : "Pro";
+        badgeEl.textContent = isLifetimeProUser() ? getT().foreverPro : "Pro";
         badgeEl.dataset.variant = "pro";
       } else if (userPlan.trialActive) {
         const days = trialDaysLeft();
-        badgeEl.textContent = `Pro trial · ${days} day${days === 1 ? "" : "s"} left`;
+        badgeEl.textContent = getT().proTrialDaysLeft.replace("{n}", days);
         badgeEl.dataset.variant = "trial";
       } else {
         badgeEl.textContent = getT().freePlanLabel;
@@ -1898,7 +1900,7 @@ function renderHomeScreen() {
   // Streak
   const streak = userPlan.currentStreak || 0;
   const streakN = document.getElementById("homeStreakN");
-  if (streakN) streakN.textContent = `${streak}-day streak`;
+  if (streakN) streakN.textContent = getT().dayStreak.replace("{n}", streak);
 
   const dotsEl = document.getElementById("homeStreakDots");
   if (dotsEl) {
