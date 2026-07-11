@@ -8245,10 +8245,12 @@ async function loadVideoById(videoId) {
   if (playerContainer) playerContainer.innerHTML = "";
   setVideoCaptionError("");
 
-  // In Video mode, the second selector is the language being learned.
-  // Example: Russian -> English means English captions with Russian translation.
-  const lang = targetLangSelect.value || "en";
-  const targetLang = sourceLangSelect.value || "ru";
+  // Same convention as the rest of the app: sourceLang = the language being
+  // learned (captions), targetLang = the user's own language (translations).
+  // These were swapped before, which asked for captions in the user's native
+  // language and "translated" them into the learning language (e.g. tr → tr).
+  const lang = sourceLangSelect.value || "zh";
+  const targetLang = targetLangSelect.value || "en";
   videoLang = lang;
   videoHelpLang = targetLang;
 

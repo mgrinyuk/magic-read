@@ -1396,14 +1396,19 @@ async function enrichCaptionLines(rawLines, actualLang, targetLang) {
   const isJa = actualLang === "ja" || actualLang.startsWith("ja-");
 
   let translations = rawLines.map(() => "");
-  try {
-    // Chunked translation of long transcripts takes several requests — allow 25s.
-    translations = await Promise.race([
-      translateBatch(rawLines.map(l => l.text), actualLang, targetLang),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Caption translation timed out")), 25000))
-    ]);
-  } catch (err) {
-    console.error("[Captions] translation error:", err.message);
+  // Same-language "translation" (e.g. tr → tr after a transcript-language
+  // fallback) is a paid no-op — skip it and leave translations empty.
+  const sameLang = String(actualLang).slice(0, 2).toLowerCase() === String(targetLang).slice(0, 2).toLowerCase();
+  if (!sameLang) {
+    try {
+      // Chunked translation of long transcripts takes several requests — allow 25s.
+      translations = await Promise.race([
+        translateBatch(rawLines.map(l => l.text), actualLang, targetLang),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Caption translation timed out")), 25000))
+      ]);
+    } catch (err) {
+      console.error("[Captions] translation error:", err.message);
+    }
   }
 
   return rawLines.map((line, i) => {
@@ -1473,7 +1478,10 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
 
     if (cached) {
       const caps = Array.isArray(cached.captions) ? cached.captions : [];
-      const missingTranslations = caps.length > 0 && caps.every(c => !c.translation);
+      // Stale rows: no translations at all, or "translations" identical to the
+      // source text (cached back when the target language was wrong).
+      const missingTranslations =
+        caps.length > 0 && caps.every(c => !c.translation || c.translation === c.text);
       if (!missingTranslations) {
         return res.json({ captions: cached.captions, source: cached.source, cached: true });
       }
