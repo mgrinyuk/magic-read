@@ -4475,38 +4475,35 @@ function spSetupRenderLibrary(texts) {
     grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">No texts yet.</p>';
     return;
   }
-  const hues = ["#E5267E", "#0AB4D6", "#F5B400", "#16A34A"];
-  grid.innerHTML = texts.map((t, i) => {
-    const hue = hues[i % hues.length];
+  grid.innerHTML = texts.map(t => {
     const glyph = (t.title || "文")[0];
     const sel = spSetupState.sel.kind === "library" && String(spSetupState.sel.id) === String(t.id);
-    return `<button class="rd-libcard${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}" type="button">
-      <div class="rd-libthumb" style="background:linear-gradient(135deg,${hue},rgba(28,18,51,.25))"><span class="rd-libthumb-glyph">${escapeHtml(glyph)}</span></div>
-      <div class="rd-libcard-body">
-        <div class="rd-libcard-title">${escapeHtml(t.title || "Untitled")}</div>
-        <div class="rd-libcard-sub">${escapeHtml(t.topic || "")}</div>
-        <div class="rd-libcard-meta">
-          ${t.level ? `<span class="rd-libcard-level">${escapeHtml(t.level)}</span>` : ""}
-          ${t.cardCount ? `<span class="rd-libcard-len">${t.cardCount} cards</span>` : ""}
+    const sub = [t.topic, t.level].filter(Boolean).join(" · ");
+    return `<div class="rd-savedrow${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}">
+      <button class="rd-savedrow-main" data-lib-id="${escapeHtml(t.id)}" type="button">
+        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
+        <div class="rd-savedrow-body">
+          <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
+          <div class="rd-savedrow-sub">${escapeHtml(sub)}</div>
         </div>
-      </div>
-    </button>`;
+      </button>
+    </div>`;
   }).join("");
-  grid.querySelectorAll(".rd-libcard").forEach(card => {
-    card.addEventListener("click", () => {
-      const id = card.dataset.libId;
+  grid.querySelectorAll(".rd-savedrow-main").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.libId;
       const t = texts.find(x => String(x.id) === String(id));
       if (!t) return;
       spSetupState.sel = { kind: "library", id, title: t.title || "" };
       spSetupState._libText = t;
-      grid.querySelectorAll(".rd-libcard").forEach(c => c.classList.toggle("sel", c.dataset.libId === id));
+      grid.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.libId === id));
       spSetupUpdateStartLabel();
     });
   });
   if ((!spSetupState.sel.id || spSetupState.sel.kind !== "library") && texts.length) {
     spSetupState.sel = { kind: "library", id: texts[0].id, title: texts[0].title || "" };
     spSetupState._libText = texts[0];
-    grid.querySelector(".rd-libcard")?.classList.add("sel");
+    grid.querySelector(".rd-savedrow")?.classList.add("sel");
     spSetupUpdateStartLabel();
   }
 }
