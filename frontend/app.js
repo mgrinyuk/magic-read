@@ -2290,11 +2290,46 @@ document.getElementById("pricingProBtn")?.addEventListener("click", () => {
   openAuthFromOverlay("signup");
 });
 
+// In the native shells OAuth must round-trip through the system browser and
+// come back via the magicread:// deep link — the app's internal origin
+// (https://localhost) is unreachable from the browser.
+const OAUTH_DEEP_LINK = "magicread://auth-callback";
+
 document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
   await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: window.location.origin }
+    options: {
+      redirectTo: isNativeCapacitorShell() ? OAUTH_DEEP_LINK : window.location.origin
+    }
   });
+});
+
+// Native deep-link return: parse the tokens Supabase appended to the
+// magicread:// URL and finish the session in the app.
+window.Capacitor?.Plugins?.App?.addListener("appUrlOpen", async ({ url }) => {
+  if (!url || !url.startsWith(OAUTH_DEEP_LINK)) return;
+  try {
+    const frag = url.includes("#") ? url.split("#")[1] : (url.split("?")[1] || "");
+    const params = new URLSearchParams(frag);
+    const access_token = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+    if (access_token && refresh_token) {
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) throw error;
+      await checkAuth();
+      return;
+    }
+    // PKCE-style return (?code=...) — exchange it if that flow is ever enabled.
+    const code = params.get("code");
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+      await checkAuth();
+    }
+  } catch (err) {
+    console.error("[Auth] deep link sign-in failed:", err);
+    showToast("Sign-in didn't complete. Please try again.", "error");
+  }
 });
 
 /* -----------------------------
