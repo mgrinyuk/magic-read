@@ -1582,15 +1582,10 @@ function isNativeCapacitorShell() {
 }
 
 function openVideoSurface(videoId = "") {
-  const hostedOrigin = API_BASE;
-  const isHosted = window.location.origin === hostedOrigin;
-  if (isNativeCapacitorShell() && !isHosted) {
-    const url = new URL(hostedOrigin);
-    url.searchParams.set("appScreen", "video");
-    if (videoId) url.searchParams.set("videoId", videoId);
-    window.location.href = url.toString();
-    return;
-  }
+  // The video screen stays inside the app everywhere. In the native shells the
+  // player iframe itself loads from the hosted origin (see mountYTPlayer), so
+  // YouTube sees a real website and allows embedding — no need to navigate the
+  // whole WebView to the hosted site anymore.
   showScreen(screenVideo);
   initVideoScreen();
   if (videoId) loadVideoById(videoId);
@@ -7834,6 +7829,15 @@ let vidProxyState = { state: -1, currentTime: 0, duration: 0 };
 
 const HOSTED_VIDEO_PLAYER_URL = "/video-player.html";
 
+// In the native shells the local origin (https://localhost) is refused by
+// YouTube, so the player page is loaded from the hosted site instead.
+function getHostedPlayerURL() {
+  return isNativeCapacitorShell() ? `${API_BASE}${HOSTED_VIDEO_PLAYER_URL}` : HOSTED_VIDEO_PLAYER_URL;
+}
+function getHostedPlayerOrigin() {
+  return isNativeCapacitorShell() ? API_BASE : window.location.origin;
+}
+
 function extractYouTubeId(input) {
   const s = (input || "").trim();
   const re = /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -7849,7 +7853,7 @@ function getYouTubeEmbedOrigin() {
 
 function postHostedVideo(type, payload = {}) {
   if (!vidFrameWindow) return;
-  vidFrameWindow.postMessage({ source: "magic-read-video-host", type, ...payload }, window.location.origin);
+  vidFrameWindow.postMessage({ source: "magic-read-video-host", type, ...payload }, getHostedPlayerOrigin());
 }
 
 function makeHostedVideoProxy() {
@@ -7972,7 +7976,7 @@ function mountYTPlayer(videoId) {
 
   container.innerHTML = "";
   const iframe = document.createElement("iframe");
-  iframe.src = `${HOSTED_VIDEO_PLAYER_URL}?videoId=${encodeURIComponent(videoId)}&parentOrigin=${encodeURIComponent(getYouTubeEmbedOrigin())}`;
+  iframe.src = `${getHostedPlayerURL()}?videoId=${encodeURIComponent(videoId)}&parentOrigin=${encodeURIComponent(getYouTubeEmbedOrigin())}`;
   iframe.title = "YouTube video player";
   iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
   iframe.referrerPolicy = "strict-origin-when-cross-origin";
@@ -7982,7 +7986,7 @@ function mountYTPlayer(videoId) {
 
   return new Promise((resolve, reject) => {
     vidFrameMessageHandler = (event) => {
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== getHostedPlayerOrigin()) return;
       const msg = event.data || {};
       if (msg.source !== "magic-read-video-player") return;
       if (typeof msg.currentTime === "number") vidProxyState.currentTime = msg.currentTime;
