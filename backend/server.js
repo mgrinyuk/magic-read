@@ -1388,6 +1388,42 @@ app.post("/api/record-activity", extractUser, requireUser, async (req, res) => {
    or { error, code: "CAPTION_SERVICE_ERROR" } on provider outage.
 ----------------------------- */
 
+// Translate caption lines and add reading aids (zh pinyin / ja romaji tokens).
+// Used both for fresh transcripts and to heal cached rows that were stored
+// while translation was failing.
+async function enrichCaptionLines(rawLines, actualLang, targetLang) {
+  const isZh = actualLang === "zh" || actualLang.startsWith("zh-");
+  const isJa = actualLang === "ja" || actualLang.startsWith("ja-");
+
+  let translations = rawLines.map(() => "");
+  try {
+    // Chunked translation of long transcripts takes several requests — allow 25s.
+    translations = await Promise.race([
+      translateBatch(rawLines.map(l => l.text), actualLang, targetLang),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Caption translation timed out")), 25000))
+    ]);
+  } catch (err) {
+    console.error("[Captions] translation error:", err.message);
+  }
+
+  return rawLines.map((line, i) => {
+    const out = {
+      start:       line.start,
+      dur:         line.dur,
+      text:        line.text,
+      translation: translations[i] ?? ""
+    };
+    if (isZh) {
+      out.pinyin = line.pinyin || pinyin(line.text, { toneType: "symbol", type: "array" }).join(" ");
+      out.tokens = line.tokens?.length ? line.tokens : segmentChineseText(line.text);
+    } else if (isJa) {
+      out.tokens = line.tokens?.length ? line.tokens : segmentJapaneseText(line.text);
+      out.pinyin = line.pinyin || out.tokens.map(t => t.pinyin).filter(Boolean).join(" ");
+    }
+    return out;
+  });
+}
+
 app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
   const { videoId, lang, targetLang = "en" } = req.query;
 
@@ -1436,7 +1472,19 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
     ]);
 
     if (cached) {
-      return res.json({ captions: cached.captions, source: cached.source, cached: true });
+      const caps = Array.isArray(cached.captions) ? cached.captions : [];
+      const missingTranslations = caps.length > 0 && caps.every(c => !c.translation);
+      if (!missingTranslations) {
+        return res.json({ captions: cached.captions, source: cached.source, cached: true });
+      }
+      // Heal stale rows cached while translation was broken (e.g. the >128
+      // segment limit) — re-enrich from the cached lines, no Supadata credit.
+      const healed = await enrichCaptionLines(caps, lang, targetLang);
+      supabaseAdmin
+        .from("video_captions")
+        .upsert({ video_id: videoId, lang, source: cached.source, captions: healed })
+        .then(({ error }) => { if (error) console.error("[Captions] heal write:", error.message); });
+      return res.json({ captions: healed, source: cached.source, cached: true });
     }
 
     if (sentinel?.captions?.no_captions) {
@@ -1481,35 +1529,7 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
 
     // 3. Enrich: batch-translate all lines; add pinyin + tokens for Chinese,
     //    romaji + tokens for Japanese
-    const isZh = actualLang === "zh" || actualLang.startsWith("zh-");
-    const isJa = actualLang === "ja" || actualLang.startsWith("ja-");
-
-    let translations = rawLines.map(() => "");
-    try {
-      translations = await Promise.race([
-        translateBatch(rawLines.map(l => l.text), actualLang, targetLang),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Caption translation timed out")), 12000))
-      ]);
-    } catch (err) {
-      console.error("[Captions] translation error:", err.message);
-    }
-
-    const enriched = rawLines.map((line, i) => {
-      const out = {
-        start:       line.start,
-        dur:         line.dur,
-        text:        line.text,
-        translation: translations[i] ?? ""
-      };
-      if (isZh) {
-        out.pinyin = pinyin(line.text, { toneType: "symbol", type: "array" }).join(" ");
-        out.tokens = segmentChineseText(line.text);
-      } else if (isJa) {
-        out.tokens = segmentJapaneseText(line.text);
-        out.pinyin = out.tokens.map(t => t.pinyin).filter(Boolean).join(" ");
-      }
-      return out;
-    });
+    const enriched = await enrichCaptionLines(rawLines, actualLang, targetLang);
 
     // 4. Cache under the actual language returned by the provider (fire-and-forget).
     //    Also cache under the requested lang when we fell back, so repeated requests for the
