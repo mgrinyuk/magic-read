@@ -721,7 +721,7 @@ let currentDeckId = null;
 let currentFlashcardIndex = 0;
 let flashcardFlipped = false;
 
-speechSynthesis.getVoices();
+window.speechSynthesis?.getVoices();
 
 /* -----------------------------
    I18N
@@ -5031,7 +5031,7 @@ document.getElementById("toggleFullTextPinyinBtn")?.addEventListener("click", ()
 
 document.getElementById("readFullTextBtn")?.addEventListener("click", async () => {
   unlockAudioForMobile();
-  window.speechSynthesis.cancel();
+  window.speechSynthesis?.cancel();
   if (!fullTextContent) return;
 
   const text = fullTextContent.dataset.fullSentence || fullTextContent.textContent.trim();
@@ -6137,7 +6137,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
   currentAudioText = "";
   currentAudioRate = 1.0;
 
-  speechSynthesis.cancel();
+  window.speechSynthesis?.cancel();
 
   try {
     const selectedVoice = getSelectedVoice(effectiveLang);
@@ -6219,6 +6219,11 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
 }
 
 function playBrowserTTS(text, langOverride = null, sentenceEl = null, onEnd = null, onError = null) {
+  // Android WebView has no Web Speech API — degrade silently instead of throwing.
+  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
+    if (typeof onEnd === "function") onEnd();
+    return;
+  }
   if (!text) return;
 
   unlockAudioForMobile();
@@ -6265,13 +6270,13 @@ function playBrowserTTS(text, langOverride = null, sentenceEl = null, onEnd = nu
   if (isIOS()) {
     window.speechSynthesis.speak(utterance);
   } else {
-    setTimeout(() => window.speechSynthesis.speak(utterance), 0);
+    setTimeout(() => window.speechSynthesis?.speak(utterance), 0);
   }
 }
 
 function stopAllTTS() {
   clearWordHighlights();
-  speechSynthesis.cancel();
+  window.speechSynthesis?.cancel();
   if (currentAudio) {
     currentAudio.onended = null;
     try { currentAudio.stop(); } catch (_) {}
