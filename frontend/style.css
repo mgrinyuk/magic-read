@@ -5604,6 +5604,10 @@ body.video-active .app-shell .main .site-container {
   border-radius: 999px; padding: 11px 22px; font-family: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
 }
 .sp-listen-btn:hover { background: var(--surface-2); }
+.sp-listen-row { margin-top: 18px; display: flex; gap: 10px; align-items: center; }
+.sp-listen-row .sp-listen-btn { margin-top: 0; }
+.sp-slow-btn.is-active { color: var(--primary); border-color: rgba(229, 38, 126, .45); background: rgba(229, 38, 126, .07); }
+.sp-slow-btn.is-extra-slow { border-color: var(--primary); background: rgba(229, 38, 126, .14); }
 
 @keyframes spMicPulse {
   0%,100% { box-shadow: 0 0 0 0 var(--primary-soft); }

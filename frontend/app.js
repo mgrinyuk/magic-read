@@ -5116,7 +5116,7 @@ function updateSlowLabels() {
   const t = getT();
   const label = ttsSpeedMode === 2 ? "Extra slow" : (t.slow || "Slow");
 
-  ["globalSlowBtn", "flashcardSlowBtn"].forEach(id => {
+  ["globalSlowBtn", "flashcardSlowBtn", "spSlowBtn"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const lbl = el.querySelector(".toggle-label");
@@ -5142,6 +5142,7 @@ function getTtsSpeedLabel() {
 }
 
 globalSlowBtn?.addEventListener("click", toggleSlowMode);
+document.getElementById("spSlowBtn")?.addEventListener("click", toggleSlowMode);
 
 /* -----------------------------
    "MORE" OVERFLOW MENUS

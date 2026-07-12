@@ -665,9 +665,14 @@
                 <svg class="sp-mic-ic" width="62" height="62" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
               </div>
               <div class="sp-mic-label" id="spMicLabel" data-i18n="tapToSpeak">Tap to speak, tap again when you're done</div>
-              <button class="sp-listen-btn" id="spListenBtn" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--cyan)" aria-hidden="true"><use href="#sonic-i-play"/></svg> <span data-i18n="listenFirst">Listen first</span>
-              </button>
+              <div class="sp-listen-row">
+                <button class="sp-listen-btn" id="spListenBtn" type="button">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--cyan)" aria-hidden="true"><use href="#sonic-i-play"/></svg> <span data-i18n="listenFirst">Listen first</span>
+                </button>
+                <button class="sp-listen-btn sp-slow-btn" id="spSlowBtn" type="button" aria-pressed="false">
+                  <span aria-hidden="true">🐢</span> <span class="toggle-label" data-i18n="slow">Slow</span>
+                </button>
+              </div>
             </div>
 
             <!-- score ring (after recording) -->
@@ -1413,7 +1418,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260711.6"></script>
+  <script type="module" src="app.js?v=20260711.7"></script>
 
   <footer class="footer">
     <div>
