@@ -1153,11 +1153,14 @@ async function checkAuth() {
     fetchMyPlan();
 
     // If the user landed on the onboarding screen (because session wasn't known yet),
-    // redirect them straight to the home dashboard.
+    // redirect them straight to the home dashboard — via the one-time feature
+    // tour in the native apps.
     const activeScreen = document.querySelector(".app-screen.active");
     if (!activeScreen || activeScreen.id === "screen-onboarding") {
-      renderHomeScreen();
-      showScreen(screenHome);
+      maybeShowTour(() => {
+        renderHomeScreen();
+        showScreen(screenHome);
+      });
     }
   } else {
     document.body.classList.add("is-logged-out");
@@ -1171,6 +1174,9 @@ async function checkAuth() {
     userPlan = { ...GUEST_PLAN };
     renderPlanUI();
     showLandingPage();
+    // The native apps have no marketing landing — signed-out users go straight
+    // to the auth screen (its close button is hidden via body.is-native).
+    if (isNativeCapacitorShell()) openAuthFromOverlay("login");
   }
 }
 
@@ -2269,8 +2275,10 @@ document.getElementById("onboardingContinueBtn")?.addEventListener("click", () =
 
 document.getElementById("onboardingStartBtn")?.addEventListener("click", () => {
   if (document.body.classList.contains("is-logged-in")) {
-    renderHomeScreen();
-    showScreen(screenHome);
+    maybeShowTour(() => {
+      renderHomeScreen();
+      showScreen(screenHome);
+    });
     return;
   }
   openAuthFromOverlay("signup");
@@ -2333,6 +2341,125 @@ window.Capacitor?.Plugins?.App?.addListener("appUrlOpen", async ({ url }) => {
     showToast("Sign-in didn't complete. Please try again.", "error");
   }
 });
+
+/* -----------------------------
+   FEATURE TOUR (onboarding carousel) + NATIVE INTRO SPLASH
+----------------------------- */
+
+const TOUR_SLIDE_COUNT = 11;
+const TOUR_SEEN_KEY = "magicread_tour_seen";
+
+function tourSlidesHTML() {
+  let html = "";
+  for (let i = 1; i <= TOUR_SLIDE_COUNT; i++) {
+    const n = String(i).padStart(2, "0");
+    html += `<figure class="tour-slide">
+      <img src="img/onboarding/slide-${n}.jpg" alt="" loading="lazy">
+      <figcaption data-i18n="tourCap${i}"></figcaption>
+    </figure>`;
+  }
+  return html;
+}
+
+// Shared slide/dot carousel. Returns { goTo, index() }.
+function initTourCarousel(track, dots, { onIndexChange = null, autoplayMs = 0 } = {}) {
+  if (!track) return null;
+  track.innerHTML = tourSlidesHTML();
+  applyLocalization(localStorage.getItem("magicread_ui_lang") || "en");
+
+  if (dots) {
+    dots.innerHTML = Array.from({ length: TOUR_SLIDE_COUNT }, (_, i) =>
+      `<button class="tour-dot${i === 0 ? " on" : ""}" data-dot="${i}" type="button" aria-label="Slide ${i + 1}"></button>`).join("");
+  }
+
+  let idx = 0;
+  const slideW = () => track.clientWidth;
+  const goTo = (i, smooth = true) => {
+    idx = Math.max(0, Math.min(TOUR_SLIDE_COUNT - 1, i));
+    track.scrollTo({ left: idx * slideW(), behavior: smooth ? "smooth" : "auto" });
+    update();
+  };
+  const syncFromScroll = () => {
+    const i = Math.round(track.scrollLeft / Math.max(1, slideW()));
+    if (i !== idx) { idx = i; update(); }
+  };
+  const update = () => {
+    dots?.querySelectorAll(".tour-dot").forEach((d, i) => d.classList.toggle("on", i === idx));
+    if (onIndexChange) onIndexChange(idx);
+  };
+
+  track.addEventListener("scroll", () => { syncFromScroll(); }, { passive: true });
+  dots?.querySelectorAll(".tour-dot").forEach(d =>
+    d.addEventListener("click", () => { goTo(Number(d.dataset.dot)); }));
+
+  let timer = null;
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+  if (autoplayMs) {
+    timer = setInterval(() => goTo((idx + 1) % TOUR_SLIDE_COUNT), autoplayMs);
+    ["pointerenter", "touchstart", "pointerdown"].forEach(ev =>
+      track.addEventListener(ev, stop, { passive: true }));
+  }
+
+  update();
+  return { goTo, index: () => idx };
+}
+
+let _tourCarousel = null;
+function showTourScreen(onDone) {
+  const screen = document.getElementById("screen-tour");
+  const nextBtn = document.getElementById("tourNextBtn");
+  if (!screen || !nextBtn) { onDone(); return; }
+
+  const finish = () => {
+    localStorage.setItem(TOUR_SEEN_KEY, "1");
+    onDone();
+  };
+
+  _tourCarousel = initTourCarousel(
+    document.getElementById("tourTrack"),
+    document.getElementById("tourDots"),
+    { onIndexChange: (i) => {
+        const t = getT();
+        nextBtn.textContent = i >= TOUR_SLIDE_COUNT - 1 ? t.tourDone : t.next;
+      } }
+  );
+
+  nextBtn.onclick = () => {
+    if (_tourCarousel.index() >= TOUR_SLIDE_COUNT - 1) finish();
+    else _tourCarousel.goTo(_tourCarousel.index() + 1);
+  };
+  document.getElementById("tourSkipBtn").onclick = finish;
+
+  showScreen(screen);
+}
+
+// Native only: first-ever arrival at the dashboard shows the feature tour once.
+function maybeShowTour(next) {
+  if (!isNativeCapacitorShell() || localStorage.getItem(TOUR_SEEN_KEY)) { next(); return; }
+  showTourScreen(next);
+}
+
+// Landing carousel (web) — autoplay, pauses on interaction.
+(() => {
+  const track = document.getElementById("landingTourTrack");
+  if (!track) return;
+  const c = initTourCarousel(track, document.getElementById("landingTourDots"), { autoplayMs: 4000 });
+  document.getElementById("landingTourPrev")?.addEventListener("click", () => c.goTo(c.index() - 1));
+  document.getElementById("landingTourNext")?.addEventListener("click", () => c.goTo(c.index() + 1));
+})();
+
+// Native shell startup: brand splash over the first paint.
+if (isNativeCapacitorShell()) {
+  document.body.classList.add("is-native");
+  const splash = document.getElementById("introSplash");
+  if (splash) {
+    splash.hidden = false;
+    setTimeout(() => {
+      splash.classList.add("fade");
+      setTimeout(() => splash.remove(), 450);
+    }, 1500);
+  }
+}
 
 /* -----------------------------
    READER MODE (pronunciation vs reading)

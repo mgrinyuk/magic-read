@@ -138,6 +138,8 @@
     </div>
   </header>
 
+  <div id="introSplash" hidden><img src="img/intro.jpg" alt="Magic Read"></div>
+
   <div id="welcomeWeekBanner" class="welcome-week-banner" hidden>
     <span class="welcome-week-text"></span>
     <button id="welcomeWeekDismiss" type="button" class="welcome-week-dismiss" aria-label="Dismiss">×</button>
@@ -231,26 +233,18 @@
 
   </section>
 
-  <section class="landing-shots marketing-section">
+  <section id="tour" class="landing-shots marketing-section">
     <div class="site-container">
       <div class="landing-section-head">
         <p class="eyebrow" data-i18n="shotsEyebrow">Inside the app</p>
         <h2 data-i18n="shotsTitle">See Magic Read in action</h2>
       </div>
-      <div class="shots-grid">
-        <figure class="shot-card">
-          <img src="img/landing/reader.jpg" alt="Magic Read reader screen with pinyin above each word and English translation" loading="lazy">
-          <figcaption data-i18n="shotCapRead">Read with pinyin and instant translation</figcaption>
-        </figure>
-        <figure class="shot-card">
-          <img src="img/landing/speak.jpg" alt="Magic Read speaking practice with word-by-word pronunciation score" loading="lazy">
-          <figcaption data-i18n="shotCapSpeak">Speak and get scored word by word</figcaption>
-        </figure>
-        <figure class="shot-card">
-          <img src="img/landing/video.jpg" alt="Magic Read video player with interactive pinyin captions" loading="lazy">
-          <figcaption data-i18n="shotCapVideo">Watch videos with interactive captions</figcaption>
-        </figure>
+      <div class="tour-carousel" id="landingTour">
+        <button class="tour-arrow" id="landingTourPrev" type="button" aria-label="Previous">&#8249;</button>
+        <div class="tour-track" id="landingTourTrack"></div>
+        <button class="tour-arrow" id="landingTourNext" type="button" aria-label="Next">&#8250;</button>
       </div>
+      <div class="tour-dots" id="landingTourDots"></div>
     </div>
   </section>
   <div class="app-shell">
@@ -950,6 +944,18 @@
         </section>
       </section>
 
+      <section id="screen-tour" class="app-screen">
+        <div class="tour-body">
+          <div class="tour-top">
+            <span class="tour-title" data-i18n="tourTitle">How Magic Read works</span>
+            <button id="tourSkipBtn" class="tour-skip" type="button" data-i18n="tourSkip">Skip</button>
+          </div>
+          <div class="tour-track" id="tourTrack"></div>
+          <div class="tour-dots" id="tourDots"></div>
+          <button id="tourNextBtn" class="primary-btn tour-next" type="button" data-i18n="next">Next</button>
+        </div>
+      </section>
+
       <section id="screen-writing" class="app-screen">
         <div class="acct-appbar">
           <button id="backToReaderBtnWriting" type="button" class="acct-iconbtn" aria-label="Back">
@@ -1418,7 +1424,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260711.7"></script>
+  <script type="module" src="app.js?v=20260712.1"></script>
 
   <footer class="footer">
     <div>
