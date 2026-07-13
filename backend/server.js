@@ -75,6 +75,7 @@ const supabase = createSupabaseClient(
 // Privileged client for server-side reads/writes that must bypass RLS
 // (entitlement lookups + usage metering). Falls back to the anon client if
 // no service-role key is set, but the pronunciation quota needs the service key.
+const hasSupabaseServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
   ? createSupabaseClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
   : supabase;
@@ -103,6 +104,26 @@ const TBANK_API_URL = process.env.TBANK_API_URL || "https://securepay.tinkoff.ru
 const TBANK_NOTIFICATION_URL = process.env.TBANK_NOTIFICATION_URL ||
   "https://magic-read.onrender.com/api/tbank/notification";
 const TBANK_RETURN_URL = process.env.TBANK_RETURN_URL || "https://magicread.app";
+const GOOGLE_PLAY_PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME || "com.magicread.app";
+const GOOGLE_PLAY_PRODUCTS = {
+  monthly: process.env.GOOGLE_PLAY_PRODUCT_MONTHLY || "magic_read_pro_monthly",
+  annual: process.env.GOOGLE_PLAY_PRODUCT_ANNUAL || "magic_read_pro_annual"
+};
+const GOOGLE_SIGN_IN_WEB_CLIENT_ID = process.env.GOOGLE_SIGN_IN_WEB_CLIENT_ID || "";
+const GOOGLE_PLAY_PRODUCT_TO_TIER = Object.fromEntries(
+  Object.entries(GOOGLE_PLAY_PRODUCTS).map(([tier, productId]) => [productId, tier])
+);
+let googlePlayCredentials = null;
+try {
+  const rawGooglePlayCredentials = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_PLAY_KEY_JSON;
+  if (rawGooglePlayCredentials) {
+    googlePlayCredentials = JSON.parse(rawGooglePlayCredentials);
+    console.log("[Google Play] Credentials loaded for:", googlePlayCredentials.client_email || "(no client_email)");
+  }
+} catch (error) {
+  console.error("[Google Play] Failed to parse service account JSON:", error.message);
+}
 
 async function isTbankReady() {
   if (!TBANK_TERMINAL_KEY || !TBANK_PASSWORD) return false;
@@ -111,6 +132,18 @@ async function isTbankReady() {
     .select("payment_id")
     .limit(1);
   return !error;
+}
+
+function isGooglePlayReady() {
+  return !!googlePlayCredentials && !!GOOGLE_PLAY_PACKAGE_NAME;
+}
+
+function getGooglePlayPublisher() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: googlePlayCredentials,
+    scopes: ["https://www.googleapis.com/auth/androidpublisher"]
+  });
+  return google.androidpublisher({ version: "v3", auth });
 }
 
 // Centralized plan resolver. Returns the user's *effective* plan, honoring the
@@ -336,6 +369,12 @@ app.use(cors());
 
 app.use(express.static(path.join(__dirname, "..", "frontend")));
 
+app.get("/api/auth/google-config", (_req, res) => {
+  res.json({
+    webClientId: GOOGLE_SIGN_IN_WEB_CLIENT_ID
+  });
+});
+
 /* -----------------------------
    STRIPE WEBHOOK
    MUST be registered with the raw body parser and BEFORE the global
@@ -418,6 +457,25 @@ app.post("/api/stripe-webhook", express.raw({ type: "application/json" }), async
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(globalLimiter);
+
+app.post("/api/delete-account", extractUser, requireUser, async (req, res) => {
+  if (!hasSupabaseServiceRole) {
+    return res.status(503).json({
+      error: "Account deletion is not configured on this server."
+    });
+  }
+
+  try {
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(req.user.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("[Account] Delete account error:", error.message);
+    res.status(500).json({
+      error: "Could not delete account. Please contact support@magicread.app."
+    });
+  }
+});
 
 // parsing texts
 app.get("/api/game-texts", async (req, res) => {
@@ -1105,6 +1163,24 @@ app.get("/api/subscription-status", extractUser, requireUser, async (req, res) =
       });
     }
 
+    if (planProvider === "google_play") {
+      const { data: purchase } = await supabaseAdmin
+        .from("google_play_purchases")
+        .select("tier, created_at, expires_at, subscription_state")
+        .eq("user_id", userId)
+        .order("expires_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return res.json({
+        ...base,
+        provider: "google_play",
+        tier: purchase?.tier || null,
+        purchasedAt: purchase?.created_at || null,
+        currentPeriodEnd: purchase?.expires_at || planEndsAt,
+        cancelable: false
+      });
+    }
+
     // Pro with no provider = directly granted (comp/manual). Treat it as lifetime access.
     return res.json({ ...base, tier: isLifetimePro ? "lifetime" : null });
   } catch (error) {
@@ -1174,6 +1250,106 @@ app.post("/api/resume-subscription", extractUser, requireUser, async (req, res) 
   } catch (error) {
     console.error("[Stripe] resume-subscription error:", error.message);
     res.status(500).json({ error: "Could not resume your subscription." });
+  }
+});
+
+/* -----------------------------
+   GOOGLE PLAY BILLING
+   Android app purchases are verified server-side against Google Play, then
+   mapped onto the same profiles.plan / plan_provider / plan_ends_at entitlement
+   that Stripe and T-Bank already use.
+----------------------------- */
+app.post("/api/google-play/verify-purchase", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!isGooglePlayReady()) {
+      return res.status(503).json({
+        error: "Google Play Billing is not configured.",
+        code: "NOT_CONFIGURED"
+      });
+    }
+
+    const { productId, purchaseToken, packageName, orderId } = req.body || {};
+    const tier = GOOGLE_PLAY_PRODUCT_TO_TIER[productId];
+    if (!tier || !purchaseToken) {
+      return res.status(400).json({
+        error: "Invalid Google Play purchase.",
+        code: "INVALID_PURCHASE"
+      });
+    }
+
+    const expectedPackage = GOOGLE_PLAY_PACKAGE_NAME;
+    if (packageName && packageName !== expectedPackage) {
+      return res.status(400).json({
+        error: "Purchase package does not match this app.",
+        code: "PACKAGE_MISMATCH"
+      });
+    }
+
+    const androidpublisher = getGooglePlayPublisher();
+    const { data: sub } = await androidpublisher.purchases.subscriptionsv2.get({
+      packageName: expectedPackage,
+      token: purchaseToken
+    });
+
+    const lineItem = (sub.lineItems || []).find((item) => item.productId === productId) ||
+      sub.lineItems?.[0];
+    const expiryTime = lineItem?.expiryTime || null;
+    const subscriptionState = sub.subscriptionState || "";
+    const activeStates = new Set([
+      "SUBSCRIPTION_STATE_ACTIVE",
+      "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"
+    ]);
+    const active = activeStates.has(subscriptionState) &&
+      !!expiryTime &&
+      new Date(expiryTime) > new Date();
+
+    if (!active) {
+      return res.status(402).json({
+        error: "Google Play subscription is not active.",
+        code: "SUBSCRIPTION_INACTIVE",
+        subscriptionState
+      });
+    }
+
+    const userId = req.user.id;
+    const purchaseRow = {
+      purchase_token: purchaseToken,
+      user_id: userId,
+      product_id: productId,
+      order_id: orderId || sub.latestOrderId || null,
+      package_name: expectedPackage,
+      tier,
+      subscription_state: subscriptionState,
+      expires_at: expiryTime,
+      raw: sub
+    };
+
+    const { error: purchaseError } = await supabaseAdmin
+      .from("google_play_purchases")
+      .upsert(purchaseRow, { onConflict: "purchase_token" });
+    if (purchaseError) {
+      console.error("[Google Play] purchase upsert error:", purchaseError.message);
+    }
+
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        plan: "pro",
+        plan_provider: "google_play",
+        plan_ends_at: expiryTime
+      })
+      .eq("id", userId);
+    if (profileError) throw profileError;
+
+    res.json({
+      ok: true,
+      provider: "google_play",
+      tier,
+      currentPeriodEnd: expiryTime
+    });
+  } catch (error) {
+    console.error("[Google Play] verify-purchase error:", error.message);
+    res.status(500).json({ error: "Could not verify Google Play purchase." });
   }
 });
 

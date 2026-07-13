@@ -811,6 +811,10 @@ let userPlan = {
 };
 
 const GUEST_PLAN = { ...userPlan };
+const GOOGLE_PLAY_PRODUCT_IDS = {
+  monthly: "magic_read_pro_monthly",
+  annual: "magic_read_pro_annual"
+};
 
 // Pull the plan + usage snapshot from the backend and re-render plan UI.
 async function fetchMyPlan() {
@@ -925,13 +929,13 @@ function renderPlanUI() {
 
 function renderLifetimeOffer() {
   document.querySelectorAll('[data-price-type="lifetime"]').forEach(option => {
-    option.hidden = isPaidProUser() || !userPlan.lifetimeOfferEligible;
+    option.hidden = isAndroidCapacitorShell() || isPaidProUser() || !userPlan.lifetimeOfferEligible;
   });
 }
 
 function renderTbankOptions() {
   document.querySelectorAll("[data-tbank-plan], .tbank-plan-label").forEach(element => {
-    element.hidden = !userPlan.tbankAvailable;
+    element.hidden = isAndroidCapacitorShell() || !userPlan.tbankAvailable;
   });
 }
 
@@ -1079,7 +1083,7 @@ function showUpgradePrompt(code) {
         <button class="upgrade-plan-btn upgrade-plan-secondary" data-price-type="monthly" type="button">
           ${escapeHtml(t.monthlyPlanBtn)}
         </button>
-        ${userPlan.tbankAvailable ? `
+        ${userPlan.tbankAvailable && !isAndroidCapacitorShell() ? `
           <div class="tbank-plan-label">${escapeHtml(getT().tbankPaymentLabel || "Russian card or SBP")}</div>
           <button class="upgrade-plan-btn tbank-upgrade-btn" data-tbank-plan="annual" type="button">
             ${escapeHtml(getT().tbankAnnual || "1 year — 5,000 ₽")}
@@ -1151,6 +1155,7 @@ async function checkAuth() {
     if (logoutBtn) logoutBtn.hidden = false;
 
     fetchMyPlan();
+    syncGooglePlayPurchases();
 
     // If the user landed on the onboarding screen (because session wasn't known yet),
     // redirect them straight to the home dashboard — via the one-time feature
@@ -1378,6 +1383,11 @@ document.getElementById("upgradeBtn")?.addEventListener("click", (e) => {
 // Start Stripe Checkout for a specific plan: ask the backend for a session URL,
 // then redirect. Disables all options and shows "Redirecting…" while in flight.
 async function startPlanCheckout(priceType, clickedBtn) {
+  if (isAndroidCapacitorShell()) {
+    await startGooglePlayCheckout(priceType, clickedBtn);
+    return;
+  }
+
   const options = Array.from(document.querySelectorAll("#planPicker .plan-option, #acctPlanPicker .plan-option"));
   const labels = options.map(b => b.textContent);
   options.forEach(b => { b.disabled = true; });
@@ -1401,6 +1411,95 @@ async function startPlanCheckout(priceType, clickedBtn) {
 
   // Restore the picker on failure so the user can retry.
   options.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
+}
+
+function getPlayBillingPlugin() {
+  return window.Capacitor?.Plugins?.PlayBilling || null;
+}
+
+function getPrimaryProductId(purchase) {
+  const ids = purchase?.productIds;
+  if (Array.isArray(ids)) return ids[0];
+  if (typeof ids === "string") return ids;
+  return null;
+}
+
+async function verifyGooglePlayPurchase(purchase, fallbackProductId = null) {
+  const productId = getPrimaryProductId(purchase) || fallbackProductId;
+  if (!purchase?.purchaseToken || !productId) {
+    throw new Error("Missing Google Play purchase token or product id.");
+  }
+
+  const response = await fetchWithAuth(`${API_BASE}/api/google-play/verify-purchase`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      productId,
+      purchaseToken: purchase.purchaseToken,
+      packageName: purchase.packageName,
+      orderId: purchase.orderId
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || "Google Play purchase could not be verified.");
+  return data;
+}
+
+async function startGooglePlayCheckout(priceType, clickedBtn) {
+  const productId = GOOGLE_PLAY_PRODUCT_IDS[priceType];
+  if (!productId) {
+    showToast("This plan is not available in the Android app.", "error");
+    return;
+  }
+
+  const billing = getPlayBillingPlugin();
+  if (!billing) {
+    showToast("Google Play Billing is not available on this device.", "error");
+    return;
+  }
+
+  const options = Array.from(document.querySelectorAll("#planPicker .plan-option, #acctPlanPicker .plan-option, .upgrade-plan-btn, .upgrade-modal-cta"));
+  const labels = options.map(button => button.textContent);
+  options.forEach(button => { button.disabled = true; });
+  if (clickedBtn) clickedBtn.textContent = getT().redirecting || "Redirecting…";
+
+  try {
+    const purchase = await billing.purchase({ productId });
+    await verifyGooglePlayPurchase(purchase, productId);
+    showToast("Google Play purchase confirmed. Pro is active.", "success");
+    await fetchMyPlan();
+    renderAccountScreen();
+  } catch (error) {
+    if (error?.code !== "USER_CANCELED") {
+      console.error("[Google Play] checkout failed:", error);
+      showToast(error?.message || "Google Play purchase failed.", "error");
+    }
+  } finally {
+    options.forEach((button, index) => {
+      button.disabled = false;
+      button.textContent = labels[index];
+    });
+  }
+}
+
+async function syncGooglePlayPurchases({ silent = true } = {}) {
+  if (!isAndroidCapacitorShell()) return;
+  const billing = getPlayBillingPlugin();
+  if (!billing) return;
+
+  try {
+    const result = await billing.queryPurchases();
+    const purchases = Array.isArray(result?.purchases) ? result.purchases : [];
+    for (const purchase of purchases) {
+      await verifyGooglePlayPurchase(purchase);
+    }
+    if (purchases.length) await fetchMyPlan();
+  } catch (error) {
+    if (!silent) {
+      showToast(error?.message || "Could not restore Google Play purchases.", "error");
+    }
+    console.error("[Google Play] restore failed:", error);
+  }
 }
 
 async function startTbankCheckout(plan, clickedBtn) {
@@ -1588,6 +1687,14 @@ function isNativeCapacitorShell() {
   }
 }
 
+function isAndroidCapacitorShell() {
+  try {
+    return isNativeCapacitorShell() && window.Capacitor?.getPlatform?.() === "android";
+  } catch {
+    return false;
+  }
+}
+
 function openVideoSurface(videoId = "") {
   // The video screen stays inside the app everywhere. In the native shells the
   // player iframe itself loads from the hosted origin (see mountYTPlayer), so
@@ -1738,6 +1845,9 @@ async function renderSubscriptionSection() {
     if (s.canUpgradeToAnnual) {
       actionsHtml = `<button class="plan-option acct-sub-act" data-sub-action="upgrade-tbank">Extend to annual — 5,000 ₽</button>`;
     }
+  } else if (s.provider === "google_play") {
+    if (periodEnd) lines.push(`<div class="acct-sub-line">Renews through Google Play on <b>${periodEnd}</b>.</div>`);
+    lines.push(`<div class="acct-sub-line">Manage or cancel this subscription in Google Play.</div>`);
   } else {
     lines.push(`<div class="acct-sub-line">Your Pro access is active. For billing questions, email help@magicread.app.</div>`);
   }
@@ -1951,6 +2061,13 @@ document.getElementById("acctAppLanguageBtn")?.addEventListener("click", () => {
   picker.hidden = !picker.hidden;
 });
 
+document.getElementById("acctTutorialBtn")?.addEventListener("click", () => {
+  showTourScreen(() => {
+    renderAccountScreen();
+    showScreen(screenAccount);
+  });
+});
+
 const langNames = { en: "English", ru: "Русский", zh: "中文", tr: "Türkçe", de: "Deutsch", es: "Español", fr: "Français", ja: "日本語" };
 
 document.querySelectorAll(".acct-lang-opt").forEach(btn => {
@@ -1981,6 +2098,35 @@ document.getElementById("acctAboutBtn")?.addEventListener("click", () => {
 
 document.getElementById("acctHelpBtn")?.addEventListener("click", () => {
   showToast("Email us at help@magicread.app for support.", "info");
+});
+
+document.getElementById("acctDeleteAccountBtn")?.addEventListener("click", async () => {
+  const t = getT();
+  const firstConfirm = await showConfirm(
+    t.deleteAccountConfirm ||
+    "Delete your Magic Read account and saved learning data? If you have an active subscription, please cancel it separately in Stripe or Google Play."
+  );
+  if (!firstConfirm) return;
+
+  const finalConfirm = await showConfirm(
+    t.deleteAccountFinalConfirm ||
+    "This cannot be undone. Permanently delete your account now?"
+  );
+  if (!finalConfirm) return;
+
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/delete-account`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || "Could not delete account.");
+
+    await supabase.auth.signOut();
+    await checkAuth();
+    showLandingPage();
+    showToast(t.deleteAccountDone || "Your account has been deleted.", "success");
+  } catch (error) {
+    console.error("Delete account error:", error);
+    showToast(error.message || t.deleteAccountError || "Could not delete account. Please contact support.", "error");
+  }
 });
 
 document.getElementById("acctLogoutBtn")?.addEventListener("click", async () => {
@@ -2304,14 +2450,73 @@ document.getElementById("pricingProBtn")?.addEventListener("click", () => {
 // come back via the magicread:// deep link — the app's internal origin
 // (https://localhost) is unreachable from the browser.
 const OAUTH_DEEP_LINK = "magicread://auth-callback";
+let googleSignInConfigPromise = null;
+
+function getGoogleAuthPlugin() {
+  return window.Capacitor?.Plugins?.GoogleAuth || null;
+}
+
+async function getGoogleSignInConfig() {
+  if (!googleSignInConfigPromise) {
+    googleSignInConfigPromise = fetch(`${API_BASE}/api/auth/google-config`)
+      .then((res) => res.ok ? res.json() : {})
+      .catch(() => ({}));
+  }
+  return googleSignInConfigPromise;
+}
+
+async function signInWithNativeGoogle() {
+  const googleAuth = getGoogleAuthPlugin();
+  if (!googleAuth) {
+    throw new Error("Native Google Sign-In is not available.");
+  }
+
+  const { webClientId } = await getGoogleSignInConfig();
+  if (!webClientId) {
+    throw new Error("Google Sign-In is not configured.");
+  }
+
+  const credential = await googleAuth.signIn({ serverClientId: webClientId });
+  if (!credential?.idToken) {
+    throw new Error("Google Sign-In did not return an ID token.");
+  }
+
+  const { error } = await supabase.auth.signInWithIdToken({
+    provider: "google",
+    token: credential.idToken
+  });
+  if (error) throw error;
+  await checkAuth();
+}
 
 document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
-  await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: isNativeCapacitorShell() ? OAUTH_DEEP_LINK : window.location.origin
+  const btn = document.getElementById("googleAuthBtn");
+  const original = btn?.innerHTML;
+  if (btn) btn.disabled = true;
+  if (authMessage) authMessage.textContent = getT().loggingIn || "Logging in...";
+
+  try {
+    if (isAndroidCapacitorShell()) {
+      await signInWithNativeGoogle();
+      return;
     }
-  });
+
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: isNativeCapacitorShell() ? OAUTH_DEEP_LINK : window.location.origin
+      }
+    });
+  } catch (error) {
+    console.error("[Auth] Google sign-in failed:", error);
+    showToast(error?.message || "Google Sign-In failed.", "error");
+    if (authMessage) authMessage.textContent = "";
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      if (original) btn.innerHTML = original;
+    }
+  }
 });
 
 // Native deep-link return: parse the tokens Supabase appended to the

@@ -11,6 +11,11 @@
     <changefreq>yearly</changefreq>
   </url>
   <url>
+    <loc>https://magicread.app/delete-account.html</loc>
+    <priority>0.3</priority>
+    <changefreq>yearly</changefreq>
+  </url>
+  <url>
     <loc>https://magicread.app/terms.html</loc>
     <priority>0.3</priority>
     <changefreq>yearly</changefreq>
