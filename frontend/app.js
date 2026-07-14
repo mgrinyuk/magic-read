@@ -811,9 +811,9 @@ let userPlan = {
 };
 
 const GUEST_PLAN = { ...userPlan };
-const GOOGLE_PLAY_PRODUCT_IDS = {
-  monthly: "magic_read_pro_monthly",
-  annual: "magic_read_pro_annual"
+const GOOGLE_PLAY_PRODUCTS = {
+  monthly: { productId: "magic_read_pro_monthly", basePlanId: "monthly" },
+  annual: { productId: "magic_read_pro_annual", basePlanId: "annual" }
 };
 
 // Pull the plan + usage snapshot from the backend and re-render plan UI.
@@ -1446,7 +1446,8 @@ async function verifyGooglePlayPurchase(purchase, fallbackProductId = null) {
 }
 
 async function startGooglePlayCheckout(priceType, clickedBtn) {
-  const productId = GOOGLE_PLAY_PRODUCT_IDS[priceType];
+  const playProduct = GOOGLE_PLAY_PRODUCTS[priceType];
+  const productId = playProduct?.productId;
   if (!productId) {
     showToast("This plan is not available in the Android app.", "error");
     return;
@@ -1464,7 +1465,10 @@ async function startGooglePlayCheckout(priceType, clickedBtn) {
   if (clickedBtn) clickedBtn.textContent = getT().redirecting || "Redirecting…";
 
   try {
-    const purchase = await billing.purchase({ productId });
+    const purchase = await billing.purchase({
+      productId,
+      basePlanId: playProduct.basePlanId
+    });
     await verifyGooglePlayPurchase(purchase, productId);
     showToast("Google Play purchase confirmed. Pro is active.", "success");
     await fetchMyPlan();

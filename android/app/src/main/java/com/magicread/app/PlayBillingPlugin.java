@@ -53,15 +53,16 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
     @PluginMethod
     public void purchase(PluginCall call) {
         String productId = call.getString("productId");
+        String basePlanId = call.getString("basePlanId");
         if (productId == null || productId.trim().isEmpty()) {
             call.reject("Missing productId.");
             return;
         }
 
         ensureReady(call, () -> queryProduct(productId, call, productDetails -> {
-            String offerToken = firstOfferToken(productDetails);
+            String offerToken = offerTokenForBasePlan(productDetails, basePlanId);
             if (offerToken == null) {
-                call.reject("No subscription offer is available for this product.");
+                call.reject("No matching subscription offer is available for this product.");
                 return;
             }
 
@@ -180,9 +181,16 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
         );
     }
 
-    private String firstOfferToken(ProductDetails productDetails) {
+    private String offerTokenForBasePlan(ProductDetails productDetails, String basePlanId) {
         List<ProductDetails.SubscriptionOfferDetails> offers = productDetails.getSubscriptionOfferDetails();
         if (offers == null || offers.isEmpty()) return null;
+        if (basePlanId != null && !basePlanId.trim().isEmpty()) {
+            for (ProductDetails.SubscriptionOfferDetails offer : offers) {
+                if (basePlanId.equals(offer.getBasePlanId())) {
+                    return offer.getOfferToken();
+                }
+            }
+        }
         return offers.get(0).getOfferToken();
     }
 
