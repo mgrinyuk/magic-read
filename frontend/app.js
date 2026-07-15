@@ -1172,16 +1172,19 @@ async function checkAuth() {
     document.body.classList.remove("is-logged-in");
 
     if (authScreen) authScreen.hidden = true;
-    if (landingHow) landingHow.hidden = false;
-    if (mainApp) mainApp.hidden = false;
+    if (landingHow) landingHow.hidden = isNativeCapacitorShell();
+    if (mainApp) mainApp.hidden = isNativeCapacitorShell();
     if (logoutBtn) logoutBtn.hidden = true;
 
     userPlan = { ...GUEST_PLAN };
     renderPlanUI();
-    showLandingPage();
     // The native apps have no marketing landing — signed-out users go straight
     // to the auth screen (its close button is hidden via body.is-native).
-    if (isNativeCapacitorShell()) openAuthFromOverlay("login");
+    if (isNativeCapacitorShell()) {
+      openAuthFromOverlay("login");
+    } else {
+      showLandingPage();
+    }
   }
 }
 
@@ -1345,25 +1348,45 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
 
   const loginError = document.getElementById("loginError");
   if (loginError) loginError.hidden = true;
-  if (authMessage) authMessage.textContent = t.loggingIn;
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    if (authMessage) authMessage.textContent = "";
+  if (!email || !password) {
     if (loginError) {
-      loginError.textContent = error.message;
+      loginError.textContent = "Enter your email and password.";
       loginError.hidden = false;
     }
     return;
   }
 
-  if (loginError) loginError.hidden = true;
-  if (authMessage) authMessage.textContent = "";
-  await checkAuth();
+  if (authMessage) authMessage.textContent = t.loggingIn;
+  const btn = document.getElementById("loginBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      if (authMessage) authMessage.textContent = "";
+      if (loginError) {
+        loginError.textContent = error.message;
+        loginError.hidden = false;
+      }
+      return;
+    }
+
+    if (loginError) loginError.hidden = true;
+    if (authMessage) authMessage.textContent = "";
+    await checkAuth();
+  } catch (error) {
+    if (authMessage) authMessage.textContent = "";
+    if (loginError) {
+      loginError.textContent = error?.message || "Could not reach the login service. Check your connection and try again.";
+      loginError.hidden = false;
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 });
 
 logoutBtn?.addEventListener("click", async () => {
@@ -1550,6 +1573,9 @@ document.querySelectorAll("[data-tbank-plan]").forEach(btn => {
   });
 });
 
+// Native shell startup: keep the branded splash over first auth/session routing.
+startNativeIntroSplash();
+
 const initialAuthCheck = checkAuth();
 initialAuthCheck.then(() => {
   const paymentStatus = new URLSearchParams(window.location.search).get("tbank");
@@ -1697,6 +1723,18 @@ function isAndroidCapacitorShell() {
   } catch {
     return false;
   }
+}
+
+function startNativeIntroSplash() {
+  if (!isNativeCapacitorShell()) return;
+  document.body.classList.add("is-native");
+  const splash = document.getElementById("introSplash");
+  if (!splash) return;
+  splash.hidden = false;
+  setTimeout(() => {
+    splash.classList.add("fade");
+    setTimeout(() => splash.remove(), 450);
+  }, 1500);
 }
 
 function openVideoSurface(videoId = "") {
@@ -2514,7 +2552,7 @@ document.getElementById("googleAuthBtn")?.addEventListener("click", async () => 
   } catch (error) {
     console.error("[Auth] Google sign-in failed:", error);
     showToast(error?.message || "Google Sign-In failed.", "error");
-    if (authMessage) authMessage.textContent = "";
+    if (authMessage) authMessage.textContent = error?.message || "Google Sign-In failed.";
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -2656,19 +2694,6 @@ function maybeShowTour(next) {
   document.getElementById("landingTourPrev")?.addEventListener("click", () => c.goTo(c.index() - 1));
   document.getElementById("landingTourNext")?.addEventListener("click", () => c.goTo(c.index() + 1));
 })();
-
-// Native shell startup: brand splash over the first paint.
-if (isNativeCapacitorShell()) {
-  document.body.classList.add("is-native");
-  const splash = document.getElementById("introSplash");
-  if (splash) {
-    splash.hidden = false;
-    setTimeout(() => {
-      splash.classList.add("fade");
-      setTimeout(() => splash.remove(), 450);
-    }, 1500);
-  }
-}
 
 /* -----------------------------
    READER MODE (pronunciation vs reading)
