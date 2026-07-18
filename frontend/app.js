@@ -736,6 +736,10 @@ function openVoicePicker() {
 const FLASHCARD_STORAGE_KEY = "magicread_flashcard_decks";
 let flashcardDecks = [];
 let currentDeckId = null;
+// Which user's decks are in memory — lets checkAuth() reload them after a
+// fresh in-app login (decks used to load only once at startup, so logging in
+// on a new device showed an empty flashcards screen until an app restart).
+let flashcardsLoadedForUserId = null;
 let currentFlashcardIndex = 0;
 let flashcardFlipped = false;
 
@@ -1175,6 +1179,13 @@ async function checkAuth() {
     fetchMyPlan();
     syncGooglePlayPurchases();
 
+    // Pull this user's decks if they aren't in memory yet (no-op when already
+    // loaded) — covers logging in after startup on a fresh device.
+    loadFlashcardsFromStorage().then(() => {
+      renderDeckSelector();
+      renderFlashcards();
+    });
+
     // If the user landed on the onboarding screen (because session wasn't known yet),
     // redirect them straight to the home dashboard — via the one-time feature
     // tour in the native apps.
@@ -1196,6 +1207,9 @@ async function checkAuth() {
 
     userPlan = { ...GUEST_PLAN };
     renderPlanUI();
+    flashcardsLoadedForUserId = null;
+    flashcardDecks = [];
+    currentDeckId = null;
     // The native apps have no marketing landing — signed-out users go straight
     // to the auth screen (its close button is hidden via body.is-native).
     if (isNativeCapacitorShell()) {
@@ -1275,7 +1289,13 @@ function openAuthFromOverlay(mode = "signup") {
     }
   }
 
-  authScreen?.scrollIntoView({ behavior: "smooth", block: "center" });
+  // The native auth screen fills the viewport — centering it with a smooth
+  // scroll causes visible jumps when the keyboard opens, so just go to top.
+  if (isNativeCapacitorShell()) {
+    window.scrollTo(0, 0);
+  } else {
+    authScreen?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 
 document.getElementById("openSignupBtn")?.addEventListener("click", () => {
@@ -7159,10 +7179,14 @@ async function loadFlashcardsFromStorage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    flashcardsLoadedForUserId = null;
     flashcardDecks = [];
     currentDeckId = null;
     return;
   }
+
+  if (flashcardsLoadedForUserId === user.id) return;
+  flashcardsLoadedForUserId = user.id;
 
   const { data: decks, error: deckError } = await supabase
     .from("flashcard_decks")
@@ -7184,6 +7208,7 @@ async function loadFlashcardsFromStorage() {
 
   if (deckError) {
     console.error("Load decks error:", deckError);
+    flashcardsLoadedForUserId = null;
     flashcardDecks = [];
     return;
   }

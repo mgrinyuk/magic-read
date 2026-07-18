@@ -755,6 +755,29 @@ html.native-boot #introSplash { display: block !important; }
 /* The native apps hide the auth close button — auth is the entry screen. */
 body.is-native .auth-close-btn { display: none; }
 
+/* Native shell: the auth screen is the entry surface — hide the site header
+   and compact the card so it fits the viewport without scrolling. */
+body.is-native.auth-active .app-header { display: none; }
+body.is-native.auth-active .auth-shell {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  padding: max(10px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+}
+body.is-native .auth-card { padding: 20px 18px; border-radius: 22px; }
+body.is-native .auth-right h2 { font-size: 1.4rem; margin-bottom: 4px; }
+body.is-native .auth-right label { margin: 8px 0 4px; }
+body.is-native .auth-social { margin: 10px 0 2px; }
+body.is-native .auth-social-btn { height: 46px; }
+body.is-native .auth-input { height: 44px; }
+body.is-native .auth-main-btn { height: 46px; margin-top: 12px; }
+body.is-native .auth-secondary-btn { height: 46px; }
+body.is-native .auth-divider { margin: 12px 0; }
+body.is-native .auth-link-btn { margin-top: 6px; }
+body.is-native .auth-message { min-height: 0; margin: 8px 0 0; }
+
 /* ── Feature tour (app screen + landing carousel) ── */
 #screen-tour.active { display: flex; flex-direction: column; }
 .tour-body {
