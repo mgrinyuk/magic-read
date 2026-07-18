@@ -747,6 +747,10 @@ body.auth-active > .footer {
 }
 #introSplash.fade { opacity: 0; }
 #introSplash img { width: 100%; height: 100%; object-fit: cover; }
+/* html.native-boot is set by an inline <head> script in the native apps so the
+   splash covers the landing before app.js (and its CDN imports) have loaded.
+   !important beats the global [hidden] reset above. */
+html.native-boot #introSplash { display: block !important; }
 
 /* The native apps hide the auth close button — auth is the entry screen. */
 body.is-native .auth-close-btn { display: none; }

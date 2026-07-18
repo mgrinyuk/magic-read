@@ -413,7 +413,17 @@ async function runPronunciationDrill(chunks, shortLang, resultBox, t) {
   }
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// In the native WebViews supabase-js's Navigator Locks usage can deadlock and
+// leave auth calls (signInWithPassword etc.) pending forever, so the single-tab
+// app shells run auth operations without the cross-tab lock. The multi-tab
+// website keeps the default locking behavior.
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  window.Capacitor?.isNativePlatform?.()
+    ? { auth: { lock: (_name, _acquireTimeout, fn) => fn() } }
+    : undefined
+);
 
 async function fetchWithAuth(url, options = {}) {
   const { data } = await supabase.auth.getSession();
@@ -423,6 +433,14 @@ async function fetchWithAuth(url, options = {}) {
     ...options,
     headers: { ...options.headers, Authorization: `Bearer ${token}` }
   });
+}
+
+function withTimeout(promise, ms, message = "Timed out") {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
 /* -----------------------------
@@ -1361,10 +1379,14 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
   if (btn) btn.disabled = true;
 
   try {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { error } = await withTimeout(
+      supabase.auth.signInWithPassword({
+        email,
+        password
+      }),
+      15000,
+      "Login timed out. Check your internet connection and try again."
+    );
 
     if (error) {
       if (authMessage) authMessage.textContent = "";
@@ -2500,7 +2522,11 @@ function getGoogleAuthPlugin() {
 
 async function getGoogleSignInConfig() {
   if (!googleSignInConfigPromise) {
-    googleSignInConfigPromise = fetch(`${API_BASE}/api/auth/google-config`)
+    googleSignInConfigPromise = withTimeout(
+      fetch(`${API_BASE}/api/auth/google-config`),
+      10000,
+      "Could not load Google Sign-In configuration."
+    )
       .then((res) => res.ok ? res.json() : {})
       .catch(() => ({}));
   }
@@ -2518,17 +2544,37 @@ async function signInWithNativeGoogle() {
     throw new Error("Google Sign-In is not configured.");
   }
 
-  const credential = await googleAuth.signIn({ serverClientId: webClientId });
+  const credential = await withTimeout(
+    googleAuth.signIn({ serverClientId: webClientId }),
+    30000,
+    "Google Sign-In timed out."
+  );
   if (!credential?.idToken) {
     throw new Error("Google Sign-In did not return an ID token.");
   }
 
-  const { error } = await supabase.auth.signInWithIdToken({
-    provider: "google",
-    token: credential.idToken
-  });
+  const { error } = await withTimeout(
+    supabase.auth.signInWithIdToken({
+      provider: "google",
+      token: credential.idToken
+    }),
+    15000,
+    "Google Sign-In reached Google but could not create an app session."
+  );
   if (error) throw error;
   await checkAuth();
+}
+
+function friendlyGoogleSignInError(error) {
+  const message = error?.message || String(error || "");
+  const code = error?.code || "";
+  if (/cancel/i.test(message) || /cancel/i.test(code)) {
+    return "Google Sign-In was canceled. If you did not cancel it, check that the Android OAuth client uses package com.magicread.app and the Play App Signing SHA-1.";
+  }
+  if (/configured|client|audience|oauth|token/i.test(message)) {
+    return `${message} Check the Web client ID in Render and the Android OAuth client SHA-1 in Google Cloud.`;
+  }
+  return message || "Google Sign-In failed.";
 }
 
 document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
@@ -2551,8 +2597,9 @@ document.getElementById("googleAuthBtn")?.addEventListener("click", async () => 
     });
   } catch (error) {
     console.error("[Auth] Google sign-in failed:", error);
-    showToast(error?.message || "Google Sign-In failed.", "error");
-    if (authMessage) authMessage.textContent = error?.message || "Google Sign-In failed.";
+    const friendlyMessage = friendlyGoogleSignInError(error);
+    showToast(friendlyMessage, "error");
+    if (authMessage) authMessage.textContent = friendlyMessage;
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -8292,14 +8339,6 @@ function fmtTime(s) {
   const m = Math.floor(s / 60);
   const ss = Math.floor(s % 60);
   return `${m}:${String(ss).padStart(2, "0")}`;
-}
-
-function withTimeout(promise, ms, message = "Timed out") {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(message)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 async function fetchJsonWithTimeout(url, ms = 20000) {

@@ -63,7 +63,8 @@ public class GoogleAuthPlugin extends Plugin {
 
                 @Override
                 public void onError(@NonNull GetCredentialException e) {
-                    call.reject(e.getMessage() == null ? "Google Sign-In failed." : e.getMessage());
+                    String message = e.getMessage() == null ? "Google Sign-In failed." : e.getMessage();
+                    call.reject(message, e.getType());
                 }
             }
         );
