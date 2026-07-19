@@ -1797,6 +1797,15 @@ function showScreen(screen) {
   });
 
   screen.classList.add("active");
+
+  // Decks retry on every visit to the flashcards screen (no-op once loaded),
+  // so one failed fetch on a flaky connection doesn't leave them empty forever.
+  if (screen === screenFlashcards) {
+    loadFlashcardsFromStorage().then(() => {
+      renderDeckSelector();
+      renderFlashcards();
+    });
+  }
   sessionStorage.setItem("activeScreenId", screen.id);
   document.body.classList.toggle("product-active", screen.id !== "screen-onboarding");
   document.body.classList.toggle("dashboard-active", screen.id === "screen-home");
@@ -7174,9 +7183,13 @@ async function record(sentence, card, recordBtn = null) {
 ----------------------------- */
 
 async function loadFlashcardsFromStorage() {
+  // getSession() reads the locally persisted session without a server
+  // roundtrip — getUser() hit the network and one failure on a slow
+  // connection left the decks empty with no retry.
   const {
-    data: { user }
-  } = await supabase.auth.getUser();
+    data: { session }
+  } = await supabase.auth.getSession();
+  const user = session?.user;
 
   if (!user) {
     flashcardsLoadedForUserId = null;
@@ -7233,8 +7246,9 @@ async function loadFlashcardsFromStorage() {
 async function ensureDefaultDeck() {
   if (!flashcardDecks.length) {
     const {
-      data: { user }
-    } = await supabase.auth.getUser();
+      data: { session }
+    } = await supabase.auth.getSession();
+    const user = session?.user;
 
     if (!user) return;
 
