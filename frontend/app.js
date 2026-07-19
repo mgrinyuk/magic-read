@@ -2642,6 +2642,15 @@ document.getElementById("googleAuthBtn")?.addEventListener("click", async () => 
 
 // Native deep-link return: parse the tokens Supabase appended to the
 // magicread:// URL and finish the session in the app.
+// While the keyboard is open the viewport is small — hide the bottom tab bar
+// (otherwise it rides up above the keyboard and covers half the visible app).
+window.Capacitor?.Plugins?.Keyboard?.addListener?.("keyboardWillShow", () => {
+  document.body.classList.add("kb-open");
+});
+window.Capacitor?.Plugins?.Keyboard?.addListener?.("keyboardWillHide", () => {
+  document.body.classList.remove("kb-open");
+});
+
 window.Capacitor?.Plugins?.App?.addListener("appUrlOpen", async ({ url }) => {
   if (!url || !url.startsWith(OAUTH_DEEP_LINK)) return;
   try {

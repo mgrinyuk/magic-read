@@ -755,6 +755,10 @@ html.native-boot #introSplash { display: block !important; }
 /* The native apps hide the auth close button — auth is the entry screen. */
 body.is-native .auth-close-btn { display: none; }
 
+/* Keyboard open (class set from the Capacitor Keyboard plugin events):
+   the tab bar would ride up above the keyboard — hide it while typing. */
+body.kb-open .sonic-tabbar { display: none !important; }
+
 /* Native shell: the auth screen is the entry surface — hide the site header
    and compact the card so it fits the viewport without scrolling. */
 body.is-native.auth-active .app-header { display: none; }
