@@ -8594,12 +8594,7 @@ function renderCaptions(captions, lang) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-play"/></svg>
             ${escapeHtml(getT().listen)}
           </button>
-          <button class="vid-speak-btn" type="button" data-cap-index="${i}" aria-label="Speak this line">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
-            ${escapeHtml(getT().speakThisLine)}
-          </button>
         </div>
-        <div class="vid-result-box" hidden></div>
       </div>`;
   }).join("");
 
@@ -8627,26 +8622,6 @@ function renderCaptions(captions, lang) {
     lineEl.querySelector(".vid-replay-btn")?.addEventListener("click", e => {
       e.stopPropagation();
       replayCapLine(cap);
-    });
-
-    // Speak this line — full Azure pronunciation scoring, same flow as the reader
-    lineEl.querySelector(".vid-speak-btn")?.addEventListener("click", async e => {
-      e.stopPropagation();
-      unlockAudioForMobile();
-      stopAllTTS();
-
-      const speakBtn  = lineEl.querySelector(".vid-speak-btn");
-      const resultBox = lineEl.querySelector(".vid-result-box");
-      const speechLang = mapToSpeechLang(videoLang);
-
-      // Pause playback while the user speaks so mic doesn't pick up the video
-      const wasPlaying = vidPlayer?.getPlayerState() === 1;
-      if (wasPlaying) vidPlayer.pauseVideo();
-
-      await tryAzurePronunciation(cap.text, speechLang, resultBox, speakBtn, getT());
-      recordActivity("words_spoken", (cap.text.match(/\S+/g) || [cap.text]).length);
-
-      if (wasPlaying) vidPlayer.playVideo();
     });
 
     // Chinese ruby tokens — replay line in video + show translate/save popup
