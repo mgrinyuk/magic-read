@@ -545,8 +545,8 @@ let flashcardSpeakingMode = null; // null | "easy" | "hard"
 let flashcardSpeakingUnlocked = true;
 const FLASHCARD_PASS_SCORE = 75;
 
-let currentAudio = null;       // AudioBufferSourceNode
-let audioCtxSuspended = false; // true when audioCtx.suspend() was called (paused)
+let currentAudio = null;       // the shared ttsAudioEl while a TTS clip is active
+let audioCtxSuspended = false; // true while TTS playback is paused
 let currentAudioText = "";
 let currentAudioRate = 1.0;
 let activePopup = null;
@@ -565,15 +565,18 @@ const segmentCache = new Map();
 const ttsCache = new Map();
 const libraryCache = {};
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// All TTS plays through one persistent <audio> element. iOS treats element
+// playback as "media" (audible even with the ring/silent switch on silent),
+// unlike Web Audio, which the switch mutes on the speaker. The element is
+// "blessed" with a silent clip on the first user touch so play() calls that
+// happen after a network await are still allowed by iOS.
+const SILENT_WAV = "data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const ttsAudioEl = new Audio();
+ttsAudioEl.preload = "auto";
+let ttsAudioBlessed = false;
 
-// iOS Safari requires AudioContext to be unlocked on the very first user touch,
-// synchronously — before any await. Once running it stays unlocked.
-function _unlockAudio() {
-  if (audioCtx.state === "suspended") audioCtx.resume();
-}
-document.addEventListener("touchstart", _unlockAudio, { once: true, passive: true });
-document.addEventListener("click", _unlockAudio, { once: true });
+document.addEventListener("touchstart", unlockAudioForMobile, { once: true, passive: true });
+document.addEventListener("click", unlockAudioForMobile, { once: true });
 
 /* -----------------------------
    VOICE PICKER
@@ -705,12 +708,11 @@ function openVoicePicker() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "TTS failed");
-        const audioBuffer = await audioCtx.decodeAudioData(base64ToArrayBuffer(data.audioBase64));
-        const source = audioCtx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioCtx.destination);
-        source.onended = () => { btn.disabled = false; btn.innerHTML = "&#9654;"; };
-        source.start(0);
+        const blob = new Blob([base64ToArrayBuffer(data.audioBase64)], { type: "audio/mpeg" });
+        const url = URL.createObjectURL(blob);
+        const preview = new Audio(url);
+        preview.onended = () => { URL.revokeObjectURL(url); btn.disabled = false; btn.innerHTML = "&#9654;"; };
+        await preview.play();
       } catch (err) {
         console.error("Voice preview failed:", err);
         showToast(err.message || "Preview failed", "error");
@@ -722,6 +724,7 @@ function openVoicePicker() {
     item.addEventListener("click", (e) => {
       if (e.target.closest(".voice-preview-btn")) return;
       setSelectedVoice(lang, v.name);
+      ttsCache.forEach(entry => { if (entry?.url) URL.revokeObjectURL(entry.url); });
       ttsCache.clear();
       list.querySelectorAll(".voice-option").forEach(el => el.classList.remove("voice-selected"));
       item.classList.add("voice-selected");
@@ -4021,7 +4024,7 @@ function rdStopPlay() {
 
 function rdPausePlay() {
   if (currentAudio && !audioCtxSuspended) {
-    audioCtx.suspend();
+    ttsAudioEl.pause();
     audioCtxSuspended = true;
   } else if (window.speechSynthesis?.speaking && !window.speechSynthesis.paused) {
     window.speechSynthesis.pause();
@@ -4035,7 +4038,7 @@ function rdPausePlay() {
 
 function rdResumePlay() {
   if (currentAudio && audioCtxSuspended) {
-    audioCtx.resume();
+    ttsAudioEl.play().catch(() => {});
     audioCtxSuspended = false;
   } else if (window.speechSynthesis?.paused) {
     window.speechSynthesis.resume();
@@ -5853,14 +5856,14 @@ async function renderCards(sentences) {
         currentAudioRate === getTtsRate();
 
       if (isSameAudio && !audioCtxSuspended) {
-        audioCtx.suspend();
+        ttsAudioEl.pause();
         audioCtxSuspended = true;
         ttsBtn.textContent = t.listen;
         return;
       }
 
       if (isSameAudio && audioCtxSuspended) {
-        audioCtx.resume();
+        ttsAudioEl.play().catch(() => {});
         audioCtxSuspended = false;
         ttsBtn.textContent = getT().pause;
         return;
@@ -6485,15 +6488,13 @@ function isSafariBrowser() {
 }
 
 function unlockAudioForMobile() {
+  // Runs synchronously inside a user gesture: play a silent clip once so iOS
+  // marks the shared TTS element as user-activated for all later play() calls.
   try {
-    if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume();
-    }
-    const buffer = audioCtx.createBuffer(1, 1, 22050);
-    const source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioCtx.destination);
-    source.start(0);
+    if (ttsAudioBlessed || currentAudio) return;
+    ttsAudioBlessed = true;
+    ttsAudioEl.src = SILENT_WAV;
+    ttsAudioEl.play().catch(() => {});
   } catch (error) {
     console.warn("Audio unlock failed:", error);
   }
@@ -6584,10 +6585,10 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
   // Toggle pause/resume for same audio
   if (currentAudio && currentAudioText === text && currentAudioRate === effectiveRate) {
     if (audioCtxSuspended) {
-      audioCtx.resume();
+      ttsAudioEl.play().catch(() => {});
       audioCtxSuspended = false;
     } else {
-      audioCtx.suspend();
+      ttsAudioEl.pause();
       audioCtxSuspended = true;
     }
     return;
@@ -6596,11 +6597,11 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
   // Stop any current audio
   clearWordHighlights();
   if (currentAudio) {
-    currentAudio.onended = null;
-    try { currentAudio.stop(); } catch (_) {}
+    ttsAudioEl.onended = null;
+    try { ttsAudioEl.pause(); } catch (_) {}
     currentAudio = null;
   }
-  if (audioCtxSuspended) { audioCtx.resume(); audioCtxSuspended = false; }
+  audioCtxSuspended = false;
   currentAudioText = "";
   currentAudioRate = 1.0;
 
@@ -6631,33 +6632,48 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "TTS failed");
 
-      const audioBuffer = await audioCtx.decodeAudioData(base64ToArrayBuffer(data.audioBase64));
+      const blob = new Blob([base64ToArrayBuffer(data.audioBase64)], { type: "audio/mpeg" });
 
-      if (ttsCache.size >= 50) ttsCache.delete(ttsCache.keys().next().value);
-      cached = { audioBuffer };
+      if (ttsCache.size >= 50) {
+        const oldestKey = ttsCache.keys().next().value;
+        const oldest = ttsCache.get(oldestKey);
+        if (oldest?.url) URL.revokeObjectURL(oldest.url);
+        ttsCache.delete(oldestKey);
+      }
+      cached = { url: URL.createObjectURL(blob) };
       ttsCache.set(cacheKey, cached);
     }
 
-    const { audioBuffer } = cached;
-    const source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.playbackRate.value = 1.0;
-    source.connect(audioCtx.destination);
+    const el = ttsAudioEl;
+    el.onended = null;
+    el.src = cached.url;
+    el.playbackRate = 1.0;
 
-    currentAudio = source;
+    currentAudio = el;
     currentAudioText = text;
     currentAudioRate = effectiveRate;
     audioCtxSuspended = false;
 
     if (sentenceEl) {
       const isCJK = ["zh", "ja"].includes(effectiveLang);
-      const durationMs = isCJK ? null : audioBuffer.duration * 1000;
-      highlightWordsSequentially(sentenceEl, durationMs);
+      if (isCJK) {
+        highlightWordsSequentially(sentenceEl, null);
+      } else if (Number.isFinite(el.duration) && el.duration > 0) {
+        highlightWordsSequentially(sentenceEl, el.duration * 1000);
+      } else {
+        // Blob metadata loads near-instantly; start highlights when the real
+        // clip duration is known so their pace matches the audio.
+        el.addEventListener("loadedmetadata", () => {
+          if (currentAudio === el && currentAudioText === text) {
+            highlightWordsSequentially(sentenceEl, (el.duration * 1000) || null);
+          }
+        }, { once: true });
+      }
     }
 
-    source.onended = () => {
+    el.onended = () => {
       clearWordHighlights();
-      if (currentAudio === source) {
+      if (currentAudio === el) {
         currentAudio = null;
         currentAudioText = "";
         currentAudioRate = 1.0;
@@ -6666,7 +6682,7 @@ async function playGoogleTTS(text, langOverride = null, onEnd = null, sentenceEl
       if (typeof onEnd === "function") onEnd();
     };
 
-    source.start(0);
+    await el.play();
   } catch (error) {
     currentAudio = null;
     currentAudioText = "";
@@ -6745,11 +6761,11 @@ function stopAllTTS() {
   clearWordHighlights();
   window.speechSynthesis?.cancel();
   if (currentAudio) {
-    currentAudio.onended = null;
-    try { currentAudio.stop(); } catch (_) {}
+    ttsAudioEl.onended = null;
+    try { ttsAudioEl.pause(); } catch (_) {}
     currentAudio = null;
   }
-  if (audioCtxSuspended) { audioCtx.resume(); audioCtxSuspended = false; }
+  audioCtxSuspended = false;
   currentAudioText = "";
   currentAudioRate = 1.0;
 }
