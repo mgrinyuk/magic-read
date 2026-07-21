@@ -2689,7 +2689,7 @@ function tourSlidesHTML() {
   for (let i = 1; i <= TOUR_SLIDE_COUNT; i++) {
     const n = String(i).padStart(2, "0");
     html += `<figure class="tour-slide">
-      <img src="img/onboarding/slide-${n}.jpg" alt="" loading="lazy">
+      <img src="img/onboarding/slide-${n}.webp" alt="" loading="lazy">
       <figcaption data-i18n="tourCap${i}"></figcaption>
     </figure>`;
   }
