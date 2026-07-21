@@ -64,7 +64,7 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
       return { score: 0 };
     }
     const messages = {
-      MIC_DENIED: "Microphone is blocked. Please allow mic access in your browser.",
+      MIC_DENIED: micBlockedMessage(),
       NO_SPEECH: "I didn't hear anything. Tap and speak again.",
       TOKEN_FAILED: "Pronunciation service is busy. Please try again.",
       CANCELED: "Recording stopped. Please try again.",
@@ -1771,6 +1771,14 @@ function isAndroidCapacitorShell() {
   } catch {
     return false;
   }
+}
+
+// The native apps have no "browser settings" — send users to the OS app
+// settings instead. Web users go to the browser's site permissions.
+function micBlockedMessage() {
+  return isNativeCapacitorShell()
+    ? "Microphone is blocked. Allow it for Magic Read in your phone's app settings, then try again."
+    : "Microphone is blocked. Please allow mic access in your browser.";
 }
 
 function startNativeIntroSplash() {
@@ -3584,7 +3592,7 @@ async function spOnMicTap() {
   } catch (err) {
     if (err && err.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); spResetMic(); return; }
     if (err && err.code === "MIC_DENIED") {
-      showToast("Microphone is blocked — allow access in your browser settings.", "error");
+      showToast(micBlockedMessage(), "error");
       spResetMic();
       return;
     }
@@ -7175,7 +7183,7 @@ async function record(sentence, card, recordBtn = null) {
   if (event.error === "aborted") return;
 
   const messages = {
-    "not-allowed": "Microphone is blocked. Please allow microphone access in your browser.",
+    "not-allowed": micBlockedMessage(),
     "no-speech": "I didn't hear anything. Try again and speak after pressing the button.",
     "audio-capture": "No microphone found. Please check your device.",
     "network": "Speech recognition network error. Try again."

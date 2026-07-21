@@ -47,4 +47,11 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Speak/pronunciation modes record the learner's voice via getUserMedia;
+         without RECORD_AUDIO the WebView can't grant the mic and the web layer
+         reports it as "blocked". MODIFY_AUDIO_SETTINGS is needed for capture. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 </manifest>
