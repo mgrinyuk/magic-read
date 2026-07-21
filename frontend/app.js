@@ -1340,7 +1340,10 @@ signUpBtn?.addEventListener("click", async () => {
       options: {
         data: {
           full_name: name
-        }
+        },
+        // Land confirmed sign-ups on a unique URL so Google Ads can count them
+        // as a "Sign-up" conversion (only verified accounts reach this page).
+        emailRedirectTo: "https://magicread.app/?signup=confirmed"
       }
     });
 
