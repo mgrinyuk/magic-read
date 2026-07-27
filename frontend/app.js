@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260710.2";
+import { UI_TEXT } from "./ui-text.js?v=20260727.1";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -2286,6 +2286,8 @@ document.querySelectorAll("[data-hd-target]").forEach(btn => {
       showScreen(screenWriting);
     } else if (target === "video") {
       openVideoSurface();
+    } else if (target === "tour") {
+      showTourScreen(() => showScreen(screenHome));
     }
   });
 });
@@ -4003,8 +4005,11 @@ function rdUpdateToolbar() {
   if (voiceName) {
     const sel = getSelectedVoice(R.lang);
     const v = (VOICE_LIST[R.lang] || []).find(x => x.name === sel) || (VOICE_LIST[R.lang] || [])[0];
-    voiceName.textContent = v ? (v.label || "Voice") : "Voice";
+    const raw = (v && v.label) || "Voice";
+    voiceName.textContent = raw.replace(/Voice/i, getT().voice || "Voice");
   }
+  const transPill = document.getElementById("rdTransPill");
+  if (transPill) transPill.textContent = getT().translatePill;
 }
 
 function rdUpdateDock() {
@@ -4013,16 +4018,16 @@ function rdUpdateDock() {
   const prog = document.getElementById("rdProgress");
   if (prog) prog.style.width = total ? `${(cur / total) * 100}%` : "0%";
   const label = document.getElementById("rdSentLabel");
-  if (label) label.textContent = `${cur} / ${total} sentences`;
+  if (label) label.textContent = `${cur} / ${total} ${getT().sentenceMany}`;
   const speed = document.getElementById("rdSpeed");
   if (speed) speed.textContent = getTtsSpeedLabel();
   const slowPill = document.getElementById("rdSlowPill");
   slowPill?.classList.toggle("on", ttsSpeedMode > 0);
   slowPill?.classList.toggle("extra-slow", ttsSpeedMode === 2);
   const slowLabel = document.getElementById("rdSlowLabel");
-  if (slowLabel) slowLabel.textContent = ttsSpeedMode === 2 ? "Extra slow" : "Slow";
+  if (slowLabel) slowLabel.textContent = ttsSpeedMode === 2 ? (getT().extraSlow || "Extra slow") : (getT().slow || "Slow");
   const useEl = document.getElementById("rdPlayUse");
-  if (useEl) useEl.setAttribute("href", R.playing ? "#sonic-i-pause" : "#sonic-i-play");
+  if (useEl) useEl.setAttribute("href", R.playing ? "#sonic-i-pause-fill" : "#sonic-i-play");
   document.getElementById("rdPrevSentBtn")?.toggleAttribute("disabled", total === 0 || cur <= 1);
   document.getElementById("rdNextSentBtn")?.toggleAttribute("disabled", total === 0 || cur >= total);
 }
@@ -5574,7 +5579,7 @@ document.getElementById("translateFullTextBtn")?.addEventListener("click", async
 
 function updateSlowLabels() {
   const t = getT();
-  const label = ttsSpeedMode === 2 ? "Extra slow" : (t.slow || "Slow");
+  const label = ttsSpeedMode === 2 ? (t.extraSlow || "Extra slow") : (t.slow || "Slow");
 
   ["globalSlowBtn", "flashcardSlowBtn", "spSlowBtn"].forEach(id => {
     const el = document.getElementById(id);
