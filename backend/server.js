@@ -18,6 +18,7 @@ import kuromoji from "kuromoji";
 import wanakana from "wanakana";
 import { isLifetimeOfferEligible } from "./lib/planRules.js";
 import { getActivityRpcArgs } from "./lib/activityRules.js";
+import { isAppleIapReady, verifyAppleTransaction } from "./lib/appleIap.js";
 import {
   TBANK_PLANS,
   createTbankOrderId,
@@ -1350,6 +1351,83 @@ app.post("/api/google-play/verify-purchase", extractUser, requireUser, async (re
   } catch (error) {
     console.error("[Google Play] verify-purchase error:", error.message);
     res.status(500).json({ error: "Could not verify Google Play purchase." });
+  }
+});
+
+/* -----------------------------
+   APPLE IN-APP PURCHASE
+   iOS StoreKit purchases are verified server-side against the App Store Server
+   API, then mapped onto the same profiles.plan / plan_provider / plan_ends_at
+   entitlement that Stripe, Google Play, and T-Bank already use.
+----------------------------- */
+app.post("/api/apple/verify-purchase", extractUser, requireUser, async (req, res) => {
+  try {
+    if (!isAppleIapReady()) {
+      return res.status(503).json({
+        error: "Apple in-app purchases are not configured.",
+        code: "NOT_CONFIGURED"
+      });
+    }
+
+    const { transactionId, productId } = req.body || {};
+    if (!transactionId) {
+      return res.status(400).json({
+        error: "Missing Apple transaction id.",
+        code: "INVALID_PURCHASE"
+      });
+    }
+
+    const result = await verifyAppleTransaction(transactionId, productId || null);
+    if (!result.tier) {
+      return res.status(400).json({
+        error: "Unknown Apple product.",
+        code: "UNKNOWN_PRODUCT"
+      });
+    }
+    if (!result.active) {
+      return res.status(402).json({
+        error: "Apple subscription is not active.",
+        code: "SUBSCRIPTION_INACTIVE",
+        status: result.status
+      });
+    }
+
+    const userId = req.user.id;
+    const { error: purchaseError } = await supabaseAdmin
+      .from("apple_purchases")
+      .upsert({
+        original_transaction_id: result.originalTransactionId,
+        user_id: userId,
+        product_id: result.productId,
+        tier: result.tier,
+        environment: result.environment,
+        status: String(result.status),
+        expires_at: result.expiresDate,
+        raw: result.raw
+      }, { onConflict: "original_transaction_id" });
+    if (purchaseError) {
+      console.error("[Apple] purchase upsert error:", purchaseError.message);
+    }
+
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        plan: "pro",
+        plan_provider: "apple",
+        plan_ends_at: result.expiresDate
+      })
+      .eq("id", userId);
+    if (profileError) throw profileError;
+
+    res.json({
+      ok: true,
+      provider: "apple",
+      tier: result.tier,
+      currentPeriodEnd: result.expiresDate
+    });
+  } catch (error) {
+    console.error("[Apple] verify-purchase error:", error.message);
+    res.status(500).json({ error: "Could not verify Apple purchase." });
   }
 });
 

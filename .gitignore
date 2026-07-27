@@ -2,6 +2,7 @@
 node_modules/
 .env
 backend/google-tts-key.json
+*.p8
 backend/public/exports/
 backend/public/worksheets/
 ios/DerivedData/
