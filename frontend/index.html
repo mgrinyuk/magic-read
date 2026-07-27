@@ -54,7 +54,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260718.1" />
+  <link rel="stylesheet" href="style.css?v=20260727.1" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -90,6 +90,7 @@
   <symbol id="sonic-i-pencil"   viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19l-4 1z"/></symbol>
   <symbol id="sonic-i-play"     viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
   <symbol id="sonic-i-pause"    viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="sonic-i-pause-fill" viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></symbol>
   <symbol id="sonic-i-back5"    viewBox="0 0 24 24"><path d="M11 7L6 12l5 5"/><path d="M6 12h8a4 4 0 0 1 0 8h-1"/></symbol>
   <symbol id="sonic-i-vol"      viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6"/></symbol>
   <symbol id="sonic-i-retry"    viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
@@ -456,9 +457,13 @@
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-cards"/></svg></div>
               <div class="hd-action-nm" data-i18n="cardsTitle">Cards</div>
             </button>
-            <button class="hd-action" type="button" data-hd-target="write">
+            <button class="hd-action hd-web-only" type="button" data-hd-target="write">
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-pencil"/></svg></div>
               <div class="hd-action-nm" data-i18n="navWrite">Writing</div>
+            </button>
+            <button class="hd-action" type="button" data-hd-target="tour">
+              <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-help"/></svg></div>
+              <div class="hd-action-nm" data-i18n="navTutorial">How to use the app</div>
             </button>
           </div>
 
@@ -788,7 +793,7 @@
 
         <div class="rd-toolbar">
           <button class="rd-pill" id="rdPinyinPill" type="button">拼 Pinyin</button>
-          <button class="rd-pill" id="rdTransPill" type="button">译 Translate</button>
+          <button class="rd-pill" id="rdTransPill" type="button" data-i18n="translatePill">Translate</button>
           <button class="rd-pill" id="rdVoicePill" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
             <span id="rdVoiceName">Voice</span>
@@ -1033,20 +1038,10 @@
         <div id="acctSubStatus" class="acct-sub-card" hidden></div>
 
         <div class="acct-menu">
-          <button class="acct-mrow" id="acctSavedWordsBtn" type="button">
-            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-bookmark"/></svg></span>
-            <span class="acct-ml">Saved words</span>
-            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
-          </button>
           <button class="acct-mrow" id="acctAppLanguageBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-globe"/></svg></span>
-            <span class="acct-ml">App language</span>
+            <span class="acct-ml" data-i18n="appLanguage">App language</span>
             <span class="acct-mv"><span id="acctAppLangLabel">English</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevdown"/></svg></span>
-          </button>
-          <button class="acct-mrow acct-native-only" id="acctTutorialBtn" type="button">
-            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-play"/></svg></span>
-            <span class="acct-ml" data-i18n="tutorialMenu">Tutorial</span>
-            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
           </button>
           <div id="acctLangPicker" class="acct-lang-picker" hidden>
             <button class="acct-lang-opt" data-lang="en">🇬🇧 English</button>
@@ -1060,12 +1055,12 @@
           </div>
           <button class="acct-mrow" id="acctAboutBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-info"/></svg></span>
-            <span class="acct-ml">About</span>
+            <span class="acct-ml" data-i18n="about">About</span>
             <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
           </button>
           <button class="acct-mrow" id="acctHelpBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-help"/></svg></span>
-            <span class="acct-ml">Help &amp; support</span>
+            <span class="acct-ml" data-i18n="helpSupport">Help &amp; support</span>
             <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
           </button>
         </div>
@@ -1082,12 +1077,12 @@
         </div>
 
         <div class="acct-footer-links">
-          <a href="/blog/" target="_blank">Blog</a>
-          <a href="/privacy.html" target="_blank">Privacy</a>
-          <a href="/delete-account.html" target="_blank">Delete account</a>
-          <a href="/terms.html" target="_blank">Terms</a>
-          <a href="/cookies.html" target="_blank">Cookies</a>
-          <a href="/refund.html" target="_blank">Refunds</a>
+          <a href="/blog/" target="_blank" data-i18n="blog">Blog</a>
+          <a href="/privacy.html" target="_blank" data-i18n="privacy">Privacy</a>
+          <a href="/delete-account.html" target="_blank" data-i18n="deleteAccount">Delete account</a>
+          <a href="/terms.html" target="_blank" data-i18n="terms">Terms</a>
+          <a href="/cookies.html" target="_blank" data-i18n="cookies">Cookies</a>
+          <a href="/refund.html" target="_blank" data-i18n="refunds">Refunds</a>
         </div>
         <p class="acct-footer-copy">© 2026 Magic Read</p>
 
@@ -1455,7 +1450,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260721.1"></script>
+  <script type="module" src="app.js?v=20260727.1"></script>
 
   <footer class="footer">
     <div>

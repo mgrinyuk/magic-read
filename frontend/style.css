@@ -4365,6 +4365,10 @@ body.is-logged-in.dashboard-active .top-ui-language {
 body.is-native .acct-native-only {
   display: flex;
 }
+/* Writing mode is web-only; hidden inside the native phone apps. */
+body.is-native .hd-web-only {
+  display: none;
+}
 .acct-mi {
   width: 34px;
   height: 34px;
@@ -6015,7 +6019,7 @@ body.video-active .app-shell .main .site-container {
 .rd-para { margin-bottom: 18px; }
 .rd-sent { border-radius: 6px; padding: 2px 0; }
 .rd-sent.active { background: rgba(229,38,126,.08); box-shadow: 0 0 0 4px rgba(229,38,126,.08); }
-.rd-word { display: inline-flex; flex-direction: column; align-items: center; vertical-align: bottom; margin: 0 1px; cursor: pointer; border-radius: 5px; padding: 0 1px; }
+.rd-word { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 1px; cursor: pointer; border-radius: 5px; padding: 0 1px; }
 .rd-word:hover { background: rgba(10,180,214,.10); }
 .rd-word small { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-dim); font-weight: 600; line-height: 1.1; margin-bottom: 3px; display: none; }
 .rd-han.show-pinyin .rd-word > small { display: block !important; }
@@ -6023,7 +6027,7 @@ body.video-active .app-shell .main .site-container {
 .rd-word.word-speaking .rd-hz { background: var(--yellow) !important; color: var(--text) !important; box-shadow: 0 0 0 2px rgba(255, 106, 43, 0.45); }
 /* Align punctuation with the hanzi row (the bottom of the ruby word boxes),
    not the baseline at the top of the tall word columns. */
-.rd-punc { white-space: pre; display: inline-block; vertical-align: bottom; line-height: 1.15; }
+.rd-punc { white-space: pre; display: inline-block; vertical-align: middle; line-height: 1.15; }
 .rd-trans { margin: 8px 2px 0; font-size: 13.5px; line-height: 1.55; color: var(--text-dim); font-style: italic; display: none; }
 .rd-han.show-trans .rd-trans { display: block; }
 .rd-loading { color: var(--text-soft); font-style: normal; font-size: 15px; }
@@ -6239,12 +6243,22 @@ body.video-active .app-shell .main .site-container {
 .sp-setup-seg { margin-top: 22px; }
 .sp-setup-textarea { width: 100%; background: #fff; border: 1.5px solid var(--border); border-radius: 18px; padding: 18px; min-height: 210px; font-family: inherit; font-size: 16px; line-height: 1.6; color: var(--text); resize: none; outline: none; }
 .sp-setup-textarea::placeholder { color: var(--text-dim); }
+/* Fixed above the tab bar, same as .rd-setup-footer — keeps the Start button
+   visible instead of buried under a long Library/Saved list. */
 .sp-setup-footer {
-  flex: none;
-  padding: 14px 28px max(20px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 700px;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 15;
+  padding: 14px 28px 20px;
   border-top: 1px solid var(--border);
   background: var(--shell, #f4f5f9);
 }
+/* Clearance so the end of the list isn't hidden behind the fixed footer. */
+.sp-setup-body { padding-bottom: calc(170px + env(safe-area-inset-bottom)); }
 .sp-setup-start {
   width: 100%;
   min-height: 62px;
