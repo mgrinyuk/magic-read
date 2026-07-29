@@ -123,7 +123,9 @@ h1 {
   top: 0;
   z-index: 100;
   min-height: 72px;
-  padding: 0 32px;
+  /* env(safe-area-inset-top) keeps the header below the iOS status bar/notch
+     under viewport-fit=cover; it's 0 on web and Android, so no effect there. */
+  padding: env(safe-area-inset-top) 32px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2413,7 +2415,7 @@ body.is-logged-in.dashboard-active .top-ui-language {
 
 @media (max-width: 900px) {
   .app-header {
-    padding: 0 18px;
+    padding: env(safe-area-inset-top) 18px 0;
   }
 
   .main {
@@ -6096,7 +6098,9 @@ body.video-active .app-shell .main .site-container {
 .rd-done-badge { width: 96px; height: 96px; border-radius: 999px; background: rgba(22,163,74,.12); display: grid; place-items: center; animation: spPop .5s cubic-bezier(.2,.9,.3,1.2) both; }
 .rd-done-title { font-size: 28px; font-weight: 800; margin-top: 22px; }
 .rd-done-sub { font-size: 16px; color: var(--text-soft); margin-top: 8px; max-width: 360px; line-height: 1.5; }
-.rd-done-cta { display: flex; flex-direction: column; gap: 11px; width: 100%; max-width: 340px; margin-top: 28px; }
+/* Full content width, matching the exercise cards + progress bars (was a
+   narrow 340px cap that looked cramped, especially on tablets). */
+.rd-done-cta { display: flex; flex-direction: column; gap: 11px; width: 100%; margin-top: 28px; }
 
 /* ================================================================
    READER · SETUP SCREEN
