@@ -4587,8 +4587,8 @@ function rdRenderExDone(body) {
       <div class="rd-done-title">Exercises complete!</div>
       <div class="rd-done-sub">Nice work — you ordered the sentence and filled the blank correctly.</div>
       <div class="rd-done-cta">
-        <button class="sp-btn sp-btn-primary" id="rdDoneBack" type="button">Back to reading</button>
-        <button class="sp-btn sp-btn-ghost" id="rdDoneRetry" type="button">Try again</button>
+        <button class="sp-btn sp-btn-primary" id="rdDoneBack" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg> <span>Back to reading</span></button>
+        <button class="sp-btn sp-btn-ghost" id="rdDoneRetry" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> <span>Try again</span></button>
       </div>
     </div>`;
   spFireConfetti("rdConfetti", true);
