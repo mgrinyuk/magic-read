@@ -45,6 +45,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* iOS WKWebView paints white behind the status bar / in overscroll under
+     viewport-fit=cover; colour the root so no white line shows there. */
+  background: var(--shell);
 }
 
 body {
@@ -6345,6 +6348,25 @@ body {
 
   body.product-active .app-shell .main {
     padding-top: 0;
+  }
+
+  /* Flashcards on phones: tighten the top spacing under the header and keep the
+     browse card within the safe viewport so it doesn't slide under the tab bar.
+     The card face carries a fixed 400px min-height on desktop — cap it here. */
+  #screen-flashcards .workspace-card.fc-screen {
+    padding-top: 16px;
+  }
+  #screen-flashcards .flashcard-card-inner {
+    min-height: 0 !important;
+    height: min(56vh, 340px) !important;
+  }
+  #screen-flashcards .flashcard-face {
+    min-height: 0 !important;
+    padding: 22px;
+    overflow-y: auto;
+  }
+  #screen-flashcards .flashcard-front h3 {
+    font-size: 2.7rem;
   }
 
   body.dashboard-active .app-header {
