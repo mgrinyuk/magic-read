@@ -4219,8 +4219,11 @@ function rdShuffleItems(arr) {
 
 function rdCreateOrderExercise(sentence, index) {
   const toks = rdEx1Tokens(sentence);
-  if (toks.length < 2) return null;
-  const target = toks.slice(0, 8);
+  // Order exercises must use every word of the sentence. Very long sentences
+  // would make an unwieldy tile grid, so let those fall back to the cloze
+  // exercise (which shows the full sentence with a single blank) instead.
+  if (toks.length < 2 || toks.length > 12) return null;
+  const target = toks;
   let bank = target.map((t, i) => ({ id: i, t })).sort(() => Math.random() - 0.5);
   if (bank.map(b => b.t).join("") === target.join("") && bank.length > 1) [bank[0], bank[1]] = [bank[1], bank[0]];
   return {
