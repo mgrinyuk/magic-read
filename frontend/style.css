@@ -6128,6 +6128,12 @@ body.video-active .app-shell .main .site-container {
 .rd-libcard-level { font-size: 11px; font-weight: 700; color: var(--cyan-ink); background: rgba(10,180,214,.12); padding: 3px 8px; border-radius: 6px; }
 .rd-libcard-len { font-size: 11px; color: var(--text-dim); padding: 3px 4px; }
 .rd-setup-savedlist { display: flex; flex-direction: column; gap: 10px; }
+/* Library grouped by CEFR level: filter chips + per-level sections. */
+.rd-lib-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rd-lib-chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-soft); font-family: inherit; font-weight: 700; font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.rd-lib-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.rd-lib-group { display: flex; flex-direction: column; gap: 10px; }
+.rd-lib-grouphead { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); margin: 6px 2px 0; }
 .rd-savedrow { display: flex; gap: 8px; align-items: stretch; border: 1.5px solid var(--border); background: #fff; border-radius: 16px; padding: 10px 12px; }
 .rd-savedrow.sel { border: 2px solid var(--primary); }
 .rd-savedrow-main { display: flex; gap: 13px; align-items: center; flex: 1; min-width: 0; border: none; background: none; padding: 4px; cursor: pointer; font-family: inherit; text-align: left; }
