@@ -4800,9 +4800,12 @@ function renderSetupLibrary(gridId, texts, state, updateLabel) {
     const glyph = (t.title || "文")[0];
     const sel = state.sel.kind === "library" && String(state.sel.id) === String(t.id);
     const sub = t.topic ? escapeHtml(t.topic) : "";
+    // Optional cover image (from the sheet's `image` column) layered over the
+    // letter tile; the tile shows through if there's no image or it fails to load.
+    const img = t.image ? `<img class="rd-savedrow-thumb-img" src="${escapeHtml(t.image)}" alt="" loading="lazy">` : "";
     return `<div class="rd-savedrow${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}">
       <button class="rd-savedrow-main" data-lib-id="${escapeHtml(t.id)}" type="button">
-        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
+        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span>${img}</div>
         <div class="rd-savedrow-body">
           <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
           <div class="rd-savedrow-sub">${sub}</div>
@@ -4817,6 +4820,11 @@ function renderSetupLibrary(gridId, texts, state, updateLabel) {
   </div>`).join("");
 
   grid.innerHTML = chips + body;
+
+  // If a cover image fails to load, drop it so the letter tile shows through.
+  grid.querySelectorAll(".rd-savedrow-thumb-img").forEach(im => {
+    im.addEventListener("error", () => im.remove());
+  });
 
   grid.querySelectorAll(".rd-lib-chip").forEach(chip => {
     chip.addEventListener("click", () => {
