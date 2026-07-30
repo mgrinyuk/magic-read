@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260727.1";
+import { UI_TEXT } from "./ui-text.js?v=20260727.5";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -4765,41 +4765,90 @@ async function rdSetupLoadLibrary() {
   }
 }
 
-function rdSetupRenderLibrary(texts) {
-  const grid = document.getElementById("rdSetupLibraryTab");
+// Group library texts by CEFR level (A1 → C2), with anything untagged last.
+const CEFR_LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
+function groupLibraryByLevel(texts) {
+  const groups = new Map();
+  for (const t of texts) {
+    const key = (t.level || "").trim().toUpperCase() || "—";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  }
+  const rank = k => { if (k === "—") return 100; const i = CEFR_LEVEL_ORDER.indexOf(k); return i === -1 ? 99 : i; };
+  const keys = [...groups.keys()].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  return keys.map(key => ({ level: key, items: groups.get(key) }));
+}
+
+// Shared grouped library renderer (reader + speaking setup screens).
+// `state` holds `.sel`, `._libText`, `._libLevel` (active filter); `updateLabel`
+// refreshes that screen's Start button.
+function renderSetupLibrary(gridId, texts, state, updateLabel) {
+  const grid = document.getElementById(gridId);
   if (!grid) return;
   if (!texts.length) { grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">No texts yet.</p>'; return; }
-  grid.innerHTML = texts.map(t => {
+
+  const groups = groupLibraryByLevel(texts);
+  const filter = groups.some(g => g.level === state._libLevel) ? state._libLevel : "all";
+  const shown = filter === "all" ? groups : groups.filter(g => g.level === filter);
+
+  const chips = `<div class="rd-lib-chips">
+    <button class="rd-lib-chip${filter === "all" ? " on" : ""}" data-lvl="all" type="button">${escapeHtml(getT().allLevels)}</button>
+    ${groups.map(g => `<button class="rd-lib-chip${filter === g.level ? " on" : ""}" data-lvl="${escapeHtml(g.level)}" type="button">${escapeHtml(g.level === "—" ? getT().otherLevel : g.level)}</button>`).join("")}
+  </div>`;
+
+  const rowHtml = t => {
     const glyph = (t.title || "文")[0];
-    const sel = rdSetupState.sel.kind === "library" && String(rdSetupState.sel.id) === String(t.id);
-    const sub = [t.topic, t.level].filter(Boolean).join(" · ");
+    const sel = state.sel.kind === "library" && String(state.sel.id) === String(t.id);
+    const sub = t.topic ? escapeHtml(t.topic) : "";
     return `<div class="rd-savedrow${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}">
       <button class="rd-savedrow-main" data-lib-id="${escapeHtml(t.id)}" type="button">
         <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
         <div class="rd-savedrow-body">
           <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
-          <div class="rd-savedrow-sub">${escapeHtml(sub)}</div>
+          <div class="rd-savedrow-sub">${sub}</div>
         </div>
       </button>
     </div>`;
-  }).join("");
+  };
+
+  const body = shown.map(g => `<div class="rd-lib-group">
+    <div class="rd-lib-grouphead">${escapeHtml(g.level === "—" ? getT().otherLevel : g.level)}</div>
+    ${g.items.map(rowHtml).join("")}
+  </div>`).join("");
+
+  grid.innerHTML = chips + body;
+
+  grid.querySelectorAll(".rd-lib-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      state._libLevel = chip.dataset.lvl === "all" ? "" : chip.dataset.lvl;
+      renderSetupLibrary(gridId, texts, state, updateLabel);
+    });
+  });
+
   grid.querySelectorAll(".rd-savedrow-main").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.libId;
       const t = texts.find(x => String(x.id) === String(id));
       if (!t) return;
-      rdSetupState.sel = { kind: "library", id, title: t.title || "" };
-      rdSetupState._libText = t;
+      state.sel = { kind: "library", id, title: t.title || "" };
+      state._libText = t;
       grid.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.libId === id));
-      rdSetupUpdateStartLabel();
+      updateLabel();
     });
   });
-  if ((!rdSetupState.sel.id || rdSetupState.sel.kind !== "library") && texts.length) {
-    rdSetupState.sel = { kind: "library", id: texts[0].id, title: texts[0].title || "" };
-    rdSetupState._libText = texts[0];
+
+  // Default the selection to the first visible text when nothing is chosen yet.
+  if ((!state.sel.id || state.sel.kind !== "library") && shown.length) {
+    const first = shown[0].items[0];
+    state.sel = { kind: "library", id: first.id, title: first.title || "" };
+    state._libText = first;
     grid.querySelector(".rd-savedrow")?.classList.add("sel");
-    rdSetupUpdateStartLabel();
+    updateLabel();
   }
+}
+
+function rdSetupRenderLibrary(texts) {
+  renderSetupLibrary("rdSetupLibraryTab", texts, rdSetupState, rdSetupUpdateStartLabel);
 }
 
 async function rdSetupLoadSaved() {
@@ -5071,43 +5120,7 @@ async function spSetupLoadLibrary() {
 }
 
 function spSetupRenderLibrary(texts) {
-  const grid = document.getElementById("spSetupLibraryTab");
-  if (!grid) return;
-  if (!texts.length) {
-    grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">No texts yet.</p>';
-    return;
-  }
-  grid.innerHTML = texts.map(t => {
-    const glyph = (t.title || "文")[0];
-    const sel = spSetupState.sel.kind === "library" && String(spSetupState.sel.id) === String(t.id);
-    const sub = [t.topic, t.level].filter(Boolean).join(" · ");
-    return `<div class="rd-savedrow${sel ? " sel" : ""}" data-lib-id="${escapeHtml(t.id)}">
-      <button class="rd-savedrow-main" data-lib-id="${escapeHtml(t.id)}" type="button">
-        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--cyan),var(--cyan-ink))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
-        <div class="rd-savedrow-body">
-          <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
-          <div class="rd-savedrow-sub">${escapeHtml(sub)}</div>
-        </div>
-      </button>
-    </div>`;
-  }).join("");
-  grid.querySelectorAll(".rd-savedrow-main").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.libId;
-      const t = texts.find(x => String(x.id) === String(id));
-      if (!t) return;
-      spSetupState.sel = { kind: "library", id, title: t.title || "" };
-      spSetupState._libText = t;
-      grid.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.libId === id));
-      spSetupUpdateStartLabel();
-    });
-  });
-  if ((!spSetupState.sel.id || spSetupState.sel.kind !== "library") && texts.length) {
-    spSetupState.sel = { kind: "library", id: texts[0].id, title: texts[0].title || "" };
-    spSetupState._libText = texts[0];
-    grid.querySelector(".rd-savedrow")?.classList.add("sel");
-    spSetupUpdateStartLabel();
-  }
+  renderSetupLibrary("spSetupLibraryTab", texts, spSetupState, spSetupUpdateStartLabel);
 }
 
 async function spSetupLoadSaved() {
