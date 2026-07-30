@@ -497,6 +497,7 @@ app.get("/api/game-texts", async (req, res) => {
         title: row.title,
         level: row.level,
         topic: row.topic,
+        image: (row.image || "").trim(),
         cardCount: Number(row.sentence_count) || 0
       }));
 
