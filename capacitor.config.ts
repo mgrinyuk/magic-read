@@ -19,7 +19,11 @@ const config: CapacitorConfig = {
     }
   },
   ios: {
-    contentInset: 'always'
+    // 'always' made WKWebView add its own status-bar inset on top of the
+    // env(safe-area-inset-*) padding the CSS already applies under
+    // viewport-fit=cover, leaving a dead band above the header. Let the CSS own
+    // the insets — it also handles the home indicator and landscape correctly.
+    contentInset: 'never'
   }
 };
 
