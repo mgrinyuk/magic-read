@@ -1616,6 +1616,15 @@ async function startAppleCheckout(priceType, clickedBtn) {
     return;
   }
 
+  // Never start a purchase we can't attribute: without a session the verify
+  // call goes out unauthenticated, the backend rejects it, and the user has
+  // paid Apple with nothing to show for it. Purchases already made this way
+  // are recovered by syncApplePurchases() on the next login.
+  if (!document.body.classList.contains("is-logged-in")) {
+    showToast("Please log in before upgrading, so we can add Pro to your account.", "error");
+    return;
+  }
+
   const apple = getApplePurchasesPlugin();
   if (!apple) {
     showToast("In-app purchases are not available on this device.", "error");
