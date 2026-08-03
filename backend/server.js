@@ -1183,6 +1183,26 @@ app.get("/api/subscription-status", extractUser, requireUser, async (req, res) =
       });
     }
 
+    if (planProvider === "apple") {
+      const { data: purchase } = await supabaseAdmin
+        .from("apple_purchases")
+        .select("tier, created_at, expires_at, status")
+        .eq("user_id", userId)
+        .order("expires_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return res.json({
+        ...base,
+        provider: "apple",
+        tier: purchase?.tier || null,
+        purchasedAt: purchase?.created_at || null,
+        currentPeriodEnd: purchase?.expires_at || planEndsAt,
+        // Only Apple can cancel an App Store subscription — the app deep-links
+        // to StoreKit's Manage Subscriptions sheet instead of cancelling here.
+        cancelable: false
+      });
+    }
+
     // Pro with no provider = directly granted (comp/manual). Treat it as lifetime access.
     return res.json({ ...base, tier: isLifetimePro ? "lifetime" : null });
   } catch (error) {

@@ -18,7 +18,8 @@ public class ApplePurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "manageSubscriptions", returnType: CAPPluginReturnPromise)
     ]
 
     @objc func isAvailable(_ call: CAPPluginCall) {
@@ -74,6 +75,32 @@ public class ApplePurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             } catch {
                 call.reject(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Opens Apple's own Manage Subscriptions sheet, where the user can switch
+    /// plans or turn off auto-renew. Apple requires subscriptions to be
+    /// cancellable from within the app (Guideline 3.1.2); only Apple can
+    /// actually cancel an App Store subscription, so we hand off to StoreKit.
+    @objc func manageSubscriptions(_ call: CAPPluginCall) {
+        guard #available(iOS 15.0, *) else {
+            call.reject("Managing subscriptions requires iOS 15 or later.")
+            return
+        }
+
+        DispatchQueue.main.async {
+            guard let scene = self.bridge?.viewController?.view.window?.windowScene else {
+                call.reject("Could not open subscription settings.")
+                return
+            }
+            Task {
+                do {
+                    try await AppStore.showManageSubscriptions(in: scene)
+                    call.resolve()
+                } catch {
+                    call.reject(error.localizedDescription)
+                }
             }
         }
     }

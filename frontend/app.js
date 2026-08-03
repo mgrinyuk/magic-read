@@ -2061,6 +2061,10 @@ async function renderSubscriptionSection() {
   } else if (s.provider === "google_play") {
     if (periodEnd) lines.push(`<div class="acct-sub-line">Renews through Google Play on <b>${periodEnd}</b>.</div>`);
     lines.push(`<div class="acct-sub-line">Manage or cancel this subscription in Google Play.</div>`);
+  } else if (s.provider === "apple") {
+    if (periodEnd) lines.push(`<div class="acct-sub-line">Renews through the App Store on <b>${periodEnd}</b>.</div>`);
+    lines.push(`<div class="acct-sub-line">Turn off auto-renew or change plan in your App Store subscription settings.</div>`);
+    actionsHtml = `<button class="plan-option acct-sub-act" data-sub-action="manage-apple">Manage subscription</button>`;
   } else {
     lines.push(`<div class="acct-sub-line">Your Pro access is active. For billing questions, email help@magicread.app.</div>`);
   }
@@ -2080,6 +2084,23 @@ async function renderSubscriptionSection() {
 
 async function handleSubAction(action, btn) {
   if (action === "upgrade-tbank") { startTbankCheckout("annual", btn); return; }
+
+  // Only Apple can cancel an App Store subscription, so hand off to StoreKit's
+  // Manage Subscriptions sheet (Guideline 3.1.2). Falls back to the App Store
+  // subscriptions page if the native sheet can't be shown.
+  if (action === "manage-apple") {
+    const apple = getApplePurchasesPlugin();
+    try {
+      if (!apple) throw new Error("Plugin unavailable.");
+      await apple.manageSubscriptions();
+      await fetchMyPlan();
+      renderSubscriptionSection();
+    } catch (error) {
+      console.error("[Apple] manage subscriptions failed:", error);
+      window.location.href = "https://apps.apple.com/account/subscriptions";
+    }
+    return;
+  }
 
   if (action === "cancel") {
     const ok = await showConfirm("Cancel your subscription? You'll keep Pro until the end of your current billing period. No refund is issued for the remaining time.");
