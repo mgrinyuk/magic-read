@@ -840,6 +840,10 @@ const GOOGLE_PLAY_PRODUCTS = {
   monthly: { productId: "magic_read_pro_monthly", basePlanId: "monthly" },
   annual: { productId: "magic_read_pro_annual", basePlanId: "annual" }
 };
+const APPLE_PRODUCTS = {
+  monthly: "magic_read_pro_monthly",
+  annual: "magic_read_pro_annual"
+};
 
 // Pull the plan + usage snapshot from the backend and re-render plan UI.
 async function fetchMyPlan() {
@@ -954,13 +958,13 @@ function renderPlanUI() {
 
 function renderLifetimeOffer() {
   document.querySelectorAll('[data-price-type="lifetime"]').forEach(option => {
-    option.hidden = isAndroidCapacitorShell() || isPaidProUser() || !userPlan.lifetimeOfferEligible;
+    option.hidden = isNativeCapacitorShell() || isPaidProUser() || !userPlan.lifetimeOfferEligible;
   });
 }
 
 function renderTbankOptions() {
   document.querySelectorAll("[data-tbank-plan], .tbank-plan-label").forEach(element => {
-    element.hidden = isAndroidCapacitorShell() || !userPlan.tbankAvailable;
+    element.hidden = isNativeCapacitorShell() || !userPlan.tbankAvailable;
   });
 }
 
@@ -1108,7 +1112,7 @@ function showUpgradePrompt(code) {
         <button class="upgrade-plan-btn upgrade-plan-secondary" data-price-type="monthly" type="button">
           ${escapeHtml(t.monthlyPlanBtn)}
         </button>
-        ${userPlan.tbankAvailable && !isAndroidCapacitorShell() ? `
+        ${userPlan.tbankAvailable && !isNativeCapacitorShell() ? `
           <div class="tbank-plan-label">${escapeHtml(getT().tbankPaymentLabel || "Russian card or SBP")}</div>
           <button class="upgrade-plan-btn tbank-upgrade-btn" data-tbank-plan="annual" type="button">
             ${escapeHtml(getT().tbankAnnual || "1 year — 5,000 ₽")}
@@ -1181,6 +1185,7 @@ async function checkAuth() {
 
     fetchMyPlan();
     syncGooglePlayPurchases();
+    syncApplePurchases();
 
     // Pull this user's decks if they aren't in memory yet (no-op when already
     // loaded) — covers logging in after startup on a fresh device.
@@ -1458,6 +1463,10 @@ async function startPlanCheckout(priceType, clickedBtn) {
     await startGooglePlayCheckout(priceType, clickedBtn);
     return;
   }
+  if (isIOSCapacitorShell()) {
+    await startAppleCheckout(priceType, clickedBtn);
+    return;
+  }
 
   const options = Array.from(document.querySelectorAll("#planPicker .plan-option, #acctPlanPicker .plan-option"));
   const labels = options.map(b => b.textContent);
@@ -1574,6 +1583,86 @@ async function syncGooglePlayPurchases({ silent = true } = {}) {
       showToast(error?.message || "Could not restore Google Play purchases.", "error");
     }
     console.error("[Google Play] restore failed:", error);
+  }
+}
+
+function getApplePurchasesPlugin() {
+  return window.Capacitor?.Plugins?.ApplePurchases || null;
+}
+
+async function verifyApplePurchase(purchase) {
+  const transactionId = purchase?.transactionId || purchase?.originalTransactionId;
+  if (!transactionId) {
+    throw new Error("Missing Apple transaction id.");
+  }
+
+  const response = await fetchWithAuth(`${API_BASE}/api/apple/verify-purchase`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      transactionId,
+      productId: purchase?.productId || null
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || "Apple purchase could not be verified.");
+  return data;
+}
+
+async function startAppleCheckout(priceType, clickedBtn) {
+  const productId = APPLE_PRODUCTS[priceType];
+  if (!productId) {
+    showToast("This plan is not available in the iPhone app.", "error");
+    return;
+  }
+
+  const apple = getApplePurchasesPlugin();
+  if (!apple) {
+    showToast("In-app purchases are not available on this device.", "error");
+    return;
+  }
+
+  const options = Array.from(document.querySelectorAll("#planPicker .plan-option, #acctPlanPicker .plan-option, .upgrade-plan-btn, .upgrade-modal-cta"));
+  const labels = options.map(button => button.textContent);
+  options.forEach(button => { button.disabled = true; });
+  if (clickedBtn) clickedBtn.textContent = getT().redirecting || "Redirecting…";
+
+  try {
+    const purchase = await apple.purchase({ productId });
+    await verifyApplePurchase(purchase);
+    showToast("Purchase confirmed. Pro is active.", "success");
+    await fetchMyPlan();
+    renderAccountScreen();
+  } catch (error) {
+    if (error?.code !== "USER_CANCELED") {
+      console.error("[Apple] checkout failed:", error);
+      showToast(error?.message || "Purchase failed.", "error");
+    }
+  } finally {
+    options.forEach((button, index) => {
+      button.disabled = false;
+      button.textContent = labels[index];
+    });
+  }
+}
+
+async function syncApplePurchases({ silent = true } = {}) {
+  if (!isIOSCapacitorShell()) return;
+  const apple = getApplePurchasesPlugin();
+  if (!apple) return;
+
+  try {
+    const result = await apple.restore();
+    const purchases = Array.isArray(result?.purchases) ? result.purchases : [];
+    for (const purchase of purchases) {
+      await verifyApplePurchase(purchase);
+    }
+    if (purchases.length) await fetchMyPlan();
+  } catch (error) {
+    if (!silent) {
+      showToast(error?.message || "Could not restore purchases.", "error");
+    }
+    console.error("[Apple] restore failed:", error);
   }
 }
 
@@ -1768,6 +1857,14 @@ function isNativeCapacitorShell() {
 function isAndroidCapacitorShell() {
   try {
     return isNativeCapacitorShell() && window.Capacitor?.getPlatform?.() === "android";
+  } catch {
+    return false;
+  }
+}
+
+function isIOSCapacitorShell() {
+  try {
+    return isNativeCapacitorShell() && window.Capacitor?.getPlatform?.() === "ios";
   } catch {
     return false;
   }
