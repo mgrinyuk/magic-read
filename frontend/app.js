@@ -7050,7 +7050,10 @@ async function startFlashcardSpeakingPractice() {
   const resultEl = document.getElementById("flashcardSpeakingResult");
 
   // Azure pronunciation assessment (signed-in users, when enabled).
-  const fastBrowserRecognition = isSafariBrowser();
+  // The native shells spoof a Safari user agent (so YouTube allows embeds), but
+  // WKWebView has no working SpeechRecognition — going down the browser path
+  // there leaves the card stuck on "Listening…" forever. Native always uses Azure.
+  const fastBrowserRecognition = !isNativeCapacitorShell() && isSafariBrowser();
   if (!fastBrowserRecognition) {
     const azure = await tryAzurePronunciation(expected, speechLang, resultEl, null, getT());
     if (azure) {
@@ -7136,6 +7139,13 @@ async function startFlashcardSpeakingPractice() {
     currentFlashcardRecognition = null;
     if (fastBrowserRecognition && !handled && pendingTranscript.trim()) {
       finishWithTranscript(pendingTranscript);
+      return;
+    }
+    // Recognition can end without ever firing onresult or onerror (nothing was
+    // heard, or the engine is a no-op). Say so instead of leaving "Listening…".
+    if (!handled && resultEl) {
+      resultEl.hidden = false;
+      resultEl.textContent = "Could not hear you. Please try again.";
     }
   };
 

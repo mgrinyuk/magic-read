@@ -2106,6 +2106,20 @@ textarea:focus,
   gap: 16px;
 }
 
+/* Play / Slow / Say it / Exit speaking — one row under the card. */
+.fc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.fc-actions .fc-audio-row {
+  margin: 0;
+}
+
 .flashcard-arrow {
   flex-shrink: 0;
   width: 52px;
@@ -6103,6 +6117,9 @@ body.video-active .app-shell .main .site-container {
 .rd-done-sub { font-size: 16px; color: var(--text-soft); margin-top: 8px; max-width: 360px; line-height: 1.5; }
 /* Match the speaking "text complete" CTA (.sp-complete-cta). */
 .rd-done-cta { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 460px; margin-top: 28px; }
+/* Same as .sp-complete-cta: .sp-btn sets flex:1, which in this vertical stack
+   collapses the buttons into short, stretched-looking bars. */
+.rd-done-cta .sp-btn { flex: none; }
 
 /* ================================================================
    READER · SETUP SCREEN
@@ -6374,6 +6391,15 @@ body {
   }
   #screen-flashcards .flashcard-front h3 {
     font-size: 2.7rem;
+  }
+  /* Speaking mode puts a whole translation on the card — 2rem overflowed the
+     face on a phone, so scale it (and its label) down to fit. */
+  #screen-flashcards .flashcard-hard-translation {
+    font-size: clamp(19px, 5.4vw, 27px);
+    line-height: 1.25;
+  }
+  #screen-flashcards .flashcard-speaking-prompt {
+    font-size: 0.68rem;
   }
 
   body.dashboard-active .app-header {

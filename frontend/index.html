@@ -888,7 +888,6 @@
             <div class="flashcard-top-actions">
               <select id="flashcardDeckSelect" class="deck-select"></select>
               <button id="flashcardNewDeckBtn" class="game-nav-btn fc-icon-action" type="button" aria-label="New deck">+</button>
-              <button id="flashcardSpeakExitBtn" class="game-nav-btn" type="button" data-i18n="exitSpeaking" hidden>Exit speaking</button>
               <div class="tb-more">
                 <button type="button" class="game-nav-btn tb-more-btn" data-more-toggle aria-expanded="false" aria-haspopup="true" aria-label="More">⋯</button>
                 <div class="tb-more-menu" hidden>
@@ -935,19 +934,6 @@
                     <p id="flashcardWordPinyin" class="flashcard-pinyin">tú shū guǎn</p>
                     <p id="flashcardHardTranslation" class="flashcard-hard-translation" hidden></p>
                     <p id="flashcardSpeakPrompt" class="flashcard-speaking-prompt" hidden></p>
-                    <div class="fc-audio-row">
-                      <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
-                        <span data-i18n="play">Play</span>
-                      </button>
-                      <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" aria-pressed="false">
-                        <span aria-hidden="true">🐢</span><span class="toggle-label" data-i18n="slow">Slow</span>
-                      </button>
-                    </div>
-                    <button id="flashcardSpeakBtn" class="primary-btn flashcard-speak-btn" type="button" hidden>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
-                      Say it
-                    </button>
                   </div>
 
                   <div class="flashcard-face flashcard-back">
@@ -958,6 +944,25 @@
               </div>
 
               <button id="flashcardNextBtn" class="flashcard-arrow" type="button" aria-label="Next card">&#8250;</button>
+            </div>
+
+            <!-- Card actions live under the card, not on the flip face, so they
+                 stay put while the card flips and never crowd its content. -->
+            <div class="fc-actions">
+              <div class="fc-audio-row">
+                <button id="flashcardPlayWordBtn" class="flashcard-play-btn" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
+                  <span data-i18n="play">Play</span>
+                </button>
+                <button id="flashcardSlowBtn" class="slow-tts-btn" type="button" aria-pressed="false">
+                  <span aria-hidden="true">🐢</span><span class="toggle-label" data-i18n="slow">Slow</span>
+                </button>
+              </div>
+              <button id="flashcardSpeakBtn" class="primary-btn flashcard-speak-btn" type="button" hidden>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+                Say it
+              </button>
+              <button id="flashcardSpeakExitBtn" class="game-nav-btn" type="button" data-i18n="exitSpeaking" hidden>Exit speaking</button>
             </div>
 
             <div id="flashcardSpeakingResult" class="flashcard-speaking-result" hidden></div>
