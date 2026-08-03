@@ -2,6 +2,12 @@ import Capacitor
 
 class MyViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
+        // Capacitor only auto-registers plugins listed in capacitor.config.json's
+        // packageClassList, which is generated from npm packages — plugins that
+        // live in the app target must be registered by hand (the iOS counterpart
+        // of MainActivity's registerPlugin(PlayBillingPlugin.class)).
+        bridge?.registerPluginInstance(ApplePurchasesPlugin())
+
         // Set a Safari-like user agent so YouTube allows embedded playback.
         // WKWebView's default UA omits the Safari identifier, which causes
         // YouTube to detect a native app webview and block the embed.
