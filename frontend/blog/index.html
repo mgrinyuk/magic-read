@@ -2,14 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18335701336"></script>
+  <!-- Google Ads tag — website only. These pages are bundled into the native
+       apps too, and the account screen links to them, so an ungated tag would
+       mean tracking inside the app (which requires ATT). -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'AW-18335701336');
+    if (!window.Capacitor) {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-18335701336');
+      var gtagScript = document.createElement('script');
+      gtagScript.async = true;
+      gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18335701336';
+      document.head.appendChild(gtagScript);
+    }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Blog — Language Learning Tips & Science | Magic Read</title>
