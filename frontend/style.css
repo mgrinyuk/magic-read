@@ -6941,6 +6941,15 @@ body {
     flex: 0 1 auto;
   }
 
+  /* The base rule is clamp(44px, 13vw, 64px) — ~52px on a phone, which makes a
+     multi-word term like "fabric softener" wrap and swallow the card. Scale it
+     down here (this block comes after that rule, which would otherwise win on
+     equal specificity). Still large enough for single CJK words. */
+  #screen-flashcards .flashcard-front h3 {
+    font-size: clamp(24px, 8.5vw, 40px);
+    line-height: 1.15;
+  }
+
   #screen-flashcards .fc-head {
     align-items: flex-start;
     flex-direction: column;
