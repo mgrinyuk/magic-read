@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18335701336"></script>
+  <!-- Google Ads tag (gtag.js) — WEBSITE ONLY.
+       index.html is shared with the Capacitor shells, and shipping an
+       advertising tag inside the app counts as tracking under Apple's rules:
+       it would require an App Tracking Transparency prompt and a "Data Used to
+       Track You" privacy declaration. The tag exists for web ad conversions, so
+       load it only when we're not running inside a native shell. -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'AW-18335701336');
+    if (!window.Capacitor) {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-18335701336');
+      var gtagScript = document.createElement('script');
+      gtagScript.async = true;
+      gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18335701336';
+      document.head.appendChild(gtagScript);
+    }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
