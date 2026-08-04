@@ -2027,7 +2027,7 @@ async function renderSubscriptionSection() {
     if (!res.ok) throw new Error(s?.error || "status failed");
   } catch {
     card.innerHTML = `<div class="acct-sub-title">Pro access active</div>
-      <div class="acct-sub-line">For billing questions, email help@magicread.app.</div>`;
+      <div class="acct-sub-line">For billing questions, email support@magicread.app.</div>`;
     return;
   }
 
@@ -2066,7 +2066,7 @@ async function renderSubscriptionSection() {
     lines.push(`<div class="acct-sub-line">Turn off auto-renew or change plan in your App Store subscription settings.</div>`);
     actionsHtml = `<button class="plan-option acct-sub-act" data-sub-action="manage-apple">Manage subscription</button>`;
   } else {
-    lines.push(`<div class="acct-sub-line">Your Pro access is active. For billing questions, email help@magicread.app.</div>`);
+    lines.push(`<div class="acct-sub-line">Your Pro access is active. For billing questions, email support@magicread.app.</div>`);
   }
 
   card.innerHTML = `
@@ -2331,7 +2331,10 @@ document.getElementById("acctAboutBtn")?.addEventListener("click", () => {
 });
 
 document.getElementById("acctHelpBtn")?.addEventListener("click", () => {
-  showToast("Email us at help@magicread.app for support.", "info");
+  // The support page covers contacting us, managing or cancelling a
+  // subscription, refunds and account deletion — more use than a toast with an
+  // address. Capacitor hands external URLs to the system browser.
+  window.open("https://magicread.app/support.html", "_blank", "noopener");
 });
 
 document.getElementById("acctDeleteAccountBtn")?.addEventListener("click", async () => {
