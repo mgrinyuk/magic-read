@@ -6392,6 +6392,13 @@ body {
   #screen-flashcards .flashcard-front h3 {
     font-size: 2.7rem;
   }
+  /* The tab bar already says "Cards", so the heading and subtitle just cost
+     ~110px of vertical space — enough to push the buttons under the card below
+     the fold on a phone. Drop them here (desktop web keeps them). */
+  #screen-flashcards .fc-head > div:first-child {
+    display: none;
+  }
+
   /* Speaking mode puts a whole translation on the card — 2rem overflowed the
      face on a phone, so scale it (and its label) down to fit. */
   #screen-flashcards .flashcard-hard-translation {
@@ -6914,8 +6921,24 @@ body {
 }
 
 @media (max-width: 640px) {
+  /* The app header already pads itself by env(safe-area-inset-top); adding it
+     again here wasted ~80px at the top of the Cards screen on a notched phone. */
   #screen-flashcards .fc-screen {
-    padding: max(34px, calc(env(safe-area-inset-top, 0px) + 18px)) 14px 14px;
+    padding: 16px 14px 14px;
+  }
+
+  /* .flashcard-area is flex:1, so the card stretches into whatever room is left
+     and pushes the buttons under it below the fold. Cap it here — this comes
+     after the base `#screen-flashcards .flashcard-card { height: 100% }`, which
+     would otherwise win on equal specificity. */
+  #screen-flashcards .flashcard-card {
+    align-self: center;
+    height: clamp(180px, 42dvh, 330px);
+  }
+  /* ...and stop the row itself from growing, or it keeps the old height and the
+     capped card just centres inside it. */
+  #screen-flashcards .flashcard-area {
+    flex: 0 1 auto;
   }
 
   #screen-flashcards .fc-head {
