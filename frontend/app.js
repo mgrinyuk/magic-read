@@ -8529,10 +8529,17 @@ function extractYouTubeId(input) {
   return m ? m[1] : null;
 }
 
+// postMessage target the hosted player answers on. It is NOT the YouTube embed
+// origin — video-player.html hard-codes that — so it must be this window's real
+// origin or the handshake is dropped. The iOS shell runs on capacitor://localhost,
+// which can't be used as a targetOrigin, and returning "https://localhost" made
+// every reply (including "ready") silently vanish, so the player always timed out
+// and fell back to "Watch on YouTube". Fall back to "*" there; the host still
+// verifies event.origin before trusting a message.
 function getYouTubeEmbedOrigin() {
   const origin = window.location.origin || "";
   if (origin.startsWith("http://") || origin.startsWith("https://")) return origin;
-  return "https://localhost";
+  return "*";
 }
 
 function postHostedVideo(type, payload = {}) {
