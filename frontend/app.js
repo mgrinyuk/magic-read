@@ -8019,7 +8019,11 @@ async function exportCurrentDeck() {
       },
       body: JSON.stringify({
         deckName: deck.name,
-        words
+        words,
+        // A blob: URL can't be opened in the native shells: Capacitor routes
+        // external links through UIApplication.open, which won't take blob:,
+        // so the link silently did nothing. Ask for a hosted file instead.
+        deliver: isNativeCapacitorShell() ? "url" : "blob"
       })
     });
 
@@ -8028,8 +8032,14 @@ async function exportCurrentDeck() {
       throw new Error(data.error || "Export failed");
     }
 
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
+    let url;
+    if (isNativeCapacitorShell()) {
+      const data = await response.json();
+      if (!data?.url) throw new Error("Export failed");
+      url = data.url.startsWith("http") ? data.url : `${API_BASE}${data.url}`;
+    } else {
+      url = URL.createObjectURL(await response.blob());
+    }
 
     if (exportResult) {
       exportResult.innerHTML = "";

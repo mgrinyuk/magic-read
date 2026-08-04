@@ -2440,12 +2440,43 @@ app.post("/api/export-flashcard-deck", extractUser, requireUser, (req, res) => {
 
     const filename = `${safeName}.pdf`;
     const doc = new PDFDocument({ size: "A4", margin: 40 });
+    const fontPath = path.join(__dirname, "fonts", "NotoSansSC-Regular.ttf");
+
+    // The native shells can't open a blob: URL — Capacitor hands external URLs
+    // to UIApplication.open, which refuses blob: — so the download link did
+    // nothing there. Write the PDF out and hand back a plain https URL instead.
+    if (req.body?.deliver === "url") {
+      const dir = path.join(__dirname, "public", "exports");
+      fs.mkdirSync(dir, { recursive: true });
+
+      // Drop anything older than a day so the folder can't grow forever.
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      for (const file of fs.readdirSync(dir)) {
+        const full = path.join(dir, file);
+        try {
+          if (fs.statSync(full).mtimeMs < cutoff) fs.unlinkSync(full);
+        } catch { /* another request may have cleaned it up already */ }
+      }
+
+      const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      const outName = `${token}-${filename}`;
+      const stream = fs.createWriteStream(path.join(dir, outName));
+      doc.pipe(stream);
+      drawCharacterGrid(doc, items, fontPath, `Deck: ${deckName}`);
+      doc.end();
+
+      stream.on("finish", () => res.json({ url: `/exports/${outName}` }));
+      stream.on("error", (error) => {
+        console.error("Flashcard deck export write error:", error.message);
+        if (!res.headersSent) res.status(500).json({ error: "Could not export deck" });
+      });
+      return;
+    }
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     doc.pipe(res);
 
-    const fontPath = path.join(__dirname, "fonts", "NotoSansSC-Regular.ttf");
     drawCharacterGrid(doc, items, fontPath, `Deck: ${deckName}`);
 
     doc.end();
