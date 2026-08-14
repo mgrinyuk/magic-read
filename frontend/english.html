@@ -329,9 +329,11 @@
         </div>
         <!-- Запись — «Расписание встреч» в Google Календаре.
              href оставлен намеренно: если скрипт Google не загрузится
-             (блокировщик, нет сети), кнопка просто откроет страницу записи. -->
+             (блокировщик, нет сети), кнопка просто откроет страницу записи.
+             Полный адрес, а не короткий calendar.app.google: короткий теряет
+             hl=ru при редиректе и открывается на английском. -->
         <a class="btn btn-ghost" id="bookBtn"
-           href="https://calendar.app.google/Q1TeTyAo9X8LWUTA7"
+           href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ30NPoa18JLjHNgohYIEuEzJepnlKI2NMq1K0ge1z1qEDhMlRk9ii7nECkr6IAGfbF72dJu9EiD?gv=true&amp;hl=ru"
            target="_blank" rel="noopener">
           Выбрать время
         </a>
@@ -438,7 +440,9 @@
 
   // Запись на разбор: открываем попап Google, а не уводим на другую страницу.
   (function () {
-    var SCHEDULE_URL = "https://calendar.google.com/calendar/appointments/schedules/AcZssZ30NPoa18JLjHNgohYIEuEzJepnlKI2NMq1K0ge1z1qEDhMlRk9ii7nECkr6IAGfbF72dJu9EiD?gv=true";
+    // hl=ru — иначе Google показывает окно на языке браузера посетителя,
+    // и русскоязычные видят английский интерфейс (и неделю с воскресенья).
+    var SCHEDULE_URL = "https://calendar.google.com/calendar/appointments/schedules/AcZssZ30NPoa18JLjHNgohYIEuEzJepnlKI2NMq1K0ge1z1qEDhMlRk9ii7nECkr6IAGfbF72dJu9EiD?gv=true&hl=ru";
 
     window.addEventListener("load", function () {
       var host = document.getElementById("gcalHost");
