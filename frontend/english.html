@@ -30,6 +30,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
+  <!-- Запись на разбор — попап Google Календаря -->
+  <link href="https://calendar.google.com/calendar/scheduling-button-script.css" rel="stylesheet" />
+  <script src="https://calendar.google.com/calendar/scheduling-button-script.js" async></script>
+
   <style>
     :root {
       --bg:          #E5E7EE;
@@ -157,6 +161,14 @@
     .quiz-card iframe { width: 100%; border: 0; display: block; border-radius: 16px; }
     .quiz-fallback {
       padding: 28px 18px; text-align: center; color: var(--text-soft); font-size: 15px;
+    }
+
+    /* Прячем кнопку Google, но оставляем её в отрисовке — display:none
+       мешает ей инициализироваться и принимать клик. */
+    .visually-hidden {
+      position: absolute !important; width: 1px !important; height: 1px !important;
+      padding: 0 !important; border: 0 !important; margin: 0 !important;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
     }
 
     /* ── МАГАЗИН ───────────────────────────── */
@@ -315,11 +327,17 @@
             <span class="price">По записи</span>
           </span>
         </div>
-        <!-- Запись — «Расписание встреч» в Google Календаре -->
-        <a class="btn btn-ghost" href="https://calendar.app.google/Q1TeTyAo9X8LWUTA7"
+        <!-- Запись — «Расписание встреч» в Google Календаре.
+             href оставлен намеренно: если скрипт Google не загрузится
+             (блокировщик, нет сети), кнопка просто откроет страницу записи. -->
+        <a class="btn btn-ghost" id="bookBtn"
+           href="https://calendar.app.google/Q1TeTyAo9X8LWUTA7"
            target="_blank" rel="noopener">
           Выбрать время
         </a>
+        <!-- Сюда Google вставляет свою кнопку. Прячем её и жмём программно,
+             чтобы попап открывался нашей кнопкой в фирменном стиле. -->
+        <div id="gcalHost" class="visually-hidden" aria-hidden="true"></div>
       </div>
 
       <!-- Материалы по профессиям -->
@@ -415,6 +433,51 @@
     // Нажали кнопку в первом экране — тоже грузим.
     document.querySelectorAll('a[href="#test"]').forEach(function (a) {
       a.addEventListener("click", loadQuiz);
+    });
+  })();
+
+  // Запись на разбор: открываем попап Google, а не уводим на другую страницу.
+  (function () {
+    var SCHEDULE_URL = "https://calendar.google.com/calendar/appointments/schedules/AcZssZ30NPoa18JLjHNgohYIEuEzJepnlKI2NMq1K0ge1z1qEDhMlRk9ii7nECkr6IAGfbF72dJu9EiD?gv=true";
+
+    window.addEventListener("load", function () {
+      var host = document.getElementById("gcalHost");
+      var btn = document.getElementById("bookBtn");
+      if (!host || !btn) return;
+      // Скрипт не загрузился — кнопка остаётся обычной ссылкой.
+      if (!window.calendar || !window.calendar.schedulingButton) return;
+
+      window.calendar.schedulingButton.load({
+        url: SCHEDULE_URL,
+        color: "#E5267E",
+        label: "Записаться",
+        target: host
+      });
+
+      // Google вставляет свою кнопку СОСЕДОМ с target, а не внутрь него,
+      // поэтому ищем и внутри, и следующим элементом.
+      function googleBtn() {
+        var inside = host.querySelector("button, a, [role='button']");
+        if (inside) return inside;
+        var next = host.nextElementSibling;
+        return next && next.tagName === "BUTTON" ? next : null;
+      }
+
+      // Прячем её, оставляя кликабельной: наша кнопка выше делает то же самое.
+      function hideGoogleBtn() {
+        var g = googleBtn();
+        if (g) g.classList.add("visually-hidden");
+      }
+      hideGoogleBtn();
+      setTimeout(hideGoogleBtn, 400);
+      setTimeout(hideGoogleBtn, 1500);
+
+      btn.addEventListener("click", function (e) {
+        var g = googleBtn();
+        if (!g) return;   // не нашли — уходим по href, как раньше
+        e.preventDefault();
+        g.click();
+      });
     });
   })();
 </script>
