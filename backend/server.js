@@ -368,7 +368,9 @@ const ttsClient = new textToSpeech.TextToSpeechClient({
 
 app.use(cors());
 
-app.use(express.static(path.join(__dirname, "..", "frontend")));
+// `extensions: ["html"]` lets clean URLs work — /english serves english.html.
+// It only kicks in when the exact path isn't found, so existing links are safe.
+app.use(express.static(path.join(__dirname, "..", "frontend"), { extensions: ["html"] }));
 
 app.get("/api/auth/google-config", (_req, res) => {
   res.json({

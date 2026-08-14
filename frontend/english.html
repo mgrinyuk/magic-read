@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Google Ads tag — только сайт. Эта папка попадает и в нативные приложения,
+       поэтому тег закрыт проверкой на Capacitor (как в блоге). -->
+  <script>
+    if (!window.Capacitor) {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-18335701336');
+      var gtagScript = document.createElement('script');
+      gtagScript.async = true;
+      gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18335701336';
+      document.head.appendChild(gtagScript);
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Английский, на котором вы наконец заговорите | Magic Read</title>
+  <meta name="description" content="Пройдите короткий тест, заберите PDF-гайд и начните читать вслух на английском с разбором произношения по словам." />
+  <link rel="canonical" href="https://magicread.app/english" />
+  <meta property="og:title" content="Английский, на котором вы наконец заговорите" />
+  <meta property="og:description" content="Короткий тест, PDF-гайд и практика чтения вслух с проверкой произношения." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://magicread.app/english" />
+  <meta property="og:image" content="https://magicread.app/og-image.png" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:          #E5E7EE;
+      --shell:       #F4F5F9;
+      --surface:     #FFFFFF;
+      --primary:     #E5267E;
+      --primary-soft:#FF5EA8;
+      --cyan:        #0AB4D6;
+      --cyan-ink:    #0A7E97;
+      --amber:       #F5B400;
+      --text:        #1C1233;
+      --text-soft:   #6A6480;
+      --text-dim:    #9A93AD;
+      --border:      #E5E3EE;
+      --radius:      22px;
+      --width:       620px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--shell);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .wrap { max-width: var(--width); margin: 0 auto; padding: 0 20px; }
+
+    /* ── ШАПКА ─────────────────────────────── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 16px 0;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      font-weight: 800; font-size: 17px; color: var(--text); text-decoration: none;
+    }
+    .logo-mark {
+      width: 30px; height: 30px; border-radius: 9px; flex: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+      display: grid; place-items: center; color: #fff; font-size: 15px;
+    }
+    .topbar-link {
+      font-size: 14px; font-weight: 700; color: var(--text-soft);
+      text-decoration: none; white-space: nowrap;
+    }
+
+    /* ── HERO ──────────────────────────────── */
+    .hero { padding: 18px 0 40px; }
+    .eyebrow {
+      display: inline-block; font-size: 12px; font-weight: 800;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--primary);
+      background: rgba(229,38,126,.10); padding: 7px 13px; border-radius: 999px;
+    }
+    .hero h1 {
+      font-size: 34px; line-height: 1.12; font-weight: 900;
+      letter-spacing: -.02em; margin: 18px 0 0;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero p {
+      font-size: 17px; color: var(--text-soft); margin: 16px 0 0; max-width: 30em;
+    }
+    .hero-cta { display: flex; flex-direction: column; gap: 11px; margin-top: 26px; }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 56px; padding: 0 22px; border-radius: 999px;
+      font-family: inherit; font-size: 17px; font-weight: 800;
+      text-decoration: none; cursor: pointer; border: none;
+      transition: filter .15s, transform .12s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+      color: #fff; box-shadow: 0 14px 28px -12px rgba(229,38,126,.75);
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-ghost {
+      background: var(--surface); color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:hover { background: #fbfaff; }
+
+    .hero-note {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; color: var(--text-dim); margin-top: 16px;
+    }
+
+    /* ── СЕКЦИИ ────────────────────────────── */
+    section { padding: 44px 0; }
+    .section-head { margin-bottom: 22px; }
+    .section-head h2 {
+      font-size: 27px; line-height: 1.18; font-weight: 900;
+      letter-spacing: -.015em; margin: 10px 0 0;
+    }
+    .section-head p { color: var(--text-soft); margin: 12px 0 0; font-size: 16px; }
+    .step {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--cyan-ink);
+    }
+    .step i {
+      width: 22px; height: 22px; border-radius: 999px; font-style: normal;
+      background: rgba(10,180,214,.15); display: grid; place-items: center;
+      font-size: 12px; color: var(--cyan-ink);
+    }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+    }
+
+    /* ── ТЕСТ ──────────────────────────────── */
+    .quiz-card { padding: 10px; overflow: hidden; }
+    .quiz-card iframe { width: 100%; border: 0; display: block; border-radius: 16px; }
+    .quiz-fallback {
+      padding: 28px 18px; text-align: center; color: var(--text-soft); font-size: 15px;
+    }
+
+    /* ── ФРИБИ ─────────────────────────────── */
+    .freebie {
+      margin-top: 14px; display: flex; align-items: center; gap: 16px;
+      background: linear-gradient(120deg, rgba(245,180,0,.12), rgba(229,38,126,.08));
+      border: 1px solid rgba(245,180,0,.35);
+    }
+    .freebie-ico {
+      width: 52px; height: 52px; border-radius: 15px; flex: none;
+      background: #fff; display: grid; place-items: center; font-size: 25px;
+      box-shadow: 0 6px 16px -8px rgba(28,18,51,.3);
+    }
+    .freebie h3 { margin: 0; font-size: 17px; font-weight: 800; }
+    .freebie p { margin: 4px 0 0; font-size: 14px; color: var(--text-soft); }
+
+    /* ── МАГАЗИН ───────────────────────────── */
+    .offers { display: flex; flex-direction: column; gap: 14px; }
+    .offer { display: flex; flex-direction: column; }
+    .offer-top { display: flex; align-items: flex-start; gap: 14px; }
+    .offer-ico {
+      width: 50px; height: 50px; border-radius: 15px; flex: none;
+      display: grid; place-items: center; font-size: 24px;
+    }
+    .offer h3 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+    .offer p { margin: 6px 0 0; font-size: 15px; color: var(--text-soft); }
+    .offer .btn { margin-top: 18px; min-height: 52px; font-size: 16px; }
+    .price {
+      display: inline-block; margin-top: 10px; font-size: 13px;
+      font-weight: 800; color: var(--cyan-ink);
+      background: rgba(10,180,214,.12); padding: 5px 11px; border-radius: 8px;
+    }
+
+    /* ── ПРОФЕССИИ ─────────────────────────── */
+    .prof-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 18px;
+    }
+    .prof {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 15px 14px; position: relative;
+    }
+    .prof-emoji { font-size: 22px; display: block; }
+    .prof-name { font-size: 14px; font-weight: 700; margin-top: 8px; line-height: 1.35; }
+    .soon {
+      display: inline-block; margin-top: 8px; font-size: 10px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim);
+      background: var(--shell); padding: 3px 8px; border-radius: 6px;
+    }
+
+    /* ── ПОДВАЛ ────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border); margin-top: 20px;
+      padding: 26px 0 40px; text-align: center;
+      font-size: 13px; color: var(--text-dim);
+    }
+    footer a { color: var(--text-dim); }
+
+    /* ── ПЛАНШЕТ/ДЕСКТОП ───────────────────── */
+    @media (min-width: 640px) {
+      .hero { padding: 34px 0 54px; }
+      .hero h1 { font-size: 44px; }
+      .hero p { font-size: 18px; }
+      .hero-cta { flex-direction: row; }
+      .hero-cta .btn { flex: 1; }
+      .section-head h2 { font-size: 32px; }
+      section { padding: 54px 0; }
+      .prof-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="logo" href="/">
+      <span class="logo-mark">✦</span> Magic Read
+    </a>
+    <a class="topbar-link" href="/">Открыть приложение →</a>
+  </div>
+
+  <!-- ═══ 1. HERO ═══════════════════════════ -->
+  <header class="hero">
+    <span class="eyebrow">Английский для взрослых</span>
+    <h1>Вы всё понимаете,<br>но <em>молчите</em>?</h1>
+    <p>
+      Проблема не в грамматике. Чтобы заговорить, язык нужно
+      произносить вслух — и слышать, где именно вы ошибаетесь.
+      Начните с короткого теста: покажу, что делать в вашем случае.
+    </p>
+
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#test">Пройти тест — 2 минуты</a>
+      <a class="btn btn-ghost" href="#shop">Что я предлагаю</a>
+    </div>
+
+    <div class="hero-note">
+      <span>🎁</span> В конце теста — PDF-гайд в подарок
+    </div>
+  </header>
+
+  <!-- ═══ 2. ТЕСТ + ФРИБИ ═══════════════════ -->
+  <section id="test">
+    <div class="section-head">
+      <span class="step"><i>1</i> Диагностика</span>
+      <h2>С чего начать именно вам?</h2>
+      <p>
+        Несколько вопросов о том, как вы учили английский и где застряли.
+        В конце — разбор вашей ситуации и PDF-гайд.
+      </p>
+    </div>
+
+    <div class="card quiz-card">
+      <!-- ╔══════════════════════════════════════════════════════════╗
+           ║  TALLY: замените FORM_ID на ID вашей формы.              ║
+           ║  Он в ссылке формы: tally.so/r/XXXXXX  →  FORM_ID=XXXXXX ║
+           ╚══════════════════════════════════════════════════════════╝ -->
+      <iframe
+        data-tally-src="https://tally.so/embed/FORM_ID?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1"
+        loading="lazy" width="100%" height="420"
+        title="Тест: с чего начать учить английский"></iframe>
+      <noscript>
+        <p class="quiz-fallback">
+          Включите JavaScript, чтобы пройти тест,
+          или <a href="https://tally.so/r/FORM_ID">откройте его отдельно</a>.
+        </p>
+      </noscript>
+    </div>
+
+    <!-- Подарок. Ссылку на PDF можно выдавать и внутри Tally после теста —
+         этот блок нужен для тех, кто тест не проходит. -->
+    <a class="card freebie" href="PDF_LINK" target="_blank" rel="noopener"
+       style="text-decoration:none;color:inherit">
+      <span class="freebie-ico">📘</span>
+      <span>
+        <h3>PDF: 20 фраз, которые выдают уровень</h3>
+        <p>Заберите гайд бесплатно — без теста →</p>
+      </span>
+    </a>
+  </section>
+
+  <!-- ═══ 3. МАГАЗИН ════════════════════════ -->
+  <section id="shop">
+    <div class="section-head">
+      <span class="step"><i>2</i> Что дальше</span>
+      <h2>Три способа начать</h2>
+      <p>От бесплатной ежедневной практики до личного разбора.</p>
+    </div>
+
+    <div class="offers">
+
+      <!-- Magic Read -->
+      <div class="card offer">
+        <div class="offer-top">
+          <span class="offer-ico" style="background:rgba(229,38,126,.12)">📖</span>
+          <span>
+            <h3>Читать с Magic Read</h3>
+            <p>
+              Приложение, где вы читаете вслух любой текст, а ИИ проверяет
+              произношение каждого слова и показывает, что подтянуть.
+            </p>
+            <span class="price">Бесплатный старт</span>
+          </span>
+        </div>
+        <a class="btn btn-primary" href="/">Открыть приложение</a>
+      </div>
+
+      <!-- Разбор -->
+      <div class="card offer">
+        <div class="offer-top">
+          <span class="offer-ico" style="background:rgba(10,180,214,.12)">🎧</span>
+          <span>
+            <h3>Разбор с преподавателем</h3>
+            <p>
+              Созвон один на один: слушаю вашу речь, нахожу настоящие причины
+              зажима и собираю пошаговый план под вашу цель.
+            </p>
+            <span class="price">По записи</span>
+          </span>
+        </div>
+        <!-- ╔══════════════════════════════════════════════════════════════╗
+             ║  ЗАПИСЬ: вставьте ссылку из Google Календаря →               ║
+             ║  «Расписание встреч» (Appointment schedule) → «Поделиться»   ║
+             ║  Ссылка вида: https://calendar.app.google/xxxxxxxx           ║
+             ╚══════════════════════════════════════════════════════════════╝ -->
+        <a class="btn btn-ghost" href="CALENDAR_LINK" target="_blank" rel="noopener">
+          Выбрать время
+        </a>
+      </div>
+
+      <!-- Материалы по профессиям -->
+      <div class="card offer">
+        <div class="offer-top">
+          <span class="offer-ico" style="background:rgba(245,180,0,.15)">🗂️</span>
+          <span>
+            <h3>Английский для вашей профессии</h3>
+            <p>
+              Подборки лексики и текстов под конкретную сферу — чтобы учить
+              то, что реально нужно на работе, а не «тему из учебника».
+            </p>
+          </span>
+        </div>
+
+        <div class="prof-grid">
+          <div class="prof">
+            <span class="prof-emoji">⚖️</span>
+            <div class="prof-name">Для юристов</div>
+            <span class="soon">Скоро</span>
+          </div>
+          <div class="prof">
+            <span class="prof-emoji">💼</span>
+            <div class="prof-name">Для бизнеса</div>
+            <span class="soon">Скоро</span>
+          </div>
+          <div class="prof">
+            <span class="prof-emoji">🎨</span>
+            <div class="prof-name">Художникам и дизайнерам</div>
+            <span class="soon">Скоро</span>
+          </div>
+          <div class="prof">
+            <span class="prof-emoji">🩺</span>
+            <div class="prof-name">Для врачей</div>
+            <span class="soon">Скоро</span>
+          </div>
+          <div class="prof">
+            <span class="prof-emoji">🎓</span>
+            <div class="prof-name">Для учёбы в вузе</div>
+            <span class="soon">Скоро</span>
+          </div>
+        </div>
+
+        <a class="btn btn-ghost" href="#test">Хочу узнать первой</a>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      © 2026 Magic Read ·
+      <a href="/privacy.html">Конфиденциальность</a> ·
+      <a href="/terms.html">Условия</a>
+    </p>
+  </footer>
+
+</div>
+
+<!-- Tally: подгружает и авто-подгоняет высоту формы -->
+<script async src="https://tally.so/widgets/embed.js"></script>
+
+</body>
+</html>
