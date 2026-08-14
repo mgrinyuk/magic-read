@@ -17,11 +17,11 @@
     }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Английский, на котором вы наконец заговорите | Magic Read</title>
-  <meta name="description" content="Пройдите короткий тест, заберите PDF-гайд и начните читать вслух на английском с разбором произношения по словам." />
+  <title>Английский, на котором ты наконец заговоришь | Magic Read</title>
+  <meta name="description" content="Пройди короткую анкету, забери PDF-гайд и начни читать вслух на английском с разбором произношения по словам." />
   <link rel="canonical" href="https://magicread.app/english" />
-  <meta property="og:title" content="Английский, на котором вы наконец заговорите" />
-  <meta property="og:description" content="Короткий тест, PDF-гайд и практика чтения вслух с проверкой произношения." />
+  <meta property="og:title" content="Английский, на котором ты наконец заговоришь" />
+  <meta property="og:description" content="Анкета на 6 минут, PDF-гайд и практика чтения вслух с проверкой произношения." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://magicread.app/english" />
   <meta property="og:image" content="https://magicread.app/og-image.png" />
@@ -36,7 +36,7 @@
       --shell:       #F4F5F9;
       --surface:     #FFFFFF;
       --primary:     #E5267E;
-      --primary-soft:#FF5EA8;
+      --primary-soft:#FF4D9D;
       --cyan:        #0AB4D6;
       --cyan-ink:    #0A7E97;
       --amber:       #F5B400;
@@ -241,20 +241,20 @@
   <!-- ═══ 1. HERO ═══════════════════════════ -->
   <header class="hero">
     <span class="eyebrow">Английский для взрослых</span>
-    <h1>Вы всё понимаете,<br>но <em>молчите</em>?</h1>
+    <h1>Ты всё понимаешь,<br>но <em>молчишь</em>?</h1>
     <p>
       Проблема не в грамматике. Чтобы заговорить, язык нужно
-      произносить вслух — и слышать, где именно вы ошибаетесь.
-      Начните с короткого теста: покажу, что делать в вашем случае.
+      произносить вслух — и слышать, где именно ты ошибаешься.
+      Начни с короткой анкеты: покажу, что делать в твоём случае.
     </p>
 
     <div class="hero-cta">
-      <a class="btn btn-primary" href="#test">Пройти тест — 2 минуты</a>
+      <a class="btn btn-primary" href="#test">Пройти анкету — 6 минут</a>
       <a class="btn btn-ghost" href="#shop">Что я предлагаю</a>
     </div>
 
     <div class="hero-note">
-      <span>🎁</span> В конце теста — PDF-гайд в подарок
+      <span>🎁</span> В конце — PDF-гайд в подарок
     </div>
   </header>
 
@@ -262,26 +262,28 @@
   <section id="test">
     <div class="section-head">
       <span class="step"><i>1</i> Диагностика</span>
-      <h2>С чего начать именно вам?</h2>
+      <h2>Что тебя блокирует в английском?</h2>
       <p>
-        Несколько вопросов о том, как вы учили английский и где застряли.
-        В конце — разбор вашей ситуации и PDF-гайд.
+        Несколько вопросов о том, где именно ты застреваешь.
+        В конце — разбор твоей ситуации и PDF-гайд.
       </p>
     </div>
 
     <div class="card quiz-card">
-      <!-- ╔══════════════════════════════════════════════════════════╗
-           ║  TALLY: замените FORM_ID на ID вашей формы.              ║
-           ║  Он в ссылке формы: tally.so/r/XXXXXX  →  FORM_ID=XXXXXX ║
-           ╚══════════════════════════════════════════════════════════╝ -->
-      <iframe
-        data-tally-src="https://tally.so/embed/FORM_ID?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1"
+      <!-- Анкета «Что тебя блокирует в английском» — tally.so/r/obNG71.
+           Ссылка лежит в data-src, а не в data-tally-src: иначе форма
+           грузится сразу, перехватывает фокус и утаскивает страницу вниз,
+           мимо первого экрана. Подставляем её, когда до блока долистали. -->
+      <p class="quiz-fallback" id="quizPlaceholder">Загружаем анкету…</p>
+      <iframe id="quizFrame" hidden
+        data-src="https://tally.so/embed/obNG71?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1"
         loading="lazy" width="100%" height="420"
-        title="Тест: с чего начать учить английский"></iframe>
+        title="Анкета «Что тебя блокирует в английском»"></iframe>
       <noscript>
+        <style>#quizPlaceholder { display: none; }</style>
         <p class="quiz-fallback">
-          Включите JavaScript, чтобы пройти тест,
-          или <a href="https://tally.so/r/FORM_ID">откройте его отдельно</a>.
+          Включи JavaScript, чтобы пройти анкету,
+          или <a href="https://tally.so/r/obNG71">открой её отдельно</a>.
         </p>
       </noscript>
     </div>
@@ -293,7 +295,7 @@
       <span class="freebie-ico">📘</span>
       <span>
         <h3>PDF: 20 фраз, которые выдают уровень</h3>
-        <p>Заберите гайд бесплатно — без теста →</p>
+        <p>Забери гайд бесплатно — без анкеты →</p>
       </span>
     </a>
   </section>
@@ -315,7 +317,7 @@
           <span>
             <h3>Читать с Magic Read</h3>
             <p>
-              Приложение, где вы читаете вслух любой текст, а ИИ проверяет
+              Приложение, где ты читаешь вслух любой текст, а ИИ проверяет
               произношение каждого слова и показывает, что подтянуть.
             </p>
             <span class="price">Бесплатный старт</span>
@@ -331,8 +333,8 @@
           <span>
             <h3>Разбор с преподавателем</h3>
             <p>
-              Созвон один на один: слушаю вашу речь, нахожу настоящие причины
-              зажима и собираю пошаговый план под вашу цель.
+              Созвон один на один: слушаю твою речь, нахожу настоящие причины
+              зажима и собираю пошаговый план под твою цель.
             </p>
             <span class="price">По записи</span>
           </span>
@@ -352,7 +354,7 @@
         <div class="offer-top">
           <span class="offer-ico" style="background:rgba(245,180,0,.15)">🗂️</span>
           <span>
-            <h3>Английский для вашей профессии</h3>
+            <h3>Английский для твоей профессии</h3>
             <p>
               Подборки лексики и текстов под конкретную сферу — чтобы учить
               то, что реально нужно на работе, а не «тему из учебника».
@@ -388,7 +390,7 @@
           </div>
         </div>
 
-        <a class="btn btn-ghost" href="#test">Хочу узнать первой</a>
+        <a class="btn btn-ghost" href="#test">Сообщить, когда выйдет</a>
       </div>
 
     </div>
@@ -406,6 +408,43 @@
 
 <!-- Tally: подгружает и авто-подгоняет высоту формы -->
 <script async src="https://tally.so/widgets/embed.js"></script>
+
+<script>
+  (function () {
+    var frame = document.getElementById("quizFrame");
+    if (!frame) return;
+    var placeholder = document.getElementById("quizPlaceholder");
+    var done = false;
+
+    function loadQuiz() {
+      if (done) return;
+      done = true;
+      frame.hidden = false;
+      // src подставляем напрямую: Tally.loadEmbeds() не подхватывает iframe,
+      // который при инициализации был скрыт. Высота всё равно подстраивается —
+      // embed.js слушает postMessage от любой формы Tally.
+      frame.src = frame.getAttribute("data-src");
+      if (placeholder) placeholder.remove();
+    }
+
+    // Долистали до блока — грузим. Следим за карточкой, а не за самим
+    // iframe: он скрыт (hidden), а скрытые элементы IntersectionObserver
+    // никогда не считает видимыми.
+    var card = frame.parentElement;
+    if ("IntersectionObserver" in window && card) {
+      new IntersectionObserver(function (entries, obs) {
+        if (entries[0].isIntersecting) { loadQuiz(); obs.disconnect(); }
+      }, { rootMargin: "150px" }).observe(card);
+    } else {
+      loadQuiz();
+    }
+
+    // Нажали кнопку в первом экране — тоже грузим.
+    document.querySelectorAll('a[href="#test"]').forEach(function (a) {
+      a.addEventListener("click", loadQuiz);
+    });
+  })();
+</script>
 
 </body>
 </html>
