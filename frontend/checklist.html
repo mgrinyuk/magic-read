@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Google Ads tag — только сайт. Эта папка попадает и в нативные приложения,
+       поэтому тег закрыт проверкой на Capacitor (как в блоге и на /english). -->
+  <script>
+    if (!window.Capacitor) {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-18335701336');
+      var gtagScript = document.createElement('script');
+      gtagScript.async = true;
+      gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18335701336';
+      document.head.appendChild(gtagScript);
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Чек-лист планирования подготовки к цели | Magic Read</title>
+  <meta name="description" content="Заполни один раз — и появится ответ на вопрос, что делать в понедельник. Бесплатный чек-лист на 2 страницы: время, материал, все виды речи, проверка раз в две недели." />
+  <link rel="canonical" href="https://magicread.app/checklist" />
+  <meta property="og:title" content="Чек-лист планирования подготовки к цели" />
+  <meta property="og:description" content="Бесплатный чек-лист на 2 страницы: как разложить подготовку по неделям и понять, что она работает." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://magicread.app/checklist" />
+  <meta property="og:image" content="https://magicread.app/og-image.png" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Запись на консультацию — попап Google Календаря -->
+  <link href="https://calendar.google.com/calendar/scheduling-button-script.css" rel="stylesheet" />
+  <script src="https://calendar.google.com/calendar/scheduling-button-script.js" async></script>
+
+  <style>
+    :root {
+      --bg:          #E5E7EE;
+      --shell:       #F4F5F9;
+      --surface:     #FFFFFF;
+      --primary:     #E5267E;
+      --primary-soft:#FF4D9D;
+      --cyan:        #0AB4D6;
+      --cyan-ink:    #0E7490;
+      --amber:       #F5B400;
+      --text:        #1C1233;
+      --text-soft:   #6A6480;
+      --text-dim:    #9A93AD;
+      --border:      #E5E3EE;
+      --radius:      22px;
+      --width:       620px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--shell);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .wrap { max-width: var(--width); margin: 0 auto; padding: 0 20px; }
+
+    /* ── ШАПКА ─────────────────────────────── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 16px 0;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      font-weight: 800; font-size: 17px; color: var(--text); text-decoration: none;
+    }
+    .logo-mark {
+      width: 30px; height: 30px; border-radius: 9px; flex: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+      display: grid; place-items: center; color: #fff; font-size: 15px;
+    }
+    .topbar-link {
+      font-size: 14px; font-weight: 700; color: var(--text-soft);
+      text-decoration: none; white-space: nowrap;
+    }
+
+    /* ── HERO ──────────────────────────────── */
+    .hero { padding: 18px 0 40px; }
+    .eyebrow {
+      display: inline-block; font-size: 12px; font-weight: 800;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--primary);
+      background: rgba(229,38,126,.10); padding: 7px 13px; border-radius: 999px;
+    }
+    .hero h1 {
+      font-size: 33px; line-height: 1.14; font-weight: 900;
+      letter-spacing: -.02em; margin: 18px 0 0;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero p { font-size: 17px; color: var(--text-soft); margin: 16px 0 0; }
+    .hero-cta { display: flex; flex-direction: column; gap: 11px; margin-top: 26px; }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 56px; padding: 0 22px; border-radius: 999px;
+      font-family: inherit; font-size: 17px; font-weight: 800;
+      text-decoration: none; cursor: pointer; border: none;
+      transition: filter .15s, transform .12s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+      color: #fff; box-shadow: 0 14px 28px -12px rgba(229,38,126,.75);
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-ghost {
+      background: var(--surface); color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:hover { background: #fbfaff; }
+
+    .hero-note {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; color: var(--text-dim); margin-top: 16px;
+    }
+
+    /* Прячем кнопку Google, но оставляем её в отрисовке — display:none
+       мешает ей инициализироваться и принимать клик. */
+    .visually-hidden {
+      position: absolute !important; width: 1px !important; height: 1px !important;
+      padding: 0 !important; border: 0 !important; margin: 0 !important;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    }
+
+    /* ── СЕКЦИИ ────────────────────────────── */
+    section { padding: 44px 0; }
+    .section-head { margin-bottom: 22px; }
+    .section-head h2 {
+      font-size: 27px; line-height: 1.18; font-weight: 900;
+      letter-spacing: -.015em; margin: 10px 0 0;
+    }
+    .section-head p { color: var(--text-soft); margin: 12px 0 0; font-size: 16px; }
+    .step {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--cyan-ink);
+    }
+    .step i {
+      width: 22px; height: 22px; border-radius: 999px; font-style: normal;
+      background: rgba(10,180,214,.15); display: grid; place-items: center;
+      font-size: 12px; color: var(--cyan-ink);
+    }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+    }
+
+    /* ── ЧТО ВНУТРИ ────────────────────────── */
+    .inside { display: flex; flex-direction: column; gap: 2px; }
+    .inside-row {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .inside-row:last-child { border-bottom: 0; }
+    .inside-num {
+      width: 28px; height: 28px; border-radius: 9px; flex: none;
+      background: var(--shell); color: var(--text-soft);
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 800;
+    }
+    .inside-t { font-size: 16px; font-weight: 800; line-height: 1.3; }
+    .inside-d { font-size: 14px; color: var(--text-soft); margin-top: 3px; }
+
+    /* ── ОФФЕРЫ ────────────────────────────── */
+    .offer-top { display: flex; align-items: flex-start; gap: 14px; }
+    .offer-ico {
+      width: 50px; height: 50px; border-radius: 15px; flex: none;
+      display: grid; place-items: center; font-size: 24px;
+    }
+    .offer h3 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+    .offer p { margin: 6px 0 0; font-size: 15px; color: var(--text-soft); }
+    .offer .btn { margin-top: 18px; min-height: 52px; font-size: 16px; }
+    .price {
+      display: inline-block; margin-top: 10px; font-size: 13px;
+      font-weight: 800; color: var(--cyan-ink);
+      background: rgba(10,180,214,.12); padding: 5px 11px; border-radius: 8px;
+    }
+    .price-note {
+      margin-top: 8px; font-size: 14px; font-weight: 700; color: var(--text);
+    }
+
+    /* ── ПОДВАЛ ────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border); margin-top: 20px;
+      padding: 26px 0 40px; text-align: center;
+      font-size: 13px; color: var(--text-dim);
+    }
+    footer a { color: var(--text-dim); }
+
+    /* ── ПЛАНШЕТ/ДЕСКТОП ───────────────────── */
+    @media (min-width: 640px) {
+      .hero { padding: 34px 0 54px; }
+      .hero h1 { font-size: 42px; }
+      .hero p { font-size: 18px; }
+      .section-head h2 { font-size: 32px; }
+      section { padding: 54px 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="logo" href="/">
+      <span class="logo-mark">✦</span> Magic Read
+    </a>
+    <a class="topbar-link" href="/english">Пройти анкету →</a>
+  </div>
+
+  <!-- ═══ 1. HERO + СКАЧАТЬ ═════════════════ -->
+  <header class="hero">
+    <span class="eyebrow">Столп 3 · Система</span>
+    <h1>Чек-лист планирования <em>подготовки к цели</em></h1>
+    <p>
+      Мотивация отвечает на вопрос «зачем мне это». Цель — «что знать
+      и что уметь». Система отвечает на третий: что я делаю в понедельник
+      и как пойму, что это сработало. Заполни этот лист один раз —
+      и у тебя появится ответ.
+    </p>
+
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="/downloads/checklistMR.pdf"
+         download="checklistMR.pdf">
+        Скачать чек-лист
+      </a>
+    </div>
+
+    <div class="hero-note">
+      <span>📄</span> PDF, 2 страницы — удобно распечатать и заполнить от руки
+    </div>
+  </header>
+
+  <!-- ═══ 2. ЧТО ВНУТРИ ═════════════════════ -->
+  <section>
+    <div class="section-head">
+      <span class="step"><i>1</i> Что внутри</span>
+      <h2>Семь шагов — от цели до проверки</h2>
+    </div>
+
+    <div class="card inside">
+      <div class="inside-row">
+        <span class="inside-num">0</span>
+        <span>
+          <div class="inside-t">Точка старта</div>
+          <div class="inside-d">Мотивация, цель и дедлайн словами. Плюс проверка: «свободно говорить» — это направление, а не цель.</div>
+        </span>
+      </div>
+      <div class="inside-row">
+        <span class="inside-num">1</span>
+        <span>
+          <div class="inside-t">Выделить время физически</div>
+          <div class="inside-d">Занятия в календарь как встречи, резервное окно на неделю и честный подсчёт часов до дедлайна.</div>
+        </span>
+      </div>
+      <div class="inside-row">
+        <span class="inside-num">2</span>
+        <span>
+          <div class="inside-t">Разделить материал на это время</div>
+          <div class="inside-d">Сколько проходить за одно занятие — чтобы узнать, что не успеваешь, в первую неделю, а не за месяц до срока.</div>
+        </span>
+      </div>
+      <div class="inside-row">
+        <span class="inside-num">3</span>
+        <span>
+          <div class="inside-t">Заложить все виды речи</div>
+          <div class="inside-d">Читать, слушать, писать, говорить — сетка на неделю, где сразу видно пустой столбик.</div>
+        </span>
+      </div>
+      <div class="inside-row">
+        <span class="inside-num">4</span>
+        <span>
+          <div class="inside-t">Сложно, но не невозможно</div>
+          <div class="inside-d">Правило пяти слов: как за минуту понять, что текст тебе сейчас не подходит.</div>
+        </span>
+      </div>
+      <div class="inside-row">
+        <span class="inside-num">5</span>
+        <span>
+          <div class="inside-t">Технически удобно</div>
+          <div class="inside-d">Убрать трение заранее: каждое лишнее движение — это повод не сесть за занятие.</div>
+        </span>
+      </div>
+      <div class="inside-row">
+        <span class="inside-num">6</span>
+        <span>
+          <div class="inside-t">Проверка раз в две недели</div>
+          <div class="inside-d">Что я умею сейчас и не умел две недели назад — и что меняю дальше.</div>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 3. КОНСУЛЬТАЦИЯ ═══════════════════ -->
+  <section>
+    <div class="section-head">
+      <span class="step"><i>2</i> Если нужна помощь</span>
+      <h2>Разберём твой план вместе</h2>
+      <p>Заполнил чек-лист, но цифры не сходятся или непонятно, с чего начать — приходи на разбор.</p>
+    </div>
+
+    <div class="card offer">
+      <div class="offer-top">
+        <span class="offer-ico" style="background:rgba(10,180,214,.12)">🎧</span>
+        <span>
+          <h3>Разбор с преподавателем</h3>
+          <p>
+            Созвон один на один: слушаю твою речь, нахожу настоящие причины
+            зажима и собираю пошаговый план под твою цель.
+          </p>
+          <span class="price">По записи</span>
+          <div class="price-note">Цена за 1 консультацию 3000 руб.</div>
+        </span>
+      </div>
+      <!-- href оставлен намеренно: если скрипт Google не загрузится
+           (блокировщик, нет сети), кнопка просто откроет страницу записи.
+           Полный адрес, а не короткий calendar.app.google: короткий теряет
+           hl=ru при редиректе и открывается на английском. -->
+      <a class="btn btn-ghost" id="bookBtn"
+         href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ30NPoa18JLjHNgohYIEuEzJepnlKI2NMq1K0ge1z1qEDhMlRk9ii7nECkr6IAGfbF72dJu9EiD?gv=true&amp;hl=ru"
+         target="_blank" rel="noopener">
+        Выбрать время
+      </a>
+      <!-- Сюда Google вставляет свою кнопку. Прячем её и жмём программно,
+           чтобы попап открывался нашей кнопкой в фирменном стиле. -->
+      <div id="gcalHost" class="visually-hidden" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- ═══ 4. MAGIC READ ═════════════════════ -->
+  <section>
+    <div class="section-head">
+      <span class="step"><i>3</i> Где заниматься</span>
+      <h2>Всё нужное в одном месте</h2>
+      <p>Пятый пункт чек-листа — про трение. Чем меньше вкладок, тем выше шанс сесть за занятие.</p>
+    </div>
+
+    <div class="card offer">
+      <div class="offer-top">
+        <span class="offer-ico" style="background:rgba(229,38,126,.12)">📖</span>
+        <span>
+          <h3>Magic Read</h3>
+          <p>
+            Тексты под твой уровень, встроенный словарь, распознавание речи,
+            умные субтитры и карточки с квизами — ничего не надо переключать.
+          </p>
+        </span>
+      </div>
+      <a class="btn btn-primary" href="/">Попробовать Magic Read</a>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      © 2026 Magic Read ·
+      <a href="/privacy.html">Конфиденциальность</a> ·
+      <a href="/terms.html">Условия</a>
+    </p>
+  </footer>
+
+</div>
+
+<script>
+  // Запись на разбор: открываем попап Google, а не уводим на другую страницу.
+  (function () {
+    // hl=ru — иначе Google показывает окно на языке браузера посетителя,
+    // и русскоязычные видят английский интерфейс (и неделю с воскресенья).
+    var SCHEDULE_URL = "https://calendar.google.com/calendar/appointments/schedules/AcZssZ30NPoa18JLjHNgohYIEuEzJepnlKI2NMq1K0ge1z1qEDhMlRk9ii7nECkr6IAGfbF72dJu9EiD?gv=true&hl=ru";
+
+    window.addEventListener("load", function () {
+      var host = document.getElementById("gcalHost");
+      var btn = document.getElementById("bookBtn");
+      if (!host || !btn) return;
+      // Скрипт не загрузился — кнопка остаётся обычной ссылкой.
+      if (!window.calendar || !window.calendar.schedulingButton) return;
+
+      window.calendar.schedulingButton.load({
+        url: SCHEDULE_URL,
+        color: "#E5267E",
+        label: "Записаться",
+        target: host
+      });
+
+      // Google вставляет свою кнопку СОСЕДОМ с target, а не внутрь него,
+      // поэтому ищем и внутри, и следующим элементом.
+      function googleBtn() {
+        var inside = host.querySelector("button, a, [role='button']");
+        if (inside) return inside;
+        var next = host.nextElementSibling;
+        return next && next.tagName === "BUTTON" ? next : null;
+      }
+
+      // Прячем её, оставляя кликабельной: наша кнопка выше делает то же самое.
+      function hideGoogleBtn() {
+        var g = googleBtn();
+        if (g) g.classList.add("visually-hidden");
+      }
+      hideGoogleBtn();
+      setTimeout(hideGoogleBtn, 400);
+      setTimeout(hideGoogleBtn, 1500);
+
+      btn.addEventListener("click", function (e) {
+        var g = googleBtn();
+        if (!g) return;   // не нашли — уходим по href, как раньше
+        e.preventDefault();
+        g.click();
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>
