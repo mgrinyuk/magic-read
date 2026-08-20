@@ -1250,6 +1250,7 @@ function openAuthFromOverlay(mode = "signup") {
 
   if (authScreen) authScreen.hidden = false;
   document.body.classList.add("auth-active");
+  renderAppleAuthButton();
 
   const loginError = document.getElementById("loginError");
   if (loginError) loginError.hidden = true;
@@ -2751,6 +2752,59 @@ function friendlyGoogleSignInError(error) {
   }
   return message || "Google Sign-In failed.";
 }
+
+function getAppleSignInPlugin() {
+  return window.Capacitor?.Plugins?.AppleSignIn || null;
+}
+
+// Guideline 4.8: the iOS app offers Google sign-in, so it must also offer a
+// login that can keep the user's email private. Sign in with Apple is only
+// available in the iOS shell, so the button stays hidden everywhere else.
+function renderAppleAuthButton() {
+  const btn = document.getElementById("appleAuthBtn");
+  if (btn) btn.hidden = !(isIOSCapacitorShell() && getAppleSignInPlugin());
+}
+
+document.getElementById("appleAuthBtn")?.addEventListener("click", async () => {
+  const btn = document.getElementById("appleAuthBtn");
+  const original = btn?.innerHTML;
+  if (btn) btn.disabled = true;
+  if (authMessage) authMessage.textContent = getT().loggingIn || "Logging in...";
+
+  try {
+    const apple = getAppleSignInPlugin();
+    if (!apple) throw new Error("Sign in with Apple is not available on this device.");
+
+    // Apple only returns the identity token; Supabase verifies it against
+    // Apple and checks the nonce, so nothing is trusted client-side.
+    const credential = await apple.signIn();
+    if (!credential?.identityToken) throw new Error("Apple did not return an identity token.");
+
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: "apple",
+      token: credential.identityToken,
+      nonce: credential.nonce
+    });
+    if (error) throw error;
+
+    // Apple sends the name only on the first authorization — save it then, or
+    // the profile keeps whatever it already had.
+    if (credential.fullName) {
+      await supabase.auth.updateUser({ data: { full_name: credential.fullName } }).catch(() => {});
+    }
+
+    await checkAuth();
+  } catch (error) {
+    if (error?.code === "USER_CANCELED") {
+      if (authMessage) authMessage.textContent = "";
+    } else {
+      console.error("[Auth] Sign in with Apple failed:", error);
+      if (authMessage) authMessage.textContent = error?.message || "Sign in with Apple failed.";
+    }
+  } finally {
+    if (btn) { btn.disabled = false; if (original) btn.innerHTML = original; }
+  }
+});
 
 document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
   const btn = document.getElementById("googleAuthBtn");

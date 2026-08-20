@@ -7,6 +7,7 @@ class MyViewController: CAPBridgeViewController {
         // live in the app target must be registered by hand (the iOS counterpart
         // of MainActivity's registerPlugin(PlayBillingPlugin.class)).
         bridge?.registerPluginInstance(ApplePurchasesPlugin())
+        bridge?.registerPluginInstance(AppleSignInPlugin())
 
         // Set a Safari-like user agent so YouTube allows embedded playback.
         // WKWebView's default UA omits the Safari identifier, which causes
