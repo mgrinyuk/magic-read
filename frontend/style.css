@@ -6308,7 +6308,12 @@ html,
 body {
   width: 100%;
   max-width: 100%;
+  /* `hidden` makes the element a scroll container, which stops the sticky
+     header holding its place in iOS WKWebView — it scrolled up under the status
+     bar. `clip` cuts off sideways overflow without that side effect; browsers
+     that don't support it fall back to the `hidden` above. */
   overflow-x: hidden;
+  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -6317,6 +6322,7 @@ body {
   max-width: 700px;
   min-height: 100dvh;
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .app-shell .main,
@@ -6395,6 +6401,23 @@ body {
   /* The tab bar already says "Cards", so the heading and subtitle just cost
      ~110px of vertical space — enough to push the buttons under the card below
      the fold on a phone. Drop them here (desktop web keeps them). */
+  /* .app-header is a sibling ABOVE .app-shell (both are children of body), so a
+     shell of 100dvh made every logged-in screen exactly one header taller than
+     the viewport — a phantom scroll that let content ride up under the status
+     bar. Lay body out as a column so the shell takes the space that's actually
+     left, without hard-coding the header's height. */
+  body.is-logged-in {
+    display: flex;
+    flex-direction: column;
+  }
+  body.is-logged-in > .landing-page {
+    flex: 1;
+    min-height: 0;
+  }
+  body.is-logged-in .app-shell {
+    min-height: 100%;
+  }
+
   #screen-flashcards .fc-head > div:first-child {
     display: none;
   }
