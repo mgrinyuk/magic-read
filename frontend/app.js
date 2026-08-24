@@ -1347,9 +1347,14 @@ signUpBtn?.addEventListener("click", async () => {
         data: {
           full_name: name
         },
-        // Land confirmed sign-ups on a unique URL so Google Ads can count them
-        // as a "Sign-up" conversion (only verified accounts reach this page).
-        emailRedirectTo: "https://magicread.app/?signup=confirmed"
+        // In the native shells send the confirmation back into the app, where
+        // appUrlOpen picks up the session — otherwise confirming dropped the
+        // user on the website with no way back. On the web keep the unique URL
+        // so Google Ads can count it as a "Sign-up" conversion (only verified
+        // accounts reach that page).
+        emailRedirectTo: isNativeCapacitorShell()
+          ? OAUTH_DEEP_LINK
+          : `${webOrigin()}/?signup=confirmed`
       }
     });
 
@@ -1767,8 +1772,12 @@ sendRecoveryEmailBtn?.addEventListener("click", async () => {
 
   setRecoveryMessage(t.sendingRecovery);
 
+  // Always send password recovery to the website: in the native shells
+  // window.location.origin is capacitor://localhost, so the link in the email
+  // pointed somewhere no browser could open. Users set a new password there and
+  // sign in with it.
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}?reset=true`
+    redirectTo: `${webOrigin()}?reset=true`
   });
 
   if (error) {
@@ -2690,6 +2699,14 @@ document.getElementById("pricingProBtn")?.addEventListener("click", () => {
 // come back via the magicread:// deep link — the app's internal origin
 // (https://localhost) is unreachable from the browser.
 const OAUTH_DEEP_LINK = "magicread://auth-callback";
+const WEB_ORIGIN = "https://magicread.app";
+
+// The native shells run on capacitor://localhost, which is useless as a link
+// target in an email or a browser — fall back to the real site there.
+function webOrigin() {
+  const origin = window.location.origin || "";
+  return origin.startsWith("http://") || origin.startsWith("https://") ? origin : WEB_ORIGIN;
+}
 let googleSignInConfigPromise = null;
 
 function getGoogleAuthPlugin() {
