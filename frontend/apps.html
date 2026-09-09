@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Google Ads tag — website only (see index.html for why). Lets YouTube ad
+       clicks to this page track conversions like the rest of the site. -->
+  <script>
+    if (!window.Capacitor) {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-18335701336');
+      var gtagScript = document.createElement('script');
+      gtagScript.async = true;
+      gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18335701336';
+      document.head.appendChild(gtagScript);
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Get Magic Read — Web, iOS &amp; Android</title>
+  <meta name="description" content="Practice pronunciation on any text you bring. Get Magic Read on the web, the App Store or Google Play." />
+  <link rel="canonical" href="https://magicread.app/apps" />
+  <meta property="og:title" content="Get Magic Read — Web, iOS & Android" />
+  <meta property="og:description" content="Practice pronunciation on any text you bring, scored word by word." />
+  <meta property="og:image" content="https://magicread.app/og-image.png" />
+  <meta property="og:url" content="https://magicread.app/apps" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #E5267E;
+      --primary-soft: #FF4D9D;
+      --shell: #F4F5F9;
+      --surface: #FFFFFF;
+      --text: #1C1233;
+      --text-soft: #6A6480;
+      --text-dim: #9A93AD;
+      --border: #E5E3EE;
+      --dark: #14101F;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100dvh;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(120% 80% at 50% -10%, rgba(255, 77, 157, 0.16), transparent 60%),
+        radial-gradient(120% 80% at 50% 110%, rgba(10, 180, 214, 0.10), transparent 55%),
+        var(--shell);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px calc(28px + env(safe-area-inset-bottom));
+      text-align: center;
+    }
+    .wrap { width: 100%; max-width: 440px; }
+
+    .brand {
+      display: inline-flex; align-items: center; gap: 11px;
+      text-decoration: none; color: var(--text); margin-bottom: 30px;
+    }
+    .brand-mark {
+      width: 46px; height: 46px; border-radius: 14px; flex: none;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+      box-shadow: 0 10px 24px -10px rgba(229, 38, 126, 0.7);
+    }
+    .brand-name { font-size: 1.4rem; font-weight: 900; letter-spacing: -0.03em; }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(1.7rem, 6vw, 2.3rem);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 1.12;
+    }
+    h1 .grad {
+      background: linear-gradient(100deg, var(--primary), #7b3ff2 55%, var(--cyan, #0AB4D6));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .sub {
+      margin: 0 auto 30px; max-width: 380px;
+      color: var(--text-soft); font-size: 1.02rem; line-height: 1.55;
+    }
+
+    .buttons { display: flex; flex-direction: column; gap: 12px; }
+
+    .store-btn {
+      display: flex; align-items: center; justify-content: center; gap: 13px;
+      width: 100%; min-height: 62px; padding: 12px 20px;
+      border: none; border-radius: 16px; cursor: pointer;
+      font-family: inherit; text-decoration: none;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    }
+    .store-btn:hover { transform: translateY(-2px); }
+    .store-btn:active { transform: translateY(0); }
+
+    .btn-web {
+      background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+      color: #fff; font-weight: 800; font-size: 1.08rem;
+      box-shadow: 0 14px 30px -12px rgba(229, 38, 126, 0.75);
+    }
+    .btn-web:hover { box-shadow: 0 18px 38px -12px rgba(229, 38, 126, 0.85); }
+
+    .btn-store {
+      background: var(--dark); color: #fff;
+      box-shadow: 0 10px 26px -14px rgba(20, 16, 31, 0.8);
+    }
+    .btn-store:hover { filter: brightness(1.12); }
+    .btn-store .glyph { flex: none; }
+    .btn-store .lockup { text-align: left; line-height: 1.15; }
+    .btn-store .lockup .small {
+      display: block; font-size: 0.66rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.82;
+    }
+    .btn-store .lockup .big { display: block; font-size: 1.18rem; font-weight: 700; }
+
+    /* Coming-soon (no store URL yet): non-clickable, dimmed, badge instead of dead link */
+    .store-btn.soon {
+      pointer-events: none; opacity: 0.55; position: relative;
+      box-shadow: none;
+    }
+    .soon-badge {
+      position: absolute; top: -9px; right: 14px;
+      background: var(--cyan, #0AB4D6); color: #fff;
+      font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em;
+      text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+    }
+
+    .foot { margin-top: 26px; color: var(--text-dim); font-size: 0.85rem; font-weight: 600; }
+    .foot a { color: var(--text-dim); }
+
+    @media (min-width: 560px) {
+      .buttons { flex-direction: row; flex-wrap: wrap; }
+      .btn-web { flex-basis: 100%; }
+      .btn-store { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M12 2 Q12 12 22 12 Q12 12 12 22 Q12 12 2 12 Q12 12 12 2 Z"/></svg>
+      </span>
+      <span class="brand-name">Magic Read</span>
+    </a>
+
+    <h1 id="h1"></h1>
+    <p class="sub" id="sub"></p>
+
+    <div class="buttons">
+      <a class="store-btn btn-web" id="btnWeb" href="https://magicread.app">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
+        <span id="webLabel"></span>
+      </a>
+
+      <a class="store-btn btn-store" id="btnApple" href="#">
+        <svg class="glyph" width="26" height="26" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M16.36 12.78c.02 2.5 2.19 3.33 2.21 3.34-.02.06-.35 1.2-1.15 2.37-.69 1.02-1.41 2.03-2.54 2.05-1.11.02-1.47-.66-2.74-.66-1.27 0-1.66.64-2.71.68-1.09.04-1.92-1.1-2.62-2.11-1.42-2.07-2.51-5.85-1.05-8.4.72-1.27 2.02-2.07 3.42-2.09 1.07-.02 2.08.72 2.74.72.65 0 1.88-.89 3.17-.76.54.02 2.06.22 3.03 1.65-.08.05-1.81 1.06-1.79 3.16zM14.28 5.4c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.54.62-1.01 1.61-.88 2.56.93.07 1.87-.47 2.46-1.16z"/></svg>
+        <span class="lockup"><span class="small" id="appleSmall"></span><span class="big">App Store</span></span>
+        <span class="soon-badge" id="appleSoon" hidden></span>
+      </a>
+
+      <a class="store-btn btn-store" id="btnPlay" href="#">
+        <svg class="glyph" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 2.3c-.3.2-.5.6-.5 1.1v17.2c0 .5.2.9.5 1.1l9.2-9.7-9.2-9.7z" fill="#00D2FF"/><path d="M16.5 8.6l-3.7-2.1L4.4 2.1c-.3-.2-.6-.2-.8-.1l9.2 9.7 3.7-3.1z" fill="#00E676"/><path d="M20.3 10.7l-3.8-2.1-4 3.4 4 4.2 3.8-2.1c.9-.5.9-2.9 0-3.4z" fill="#FFC400"/><path d="M3.6 21.7c.2.1.5.1.8-.1l8.4-4.4 3.7-2.1-3.7-3.1-9.2 9.7z" fill="#FF3D00"/></svg>
+        <span class="lockup"><span class="small" id="playSmall"></span><span class="big">Google Play</span></span>
+        <span class="soon-badge" id="playSoon" hidden></span>
+      </a>
+    </div>
+
+    <p class="foot" id="foot"></p>
+  </div>
+
+  <script>
+    /* ===== CONFIG — edit these three URLs ===============================
+       appStore / googlePlay: leave "" until the app is live in that store;
+       an empty value renders a dimmed "coming soon" button (no dead link). */
+    var STORES = {
+      web:        "https://magicread.app",
+      appStore:   "https://apps.apple.com/app/magic-read/id6794641650",  // /us/ убрано → Apple откроет нужную страну
+      googlePlay: "https://play.google.com/store/apps/details?id=com.magicread.app"
+    };
+    /* =================================================================== */
+
+    var I18N = {
+      en: { h1a: "Learn a language from ", h1b: "any text you bring", sub: "Read it, hear it, say it aloud — and get scored word by word. Get Magic Read wherever you are.", web: "Open the web app", apple: "Download on the", play: "Get it on", foot: "8 languages · Free to start", soon: "Soon" },
+      ru: { h1a: "Учите язык на ", h1b: "любом вашем тексте", sub: "Читайте, слушайте, произносите вслух — и получайте оценку каждого слова. Magic Read всегда с вами.", web: "Открыть веб-версию", apple: "Загрузите в", play: "Доступно в", foot: "8 языков · Бесплатный старт", soon: "Скоро" },
+      zh: { h1a: "用你带来的", h1b: "任何文本学语言", sub: "阅读、聆听、朗读——逐词评分。随时随地使用 Magic Read。", web: "打开网页版", apple: "下载", play: "前往", foot: "8 种语言 · 免费开始", soon: "即将推出" },
+      tr: { h1a: "Dili ", h1b: "getirdiğin her metinle öğren", sub: "Oku, dinle, yüksek sesle söyle — ve kelime kelime puan al. Magic Read her yerde yanında.", web: "Web uygulamasını aç", apple: "İndir:", play: "İndir:", foot: "8 dil · Ücretsiz başla", soon: "Yakında" },
+      de: { h1a: "Sprachen lernen mit ", h1b: "jedem eigenen Text", sub: "Lies, hör zu, sprich laut — und werde Wort für Wort bewertet. Magic Read überall dabei.", web: "Web-App öffnen", apple: "Laden im", play: "Jetzt bei", foot: "8 Sprachen · Kostenlos starten", soon: "Bald" },
+      es: { h1a: "Aprende un idioma con ", h1b: "cualquier texto que traigas", sub: "Léelo, escúchalo, dilo en voz alta — con puntuación palabra por palabra. Magic Read donde estés.", web: "Abrir la app web", apple: "Consíguelo en el", play: "Disponible en", foot: "8 idiomas · Empieza gratis", soon: "Pronto" },
+      fr: { h1a: "Apprenez une langue avec ", h1b: "le texte de votre choix", sub: "Lisez, écoutez, dites-le à voix haute — noté mot par mot. Magic Read partout avec vous.", web: "Ouvrir l'app web", apple: "Télécharger dans l'", play: "Disponible sur", foot: "8 langues · Gratuit pour commencer", soon: "Bientôt" },
+      ja: { h1a: "好きなテキストで", h1b: "言語を学ぼう", sub: "読んで、聞いて、声に出して——単語ごとに採点。どこでも Magic Read。", web: "ウェブ版を開く", apple: "ダウンロード", play: "で手に入れよう", foot: "8言語 · 無料で始める", soon: "近日公開" }
+    };
+
+    var params = new URLSearchParams(location.search);
+    var lang = (params.get("lang") || navigator.language || "en").slice(0, 2).toLowerCase();
+    var t = I18N[lang] || I18N.en;
+    document.documentElement.lang = I18N[lang] ? lang : "en";
+
+    document.getElementById("h1").innerHTML =
+      t.h1a + '<span class="grad">' + t.h1b + "</span>";
+    document.getElementById("sub").textContent = t.sub;
+    document.getElementById("webLabel").textContent = t.web;
+    document.getElementById("appleSmall").textContent = t.apple;
+    document.getElementById("playSmall").textContent = t.play;
+    document.getElementById("foot").textContent = t.foot;
+
+    document.getElementById("btnWeb").href = STORES.web;
+
+    function wire(id, soonId, url) {
+      var btn = document.getElementById(id);
+      if (url) { btn.href = url; }
+      else {
+        btn.classList.add("soon");
+        btn.removeAttribute("href");
+        var badge = document.getElementById(soonId);
+        badge.textContent = t.soon; badge.hidden = false;
+      }
+    }
+    wire("btnApple", "appleSoon", STORES.appStore);
+    wire("btnPlay", "playSoon", STORES.googlePlay);
+  </script>
+</body>
+</html>
