@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/english", "destination": "/english.html" },
-    { "source": "/checklist", "destination": "/checklist.html" }
+    { "source": "/checklist", "destination": "/checklist.html" },
+    { "source": "/apps", "destination": "/apps.html" }
   ]
 }
