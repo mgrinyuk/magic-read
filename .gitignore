@@ -7,3 +7,7 @@ backend/public/exports/
 backend/public/worksheets/
 ios/DerivedData/
 .claude/settings.local.json
+
+# Local marketing/work materials (not part of the app)
+Pictures for marketing/
+digital products/
