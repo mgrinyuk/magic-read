@@ -198,7 +198,10 @@
     };
 
     var params = new URLSearchParams(location.search);
-    var lang = (params.get("lang") || navigator.language || "en").slice(0, 2).toLowerCase();
+    var savedLang = null;
+    try { savedLang = localStorage.getItem("magicread_ui_lang"); } catch (e) {}
+    // Priority: ?lang= (for ads) → language chosen in the app → browser → English.
+    var lang = (params.get("lang") || savedLang || navigator.language || "en").slice(0, 2).toLowerCase();
     var t = I18N[lang] || I18N.en;
     document.documentElement.lang = I18N[lang] ? lang : "en";
 
