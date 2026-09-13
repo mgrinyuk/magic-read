@@ -16,6 +16,13 @@ const config: CapacitorConfig = {
     // the status bar; edge-to-edge insets are handled in MainActivity instead.)
     Keyboard: {
       resize: 'native'
+    },
+    // Daily practice reminders. Android draws the status-bar icon from its alpha
+    // channel only, so it needs this white silhouette (res/drawable); the
+    // full-colour launcher icon would show up as a blank square.
+    LocalNotifications: {
+      smallIcon: 'ic_stat_magicread',
+      iconColor: '#E5267E'
     }
   },
   ios: {

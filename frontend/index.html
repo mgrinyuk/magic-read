@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260913.4" />
+  <link rel="stylesheet" href="style.css?v=20260913.5" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -751,6 +751,8 @@
           <div class="sp-recap" id="spcRecap"></div>
           <div class="sp-recap-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> <span data-i18n="tapToRetrySentence">Tap a sentence to practise it again</span></div>
 
+          <div id="spcReminder" class="reminder-offer" hidden></div>
+
           <div class="sp-complete-cta">
             <button class="sp-btn sp-btn-primary" id="spcNewBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-plus"/></svg> <span data-i18n="pasteAnotherText">Paste another text</span></button>
             <button class="sp-btn sp-btn-ghost" id="spcLibraryBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg> <span data-i18n="chooseFromLibrary">Choose from Library</span></button>
@@ -1083,6 +1085,16 @@
             <button class="acct-lang-opt" data-lang="es">🇪🇸 Español</button>
             <button class="acct-lang-opt" data-lang="fr">🇫🇷 Français</button>
             <button class="acct-lang-opt" data-lang="ja">🇯🇵 日本語</button>
+          </div>
+          <button class="acct-mrow acct-native-only" id="acctReminderBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+            <span class="acct-ml" data-i18n="dailyReminder">Daily reminder</span>
+            <span class="acct-mv"><span id="acctReminderLabel">Off</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevdown"/></svg></span>
+          </button>
+          <div id="acctReminderPanel" class="acct-reminder-panel" hidden>
+            <input id="acctReminderTime" class="acct-reminder-time" type="time" value="19:00" />
+            <button id="acctReminderSave" class="sp-btn sp-btn-primary" type="button" data-i18n="reminderSave">Save</button>
+            <button id="acctReminderOff" class="auth-link-btn" type="button" data-i18n="reminderTurnOff">Turn off</button>
           </div>
           <button class="acct-mrow" id="acctAboutBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-info"/></svg></span>
@@ -1501,7 +1513,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260913.4"></script>
+  <script type="module" src="app.js?v=20260913.5"></script>
 
   <footer class="footer">
     <div>

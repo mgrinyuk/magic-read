@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.4";
+import { UI_TEXT } from "./ui-text.js?v=20260913.5";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -890,6 +890,150 @@ function noteActivityLocally(day) {
   recentActiveDays.add(day);
 }
 
+/* -----------------------------
+   DAILY PRACTICE REMINDER (native apps only)
+   One repeating local notification at a time the user chose. The time is kept
+   in localStorage and the notification is re-scheduled on every launch, so its
+   text follows the current app language and it survives a reinstall.
+----------------------------- */
+
+const REMINDER_PREF_KEY = "magicread_reminder";
+const REMINDER_OFFERED_KEY = "magicread_reminder_offered";
+const REMINDER_ID = 7001;
+
+function localNotifications() {
+  return isNativeCapacitorShell() ? window.Capacitor?.Plugins?.LocalNotifications || null : null;
+}
+
+function getReminderPref() {
+  try { return JSON.parse(localStorage.getItem(REMINDER_PREF_KEY)) || { enabled: false }; }
+  catch { return { enabled: false }; }
+}
+
+function formatReminderTime(hour, minute) {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// Resolves to "scheduled", "denied" (notification permission refused) or
+// "unavailable" (web, or the plugin failed).
+async function scheduleDailyReminder(hour, minute) {
+  const LN = localNotifications();
+  if (!LN) return "unavailable";
+  try {
+    let perm = await LN.checkPermissions();
+    if (perm.display !== "granted") perm = await LN.requestPermissions();
+    if (perm.display !== "granted") return "denied";
+    await LN.cancel({ notifications: [{ id: REMINDER_ID }] });
+    await LN.schedule({
+      notifications: [{
+        id: REMINDER_ID,
+        title: "Magic Read",
+        body: getT().reminderBody,
+        schedule: { on: { hour, minute }, allowWhileIdle: true },
+        // A practice nudge doesn't need to-the-minute timing, and exact alarms
+        // would send Android 12+ users to the "Alarms & reminders" settings.
+        isExactNotification: false
+      }]
+    });
+    localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ enabled: true, hour, minute }));
+    return "scheduled";
+  } catch (err) {
+    console.warn("[Reminder] schedule failed:", err?.message || err);
+    return "unavailable";
+  }
+}
+
+async function cancelDailyReminder() {
+  try { await localNotifications()?.cancel({ notifications: [{ id: REMINDER_ID }] }); } catch {}
+  localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ ...getReminderPref(), enabled: false }));
+}
+
+// On launch, keep an enabled reminder scheduled. Never prompts: it only
+// re-schedules when notification permission is already granted.
+async function refreshDailyReminder() {
+  const LN = localNotifications();
+  const pref = getReminderPref();
+  if (!LN || !pref.enabled) return;
+  try {
+    const perm = await LN.checkPermissions();
+    if (perm.display === "granted") await scheduleDailyReminder(pref.hour, pref.minute);
+  } catch {}
+}
+
+// After a finished session, offer a reminder for tomorrow at this same time —
+// once, and only if reminders aren't already on.
+function renderReminderOffer(container) {
+  if (!container) return;
+  if (!localNotifications() || getReminderPref().enabled || localStorage.getItem(REMINDER_OFFERED_KEY)) {
+    container.hidden = true;
+    return;
+  }
+  const t = getT();
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const time = formatReminderTime(hour, minute);
+  container.innerHTML = `
+    <div class="reminder-offer-title">${escapeHtml(t.reminderOfferTitle)}</div>
+    <div class="reminder-offer-body">${escapeHtml(t.reminderOfferBody.replace("{time}", time))}</div>
+    <div class="reminder-offer-actions">
+      <button class="sp-btn sp-btn-ghost" type="button" data-reminder="no">${escapeHtml(t.reminderNo)}</button>
+      <button class="sp-btn sp-btn-primary" type="button" data-reminder="yes">${escapeHtml(t.reminderYes)}</button>
+    </div>`;
+  container.hidden = false;
+  container.querySelector('[data-reminder="no"]').addEventListener("click", () => {
+    localStorage.setItem(REMINDER_OFFERED_KEY, "1");
+    container.hidden = true;
+  });
+  container.querySelector('[data-reminder="yes"]').addEventListener("click", async () => {
+    localStorage.setItem(REMINDER_OFFERED_KEY, "1");
+    const result = await scheduleDailyReminder(hour, minute);
+    container.hidden = true;
+    if (result === "scheduled") showToast(t.reminderSetFor.replace("{time}", time), "info");
+    else if (result === "denied") showToast(t.reminderDenied, "error");
+  });
+}
+
+// Account menu: "Daily reminder" row (native only) with a time picker.
+function renderReminderSetting() {
+  const pref = getReminderPref();
+  const label = document.getElementById("acctReminderLabel");
+  if (label) label.textContent = pref.enabled ? formatReminderTime(pref.hour, pref.minute) : getT().reminderOff;
+  const input = document.getElementById("acctReminderTime");
+  if (input && Number.isInteger(pref.hour)) {
+    input.value = `${String(pref.hour).padStart(2, "0")}:${String(pref.minute).padStart(2, "0")}`;
+  }
+  const off = document.getElementById("acctReminderOff");
+  if (off) off.hidden = !pref.enabled;
+}
+
+document.getElementById("acctReminderBtn")?.addEventListener("click", () => {
+  const panel = document.getElementById("acctReminderPanel");
+  if (!panel) return;
+  renderReminderSetting();
+  panel.hidden = !panel.hidden;
+});
+
+document.getElementById("acctReminderSave")?.addEventListener("click", async () => {
+  const [hour, minute] = (document.getElementById("acctReminderTime")?.value || "19:00").split(":").map(Number);
+  const t = getT();
+  const result = await scheduleDailyReminder(hour, minute);
+  if (result === "scheduled") showToast(t.reminderSetFor.replace("{time}", formatReminderTime(hour, minute)), "info");
+  else if (result === "denied") showToast(t.reminderDenied, "error");
+  renderReminderSetting();
+  const panel = document.getElementById("acctReminderPanel");
+  if (panel) panel.hidden = true;
+});
+
+document.getElementById("acctReminderOff")?.addEventListener("click", async () => {
+  await cancelDailyReminder();
+  renderReminderSetting();
+  const panel = document.getElementById("acctReminderPanel");
+  if (panel) panel.hidden = true;
+});
+
 let _saveProgressTimer = null;
 function saveProgress(activity, itemId, position, title) {
   if (!itemId || !document.body.classList.contains("is-logged-in")) return;
@@ -1208,6 +1352,7 @@ async function checkAuth() {
     fetchMyPlan();
     syncGooglePlayPurchases();
     syncApplePurchases();
+    refreshDailyReminder();
 
     // Pull this user's decks if they aren't in memory yet (no-op when already
     // loaded) — covers logging in after startup on a fresh device.
@@ -2074,6 +2219,7 @@ profileMenuBtn?.addEventListener("click", () => {
 });
 
 function renderAccountScreen() {
+  renderReminderSetting();
   supabase.auth.getUser().then(({ data }) => {
     const user = data?.user;
     const nameEl  = document.getElementById("acctName");
@@ -4068,6 +4214,7 @@ function spOnPrimary() {
   }
   if (spState.idx >= spState.sentences.length - 1) {
     spRenderComplete();
+    renderReminderOffer(document.getElementById("spcReminder"));
     showScreen(screenSpeakComplete);
     spFireConfetti("spcConfetti", true);
     return;
@@ -4966,8 +5113,10 @@ function rdRenderExDone(body) {
         <button class="sp-btn sp-btn-primary" id="rdDoneBack" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg> <span>Back to reading</span></button>
         <button class="sp-btn sp-btn-ghost" id="rdDoneRetry" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> <span>Try again</span></button>
       </div>
+      <div id="rdDoneReminder" class="reminder-offer" hidden></div>
     </div>`;
   spFireConfetti("rdConfetti", true);
+  renderReminderOffer(document.getElementById("rdDoneReminder"));
   document.getElementById("rdDoneBack")?.addEventListener("click", () => showScreen(screenReadReader));
   document.getElementById("rdDoneRetry")?.addEventListener("click", () => {
     rdExState.done = { order: false, choice: false };

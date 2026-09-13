@@ -7026,3 +7026,32 @@ body {
 .auth-check-spam { font-size: 13px; color: var(--text-dim); margin: 10px 0 16px; }
 .auth-check-email .auth-secondary-btn { width: 100%; }
 .auth-check-email .auth-link-btn { display: block; margin: 12px auto 0; }
+
+/* Daily reminder: offer card after a finished session, and the account setting. */
+.reminder-offer {
+  width: 100%;
+  max-width: 460px;
+  margin: 20px auto 0;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.reminder-offer[hidden] { display: none; }
+.reminder-offer-title { font-size: 16px; font-weight: 800; }
+.reminder-offer-body { font-size: 14px; color: var(--text-soft); margin: 4px 0 12px; }
+.reminder-offer-actions { display: flex; gap: 10px; }
+.reminder-offer-actions .sp-btn { height: 46px; font-size: 15px; }
+.acct-reminder-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 16px 14px; }
+.acct-reminder-panel[hidden] { display: none; }
+.acct-reminder-time {
+  font: inherit;
+  font-size: 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+.acct-reminder-panel .sp-btn { flex: 1; height: 44px; font-size: 15px; }
