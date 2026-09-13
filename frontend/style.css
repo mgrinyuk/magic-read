@@ -6063,6 +6063,11 @@ body.video-active .app-shell .main .site-container {
   padding: 13px 18px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
 }
 .rd-practice-btn:hover { background: rgba(229,38,126,.16); }
+/* Reading → speaking hand-off: primary button above the comprehension one,
+   and the actions in the end-of-text sheet. */
+.rd-speak-btn { width: 100%; margin-bottom: 12px; }
+.rd-speak-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.rd-speak-actions .sp-btn { flex: none; width: 100%; }
 
 /* Sits just above the global bottom tab bar (~64px) which is also sticky. */
 /* Fixed above the tab bar — sticky broke inside the overflow-clipped app shell,

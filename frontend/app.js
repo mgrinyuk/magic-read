@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.2";
+import { UI_TEXT } from "./ui-text.js?v=20260913.3";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -3610,6 +3610,7 @@ function startSpotlight(sentences) {
   spState.idx = 0;
   spState.phase = "idle";
   spState.fromComplete = false;
+  spState.fromReader = false;
   spState.results = sentences.map(() => null);
   spState.meta = sentences.map(() => ({ pinyin: "", en: "" }));
   spRenderPractice();
@@ -3624,7 +3625,8 @@ function spInitOnce() {
     stopAllTTS(); stopRecognition();
     if (spState.session) { spState.session.cancel(); }
     spResetMic();
-    showScreen(screenSpeakSetup);
+    // Opened from the reader's "Say it out loud" → return to that text.
+    showScreen(spState.fromReader ? screenReadReader : screenSpeakSetup);
   });
   document.getElementById("spMic")?.addEventListener("click", spOnMicTap);
   document.getElementById("spListenBtn")?.addEventListener("click", spOnListen);
@@ -4084,6 +4086,7 @@ function startReader(text, sentences) {
   R.paused = false;
   R.pinyin = false;
   R.trans = false;
+  R.speakPromptShown = false;
   // Reset exercises for the new text.
   rdEx1.slots = []; rdEx1.target = []; rdEx1.bank = []; rdEx1.fb = null;
   rdEx2.sent = ""; rdEx2.opts = []; rdEx2.choice = null; rdEx2.fb = null;
@@ -4345,7 +4348,7 @@ async function rdPlayFrom(i) {
 
   const playOne = async (idx) => {
     if (session !== R.playSession) return;
-    if (idx >= R.sentences.length) { R.playing = false; R.paused = false; R.idx = R.sentences.length - 1; rdUpdateDock(); rdUpdateHighlight(); return; }
+    if (idx >= R.sentences.length) { R.playing = false; R.paused = false; R.idx = R.sentences.length - 1; rdUpdateDock(); rdUpdateHighlight(); rdOfferSpeaking(); return; }
     R.idx = idx;
     rdUpdateDock();
     rdUpdateHighlight();
@@ -4420,6 +4423,9 @@ function rdInitOnce() {
       showToast("Removed from saved", "info");
     }
   });
+  document.getElementById("rdSpeakBtn")?.addEventListener("click", rdStartSpeaking);
+  document.getElementById("rdSpeakSheetGo")?.addEventListener("click", rdStartSpeaking);
+  document.getElementById("rdSpeakSheetLater")?.addEventListener("click", rdCloseSheet);
   document.getElementById("rdPracticeBtn")?.addEventListener("click", () => {
     rdStopPlay();
     rdStartExerciseSession();
@@ -4431,6 +4437,25 @@ function rdInitOnce() {
   });
 }
 rdInitOnce();
+
+// Reading → speaking hand-off. A third of readers never tried speaking because
+// it lived in a separate mode, so when a text finishes playing we offer to say
+// the same text out loud (once per text); the reader also has a button for it.
+function rdOfferSpeaking() {
+  if (R.speakPromptShown || !R.sentences.length) return;
+  if (!document.getElementById("screen-read-reader")?.classList.contains("active")) return;
+  R.speakPromptShown = true;
+  rdOpenSheet("speak");
+}
+
+function rdStartSpeaking() {
+  if (!R.sentences.length) return;
+  rdStopPlay();
+  rdCloseSheet();
+  appMode = "pronunciation";
+  startSpotlight(R.sentences.map(s => s.text));
+  spState.fromReader = true;
+}
 
 function rdStartExerciseSession() {
   rdExState.view = "exercise";
@@ -5127,12 +5152,14 @@ function rdOpenSheet(which) {
   document.getElementById("rdScrim")?.classList.add("open");
   document.getElementById("rdVoiceSheet")?.classList.toggle("open", which === "voice");
   document.getElementById("rdWordSheet")?.classList.toggle("open", which === "word");
+  document.getElementById("rdSpeakSheet")?.classList.toggle("open", which === "speak");
   if (which === "voice") rdRenderVoiceSheet();
 }
 function rdCloseSheet() {
   document.getElementById("rdScrim")?.classList.remove("open");
   document.getElementById("rdVoiceSheet")?.classList.remove("open");
   document.getElementById("rdWordSheet")?.classList.remove("open");
+  document.getElementById("rdSpeakSheet")?.classList.remove("open");
   document.querySelectorAll("#rdHan .rd-word.rd-word-sel").forEach(el => el.classList.remove("rd-word-sel"));
 }
 
