@@ -858,13 +858,21 @@ async function fetchMyPlan() {
   }
 }
 
+// The user's local calendar day (YYYY-MM-DD). Streaks and the activity log
+// follow the user's own midnight rather than UTC's; the backend only trusts
+// this value within ±1 day of the UTC date.
+function localDayString(d = new Date()) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 // Fire-and-forget stats ping. Never throws — a stats failure must not block the user.
 function recordActivity(type, count) {
   if (!document.body.classList.contains("is-logged-in")) return;
   fetchWithAuth(`${API_BASE}/api/record-activity`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, count })
+    body: JSON.stringify({ type, count, day: localDayString() })
   }).catch(() => {});
 }
 

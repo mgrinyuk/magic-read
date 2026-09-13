@@ -17,7 +17,7 @@ import Stripe from "stripe";
 import kuromoji from "kuromoji";
 import wanakana from "wanakana";
 import { isLifetimeOfferEligible } from "./lib/planRules.js";
-import { getActivityRpcArgs } from "./lib/activityRules.js";
+import { getActivityRpcArgs, resolveActivityDay } from "./lib/activityRules.js";
 import { isAppleIapReady, verifyAppleTransaction } from "./lib/appleIap.js";
 import {
   TBANK_PLANS,
@@ -1623,14 +1623,16 @@ let recordActivityRpcMode = "typed";
 // daily streak. Fire-and-forget from the frontend — always returns 200 so
 // a stats failure never blocks the user.
 app.post("/api/record-activity", extractUser, requireUser, async (req, res) => {
-  const { type, count } = req.body || {};
+  const { type, count, day } = req.body || {};
   const validTypes = ["words_read", "words_spoken", "words_practiced"];
   if (!validTypes.includes(type) || !Number.isInteger(count) || count < 1) {
     return res.status(400).json({ error: "Invalid type or count." });
   }
   try {
     const userId = req.user.id;
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    // The user's local day when the app sends one (within ±1 day of UTC), else
+    // the UTC date — older app builds don't send it.
+    const today = resolveActivityDay(day);
     const activity = { userId, type, count, today };
     let { error } = await supabaseAdmin.rpc(
       "record_activity",
