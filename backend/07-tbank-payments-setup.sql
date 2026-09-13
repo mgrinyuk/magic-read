@@ -73,5 +73,7 @@ begin
 end;
 $$;
 
-revoke all on function public.apply_tbank_payment(uuid, text, text, text, bigint) from public;
+-- Supabase also grants EXECUTE to anon/authenticated directly; revoking from
+-- PUBLIC alone leaves this callable with the public app key (see 12-lock-down).
+revoke all on function public.apply_tbank_payment(uuid, text, text, text, bigint) from public, anon, authenticated;
 grant execute on function public.apply_tbank_payment(uuid, text, text, text, bigint) to service_role;
