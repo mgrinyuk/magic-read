@@ -118,7 +118,7 @@ test("Safari flashcard speaking uses fast browser recognition", async () => {
   const app = await fs.readFile(new URL("../../frontend/app.js", import.meta.url), "utf8");
 
   assert.match(app, /function isSafariBrowser\(\)/);
-  assert.match(app, /const fastBrowserRecognition = isSafariBrowser\(\);/);
+  assert.match(app, /const fastBrowserRecognition = !isNativeCapacitorShell\(\) && isSafariBrowser\(\);/);
   assert.match(app, /if \(!fastBrowserRecognition\)\s*\{\s*const azure = await tryAzurePronunciation/);
   assert.match(app, /recognition\.interimResults = fastBrowserRecognition;/);
   assert.match(app, /settleTimer = setTimeout\(\(\) => finishWithTranscript\(transcript\), 650\);/);
