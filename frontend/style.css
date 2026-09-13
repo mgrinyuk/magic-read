@@ -5031,6 +5031,11 @@ body.is-native .hd-web-only {
   background: var(--amber-ink);
   border-color: var(--amber-ink);
 }
+/* Today's dot is outlined, so the row reads as "the last 7 days". */
+.hd-day-today {
+  border-color: var(--amber-ink);
+  box-shadow: 0 0 0 2px rgba(245,180,0,.28);
+}
 
 /* Stat tiles */
 .hd-stats {

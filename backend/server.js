@@ -1578,7 +1578,7 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
     const [textRes, pronRes, statsRes, videoRes] = await Promise.all([
       supabaseAdmin.from("text_processing_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle(),
       supabaseAdmin.from("pronunciation_usage").select("count").eq("user_id", userId).eq("day", day).maybeSingle(),
-      supabaseAdmin.from("user_stats").select("words_read,words_spoken,words_practiced,current_streak").eq("user_id", userId).maybeSingle(),
+      supabaseAdmin.from("user_stats").select("words_read,words_spoken,words_practiced,current_streak,last_active_date").eq("user_id", userId).maybeSingle(),
       supabaseAdmin.from("video_usage").select("opens").eq("user_id", userId).maybeSingle()
     ]);
 
@@ -1601,7 +1601,10 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
       wordsRead: stats.words_read || 0,
       wordsSpoken: stats.words_spoken || 0,
       wordsPracticed: stats.words_practiced || 0,
+      // The stored streak only resets on the user's next activity, so the app
+      // compares lastActiveDate with its local day and shows a lapsed streak as 0.
       currentStreak: stats.current_streak || 0,
+      lastActiveDate: stats.last_active_date || null,
       limits: {
         textPerDay: FREE_DAILY_TEXT_LIMIT,
         pronunciationPerDay: FREE_DAILY_PRONUNCIATION_LIMIT,

@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260727.5";
+import { UI_TEXT } from "./ui-text.js?v=20260913.2";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -832,6 +832,7 @@ let userPlan = {
   wordsSpoken: 0,
   wordsPracticed: 0,
   currentStreak: 0,
+  lastActiveDate: null,
   limits: { textPerDay: 3, pronunciationPerDay: 20, savedTexts: 5, decks: 2, cards: 100, videosPerTrial: 3 }
 };
 
@@ -869,11 +870,24 @@ function localDayString(d = new Date()) {
 // Fire-and-forget stats ping. Never throws — a stats failure must not block the user.
 function recordActivity(type, count) {
   if (!document.body.classList.contains("is-logged-in")) return;
+  const day = localDayString();
+  noteActivityLocally(day);
   fetchWithAuth(`${API_BASE}/api/record-activity`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, count, day: localDayString() })
+    body: JSON.stringify({ type, count, day })
   }).catch(() => {});
+}
+
+// Apply the server's streak rule locally so Home shows today's practice and the
+// new streak right away, without waiting for the next /api/my-plan refresh.
+function noteActivityLocally(day) {
+  const last = userPlan.lastActiveDate;
+  if (!last || day > last) {
+    userPlan.currentStreak = last === localDayOffset(1) ? (userPlan.currentStreak || 0) + 1 : 1;
+    userPlan.lastActiveDate = day;
+  }
+  recentActiveDays.add(day);
 }
 
 let _saveProgressTimer = null;
@@ -2265,18 +2279,7 @@ function renderHomeScreen() {
     }
   });
 
-  // Streak
-  const streak = userPlan.currentStreak || 0;
-  const streakN = document.getElementById("homeStreakN");
-  if (streakN) streakN.textContent = getT().dayStreak.replace("{n}", streak);
-
-  const dotsEl = document.getElementById("homeStreakDots");
-  if (dotsEl) {
-    const on = Math.min(streak, 7);
-    dotsEl.innerHTML =
-      Array(7 - on).fill('<span class="hd-day"></span>').join("") +
-      Array(on).fill('<span class="hd-day hd-day-on"></span>').join("");
-  }
+  renderStreakCard();
 
   // Stat tiles
   const fmt = n => Number(n || 0).toLocaleString();
@@ -2290,6 +2293,54 @@ function renderHomeScreen() {
   syncHomeLangControls();
   loadRecentProgress();
   loadVideoHistory();
+  loadRecentActiveDays();
+}
+
+// Local days the user practised within the last week (from activity_days).
+let recentActiveDays = new Set();
+
+function localDayOffset(daysAgo) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return localDayString(d);
+}
+
+// Streak card: count, subtitle and the last 7 days as dots (today on the right).
+// The stored streak only resets on the user's next activity, so a streak whose
+// last active day is before yesterday is shown as broken (0).
+function renderStreakCard() {
+  const today = localDayString();
+  const last = userPlan.lastActiveDate;
+  const alive = Boolean(last) && last >= localDayOffset(1);
+  const streak = alive ? (userPlan.currentStreak || 0) : 0;
+
+  const streakN = document.getElementById("homeStreakN");
+  if (streakN) streakN.textContent = getT().dayStreak.replace("{n}", streak);
+  const streakS = document.getElementById("homeStreakS");
+  if (streakS) streakS.textContent = last === today ? getT().doneToday : getT().practiceToday;
+
+  const dotsEl = document.getElementById("homeStreakDots");
+  if (!dotsEl) return;
+  let html = "";
+  for (let i = 6; i >= 0; i--) {
+    const day = localDayOffset(i);
+    const on = recentActiveDays.has(day) || (i === 0 && last === today);
+    html += `<span class="hd-day${on ? " hd-day-on" : ""}${i === 0 ? " hd-day-today" : ""}"></span>`;
+  }
+  dotsEl.innerHTML = html;
+}
+
+async function loadRecentActiveDays() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data, error } = await supabase
+    .from("activity_days")
+    .select("day")
+    .eq("user_id", user.id)
+    .gte("day", localDayOffset(6));
+  if (error || !data) return;
+  recentActiveDays = new Set(data.map(r => r.day));
+  renderStreakCard();
 }
 
 document.getElementById("acctUpgradeRow")?.addEventListener("click", () => {
