@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.3";
+import { UI_TEXT } from "./ui-text.js?v=20260913.4";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -1276,6 +1276,9 @@ function openAuthFromOverlay(mode = "signup") {
 
   const loginError = document.getElementById("loginError");
   if (loginError) loginError.hidden = true;
+  const resendBtn = document.getElementById("authResendBtn");
+  if (resendBtn) resendBtn.hidden = true;
+  hideCheckInbox();
 
   authMode = mode;
   const authTitleText = document.getElementById("authTitleText");
@@ -1362,21 +1365,14 @@ signUpBtn?.addEventListener("click", async () => {
   if (authMessage) authMessage.textContent = t.creatingAccount;
 
   try {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: name
         },
-        // In the native shells send the confirmation back into the app, where
-        // appUrlOpen picks up the session — otherwise confirming dropped the
-        // user on the website with no way back. On the web keep the unique URL
-        // so Google Ads can count it as a "Sign-up" conversion (only verified
-        // accounts reach that page).
-        emailRedirectTo: isNativeCapacitorShell()
-          ? OAUTH_DEEP_LINK
-          : `${webOrigin()}/?signup=confirmed`
+        emailRedirectTo: signupRedirectUrl()
       }
     });
 
@@ -1385,24 +1381,20 @@ signUpBtn?.addEventListener("click", async () => {
       return;
     }
 
-    const authCard = document.querySelector("#authScreen .auth-card");
+    // Supabase answers an already-registered address with a user that has no
+    // identities and sends no email — say so instead of waiting for a link.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      openAuthFromOverlay("login");
+      const loginError = document.getElementById("loginError");
+      if (loginError) {
+        loginError.textContent = t.emailAlreadyRegistered;
+        loginError.hidden = false;
+      }
+      return;
+    }
 
-  if (authCard) {
-    authCard.innerHTML = `
-      <div class="auth-success">
-        <div class="auth-success-icon">✓</div>
-        <h2>Account created</h2>
-        <p>
-          Please check your mailbox and confirm your email address.
-          After confirmation, you can log in and start saving your texts,
-          flashcards, and practice progress.
-        </p>
-        <button class="primary-btn" type="button" onclick="location.reload()">
-          Back to login
-        </button>
-      </div>
-    `;
-  }
+    if (authMessage) authMessage.textContent = "";
+    showCheckInbox(email);
   } catch (err) {
     console.error("Signup failed:", err);
     if (authMessage) authMessage.textContent = t.signupFailed;
@@ -1415,6 +1407,93 @@ document.getElementById("switchToLoginBtn")?.addEventListener("click", () => {
   openAuthFromOverlay("login");
 });
 
+// Where the confirmation link takes the user. In the native shells it goes back
+// into the app, where appUrlOpen picks up the session — otherwise confirming
+// dropped them on the website with no way back. On the web it keeps the unique
+// URL so Google Ads can count a "Sign-up" conversion (only verified accounts
+// reach that page).
+function signupRedirectUrl() {
+  return isNativeCapacitorShell() ? OAUTH_DEEP_LINK : `${webOrigin()}/?signup=confirmed`;
+}
+
+// Supabase refuses another confirmation email within 60 s, so the resend
+// buttons count down instead of failing.
+const RESEND_COOLDOWN_S = 60;
+let resendCooldownTimer = null;
+
+function startResendCooldown(btn) {
+  const t = getT();
+  let left = RESEND_COOLDOWN_S;
+  clearInterval(resendCooldownTimer);
+  btn.disabled = true;
+  btn.textContent = t.resendIn.replace("{n}", left);
+  resendCooldownTimer = setInterval(() => {
+    left -= 1;
+    if (left > 0) { btn.textContent = t.resendIn.replace("{n}", left); return; }
+    clearInterval(resendCooldownTimer);
+    btn.disabled = false;
+    btn.textContent = t.resendEmail;
+  }, 1000);
+}
+
+async function resendConfirmation(email, btn, statusEl) {
+  if (!email || btn.disabled) return;
+  btn.disabled = true;
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: signupRedirectUrl() }
+  });
+  if (statusEl) {
+    statusEl.textContent = error ? error.message : getT().emailResent;
+    statusEl.hidden = false;
+  }
+  startResendCooldown(btn);
+}
+
+// After an email sign-up, swap the form for "check your inbox": where the link
+// went, a resend button and a spam hint, instead of a dead end.
+function showCheckInbox(email) {
+  const t = getT();
+  const form = document.querySelector("#authScreen .auth-right:not(.auth-check-email)");
+  const panel = document.getElementById("authCheckEmail");
+  if (!form || !panel) return;
+  document.getElementById("authCheckEmailTitle").textContent = t.checkInboxTitle;
+  document.getElementById("authCheckEmailBody").textContent = t.checkInboxBody.replace("{email}", email);
+  document.getElementById("authCheckEmailSpam").textContent = t.checkSpamHint;
+  document.getElementById("authCheckEmailBack").textContent = t.backToLogin;
+  const status = document.getElementById("authCheckEmailStatus");
+  if (status) status.hidden = true;
+  const resend = document.getElementById("authCheckEmailResend");
+  resend.dataset.email = email;
+  startResendCooldown(resend);   // an email was just sent
+  form.hidden = true;
+  panel.hidden = false;
+}
+
+function hideCheckInbox() {
+  const form = document.querySelector("#authScreen .auth-right:not(.auth-check-email)");
+  const panel = document.getElementById("authCheckEmail");
+  if (panel) panel.hidden = true;
+  if (form) form.hidden = false;
+}
+
+document.getElementById("authCheckEmailResend")?.addEventListener("click", e => {
+  resendConfirmation(e.currentTarget.dataset.email, e.currentTarget, document.getElementById("authCheckEmailStatus"));
+});
+
+document.getElementById("authCheckEmailBack")?.addEventListener("click", () => {
+  hideCheckInbox();
+  openAuthFromOverlay("login");
+  const password = document.getElementById("authPassword");
+  if (password) password.value = "";
+});
+
+document.getElementById("authResendBtn")?.addEventListener("click", e => {
+  const email = document.getElementById("authEmail")?.value.trim();
+  resendConfirmation(email, e.currentTarget, authMessage);
+});
+
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
   authMode = "login";
   if (authNameGroup) authNameGroup.hidden = true;
@@ -1425,9 +1504,11 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
 
   const loginError = document.getElementById("loginError");
   if (loginError) loginError.hidden = true;
+  const resendBtn = document.getElementById("authResendBtn");
+  if (resendBtn) resendBtn.hidden = true;
   if (!email || !password) {
     if (loginError) {
-      loginError.textContent = "Enter your email and password.";
+      loginError.textContent = t.enterEmailPassword;
       loginError.hidden = false;
     }
     return;
@@ -1449,9 +1530,16 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
 
     if (error) {
       if (authMessage) authMessage.textContent = "";
+      // An unconfirmed address can't log in: explain it and offer to resend the
+      // link, instead of showing Supabase's raw "Email not confirmed".
+      const unconfirmed = error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message || "");
       if (loginError) {
-        loginError.textContent = error.message;
+        loginError.textContent = unconfirmed ? t.emailNotConfirmed : error.message;
         loginError.hidden = false;
+      }
+      if (unconfirmed && resendBtn) {
+        resendBtn.hidden = false;
+        if (!resendBtn.disabled) resendBtn.textContent = t.resendEmail;
       }
       return;
     }

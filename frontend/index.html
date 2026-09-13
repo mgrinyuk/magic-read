@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260913.3" />
+  <link rel="stylesheet" href="style.css?v=20260913.4" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -1389,6 +1389,7 @@
           placeholder="••••••••"
         />
         <p id="loginError" class="auth-field-msg auth-field-error" hidden></p>
+        <button id="authResendBtn" type="button" class="auth-link-btn" hidden>Resend email</button>
 
         <button id="forgotPasswordBtn" data-i18n="forgotPassword" type="button" class="auth-link-btn">
           Forgot password?
@@ -1431,6 +1432,17 @@
         </p>
 
         <p id="authMessage" class="auth-message"></p>
+      </div>
+
+      <!-- After an email sign-up: where the link went, resend, spam hint. -->
+      <div id="authCheckEmail" class="auth-right auth-check-email" hidden>
+        <div class="auth-check-icon" aria-hidden="true">✉</div>
+        <h2 id="authCheckEmailTitle">Check your inbox</h2>
+        <p id="authCheckEmailBody" class="subtle">We sent a confirmation link to your email. Open it to activate your account, then log in.</p>
+        <p id="authCheckEmailSpam" class="auth-check-spam">No email after a minute? Check Spam or Promotions.</p>
+        <p id="authCheckEmailStatus" class="auth-message" hidden></p>
+        <button id="authCheckEmailResend" type="button" class="auth-secondary-btn">Resend email</button>
+        <button id="authCheckEmailBack" type="button" class="auth-link-btn">Back to login</button>
       </div>
     </div>
   </section>
@@ -1489,7 +1501,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260913.3"></script>
+  <script type="module" src="app.js?v=20260913.4"></script>
 
   <footer class="footer">
     <div>

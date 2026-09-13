@@ -7009,3 +7009,20 @@ body {
     padding-inline: 16px;
   }
 }
+
+/* Email sign-up "check your inbox" state (see showCheckInbox in app.js). */
+.auth-check-email { text-align: center; }
+.auth-check-icon {
+  width: 56px;
+  height: 56px;
+  margin: 4px auto 14px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  background: rgba(229,38,126,.12);
+  color: var(--primary);
+}
+.auth-check-spam { font-size: 13px; color: var(--text-dim); margin: 10px 0 16px; }
+.auth-check-email .auth-secondary-btn { width: 100%; }
+.auth-check-email .auth-link-btn { display: block; margin: 12px auto 0; }
