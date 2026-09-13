@@ -7,6 +7,7 @@ import { translateText, translateBatch } from "./services/translateService.js";
 import { fetchTranscript } from "./services/captionService.js";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import textToSpeech from "@google-cloud/text-to-speech";
 import { pinyin } from "pinyin-pro";
@@ -18,6 +19,8 @@ import kuromoji from "kuromoji";
 import wanakana from "wanakana";
 import { isLifetimeOfferEligible } from "./lib/planRules.js";
 import { getActivityRpcArgs, resolveActivityDay } from "./lib/activityRules.js";
+import { buildBugReportEmail, MAX_REPORT_LENGTH, sanitizeReportContext } from "./lib/bugReport.js";
+import { isShareToken, planDeckImport } from "./lib/deckShareRules.js";
 import { isAppleIapReady, verifyAppleTransaction } from "./lib/appleIap.js";
 import {
   TBANK_PLANS,
@@ -2420,6 +2423,302 @@ app.use("/exports", express.static(path.join(__dirname, "public", "exports")));
 
 app.get("/video-player.html", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "frontend", "video-player.html"));
+});
+
+/* -----------------------------
+   BUG REPORTS
+   Saved to bug_reports (so none are lost) and emailed to support through
+   Resend when RESEND_API_KEY is set. Replying to the email reaches the user.
+----------------------------- */
+
+// Keyed by user: behind Render's proxy every request shares one IP.
+const bugReportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id || "anonymous",
+  message: { error: "Too many reports. Please try again later.", code: "RATE_LIMITED" }
+});
+
+async function sendBugReportEmail(report) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  const { subject, text, html } = buildBugReportEmail(report);
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: process.env.BUG_REPORT_FROM || "Magic Read <bugs@magicread.app>",
+        to: [process.env.BUG_REPORT_TO || "support@magicread.app"],
+        ...(report.email ? { reply_to: report.email } : {}),
+        subject,
+        text,
+        html
+      })
+    });
+    if (!response.ok) {
+      console.error("[BugReport] Email failed:", response.status, (await response.text()).slice(0, 200));
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[BugReport] Email error:", error.message);
+    return false;
+  }
+}
+
+app.post("/api/bug-report", extractUser, requireUser, bugReportLimiter, async (req, res) => {
+  const message = String(req.body?.message || "").trim().slice(0, MAX_REPORT_LENGTH);
+  if (message.length < 5) {
+    return res.status(400).json({ error: "Please describe the problem.", code: "TOO_SHORT" });
+  }
+
+  const report = {
+    email: req.user.email || "",
+    userId: req.user.id,
+    message,
+    context: sanitizeReportContext(req.body?.context)
+  };
+
+  let reportId = null;
+  if (hasSupabaseServiceRole) {
+    const { data, error } = await supabaseAdmin
+      .from("bug_reports")
+      .insert({ user_id: report.userId, email: report.email, message, context: report.context })
+      .select("id")
+      .single();
+    if (error) console.error("[BugReport] Save failed:", error.message);
+    reportId = data?.id || null;
+  }
+
+  const emailed = await sendBugReportEmail({ ...report, reportId });
+  if (reportId && emailed) {
+    const { error } = await supabaseAdmin.from("bug_reports").update({ emailed: true }).eq("id", reportId);
+    if (error) console.error("[BugReport] Mark emailed failed:", error.message);
+  }
+
+  if (!reportId && !emailed) {
+    return res.status(500).json({ error: "Could not send the report." });
+  }
+  res.json({ ok: true });
+});
+
+/* -----------------------------
+   DECK SHARING
+   A share link carries an unguessable token (deck_shares). Anyone with it can
+   preview the deck; signed-in users add their own copy of the cards — never
+   the owner's review progress. Stopping sharing deletes the token, so the old
+   link stops working.
+----------------------------- */
+
+const SHARED_DECK_PREVIEW_CARDS = 8;
+const SHARED_DECK_MAX_CARDS = 2000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const deckImportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id || "anonymous",
+  message: { error: "Too many imports. Please try again later.", code: "RATE_LIMITED" }
+});
+
+function requireDeckSharing(res) {
+  if (hasSupabaseServiceRole) return true;
+  res.status(503).json({ error: "Deck sharing is not configured on this server." });
+  return false;
+}
+
+function sharedDeckNotFound(res) {
+  return res.status(404).json({ error: "This link doesn't work anymore.", code: "SHARE_NOT_FOUND" });
+}
+
+async function findSharedDeck(token) {
+  const { data: share, error } = await supabaseAdmin
+    .from("deck_shares")
+    .select("deck_id, owner_id")
+    .eq("token", token)
+    .maybeSingle();
+  if (error) throw error;
+  if (!share) return null;
+
+  const { data: deck, error: deckError } = await supabaseAdmin
+    .from("flashcard_decks")
+    .select("id, name, lang")
+    .eq("id", share.deck_id)
+    .maybeSingle();
+  if (deckError) throw deckError;
+  return deck ? { ...deck, ownerId: share.owner_id } : null;
+}
+
+app.post("/api/decks/:deckId/share", extractUser, requireUser, async (req, res) => {
+  if (!requireDeckSharing(res)) return;
+  const { deckId } = req.params;
+  if (!UUID_RE.test(deckId)) return res.status(400).json({ error: "Invalid deck." });
+
+  try {
+    const { data: deck, error: deckError } = await supabaseAdmin
+      .from("flashcard_decks")
+      .select("id")
+      .eq("id", deckId)
+      .eq("user_id", req.user.id)
+      .maybeSingle();
+    if (deckError) throw deckError;
+    if (!deck) return res.status(404).json({ error: "Deck not found." });
+
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from("deck_shares")
+      .select("token")
+      .eq("deck_id", deckId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) return res.json({ token: existing.token });
+
+    const token = crypto.randomBytes(16).toString("base64url");
+    const { error } = await supabaseAdmin
+      .from("deck_shares")
+      .insert({ token, deck_id: deckId, owner_id: req.user.id });
+    if (error?.code === "23505") {
+      // A second tap created the link first — hand back that one.
+      const { data: winner, error: winnerError } = await supabaseAdmin
+        .from("deck_shares")
+        .select("token")
+        .eq("deck_id", deckId)
+        .single();
+      if (winnerError) throw winnerError;
+      return res.json({ token: winner.token });
+    }
+    if (error) throw error;
+    res.json({ token });
+  } catch (error) {
+    console.error("[DeckShare] Create link error:", error.message);
+    res.status(500).json({ error: "Could not create the share link." });
+  }
+});
+
+app.delete("/api/decks/:deckId/share", extractUser, requireUser, async (req, res) => {
+  if (!requireDeckSharing(res)) return;
+  const { deckId } = req.params;
+  if (!UUID_RE.test(deckId)) return res.status(400).json({ error: "Invalid deck." });
+
+  const { error } = await supabaseAdmin
+    .from("deck_shares")
+    .delete()
+    .eq("deck_id", deckId)
+    .eq("owner_id", req.user.id);
+  if (error) {
+    console.error("[DeckShare] Stop sharing error:", error.message);
+    return res.status(500).json({ error: "Could not stop sharing." });
+  }
+  res.json({ ok: true });
+});
+
+// Public preview: works signed out, so the link can bring in new sign-ups.
+app.get("/api/shared-decks/:token", extractUser, async (req, res) => {
+  if (!requireDeckSharing(res)) return;
+  const { token } = req.params;
+  if (!isShareToken(token)) return sharedDeckNotFound(res);
+
+  try {
+    const deck = await findSharedDeck(token);
+    if (!deck) return sharedDeckNotFound(res);
+
+    const { data: cards, count, error } = await supabaseAdmin
+      .from("flashcards")
+      .select("word, pinyin, translation", { count: "exact" })
+      .eq("deck_id", deck.id)
+      .order("created_at", { ascending: true })
+      .limit(SHARED_DECK_PREVIEW_CARDS);
+    if (error) throw error;
+
+    res.json({
+      name: deck.name,
+      lang: deck.lang,
+      cardCount: count || 0,
+      preview: cards || [],
+      isOwner: req.user?.id === deck.ownerId
+    });
+  } catch (error) {
+    console.error("[DeckShare] Preview error:", error.message);
+    res.status(500).json({ error: "Could not load the shared deck." });
+  }
+});
+
+app.post("/api/shared-decks/:token/import", extractUser, requireUser, deckImportLimiter, async (req, res) => {
+  if (!requireDeckSharing(res)) return;
+  const { token } = req.params;
+  if (!isShareToken(token)) return sharedDeckNotFound(res);
+
+  try {
+    const deck = await findSharedDeck(token);
+    if (!deck) return sharedDeckNotFound(res);
+
+    const userId = req.user.id;
+    if (deck.ownerId === userId) {
+      return res.status(400).json({ error: "This is already your deck.", code: "OWN_DECK" });
+    }
+
+    const { data: cards, error: cardsError } = await supabaseAdmin
+      .from("flashcards")
+      .select("word, pinyin, sentence, sentence_pinyin, translation, lang, definition")
+      .eq("deck_id", deck.id)
+      .order("created_at", { ascending: true })
+      .limit(SHARED_DECK_MAX_CARDS);
+    if (cardsError) throw cardsError;
+
+    const { effectivePlan } = await getUserPlan(userId);
+    const [decksResult, cardsResult] = await Promise.all([
+      supabaseAdmin.from("flashcard_decks").select("id", { count: "exact", head: true }).eq("user_id", userId),
+      supabaseAdmin.from("flashcards").select("id", { count: "exact", head: true }).eq("user_id", userId)
+    ]);
+    if (decksResult.error) throw decksResult.error;
+    if (cardsResult.error) throw cardsResult.error;
+
+    const plan = planDeckImport({
+      isPro: effectivePlan === "pro",
+      deckCount: decksResult.count || 0,
+      cardCount: cardsResult.count || 0,
+      sharedCardCount: cards.length,
+      maxDecks: FREE_MAX_DECKS,
+      maxCards: FREE_MAX_CARDS
+    });
+    if (!plan.allowed) {
+      return res.status(429).json({
+        error: plan.code === "DECK_QUOTA_EXCEEDED"
+          ? `You have ${FREE_MAX_DECKS} decks (free limit). Upgrade to Pro for unlimited decks.`
+          : `You've reached ${FREE_MAX_CARDS} cards (free limit). Upgrade to Pro for unlimited cards.`,
+        code: plan.code
+      });
+    }
+
+    const { data: newDeck, error: newDeckError } = await supabaseAdmin
+      .from("flashcard_decks")
+      .insert({ user_id: userId, name: deck.name, lang: deck.lang })
+      .select("id, name")
+      .single();
+    if (newDeckError) throw newDeckError;
+
+    const rows = cards
+      .slice(0, plan.take)
+      .map(card => ({ ...card, user_id: userId, deck_id: newDeck.id }));
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error } = await supabaseAdmin.from("flashcards").insert(rows.slice(i, i + 500));
+      if (error) {
+        await supabaseAdmin.from("flashcards").delete().eq("deck_id", newDeck.id);
+        await supabaseAdmin.from("flashcard_decks").delete().eq("id", newDeck.id);
+        throw error;
+      }
+    }
+
+    res.json({ deckId: newDeck.id, name: newDeck.name, added: rows.length, total: cards.length });
+  } catch (error) {
+    console.error("[DeckShare] Import error:", error.message);
+    res.status(500).json({ error: "Could not add the deck." });
+  }
 });
 
 app.post("/api/export-flashcard-deck", extractUser, requireUser, (req, res) => {

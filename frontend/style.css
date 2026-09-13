@@ -5389,6 +5389,13 @@ body.video-active .app-shell .main .site-container {
   width: min(100%, calc(36vh * 16 / 9));
   margin-inline: auto;
 }
+/* Website on wide screens: 36vh of a tall desktop window made the player so
+   big the captions were squeezed out of view. The apps keep the sizing above. */
+@media (min-width: 900px) {
+  body:not(.is-native) .vid-player-wrap {
+    width: min(100%, calc(26vh * 16 / 9), 560px);
+  }
+}
 .vid-placeholder {
   position: absolute;
   inset: 0;
@@ -7055,3 +7062,153 @@ body {
   color: var(--text);
 }
 .acct-reminder-panel .sp-btn { flex: 1; height: 44px; font-size: 15px; }
+
+/* -----------------------------
+   Report-a-bug and deck-sharing dialogs (on top of .modal-overlay/.modal-box)
+----------------------------- */
+.report-box {
+  position: relative;
+  max-width: 460px;
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.report-title {
+  margin: 0 0 6px;
+  padding-right: 28px;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+}
+.modal-box p.report-sub {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.report-textarea {
+  width: 100%;
+  min-height: 130px;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.modal-box p.report-note {
+  margin: 8px 0 16px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.modal-box p.report-error {
+  margin: -6px 0 14px;
+  font-size: 13.5px;
+  color: var(--retry);
+}
+.report-done {
+  text-align: center;
+}
+.report-done .report-title {
+  padding-right: 0;
+}
+.report-done .modal-actions {
+  justify-content: center;
+}
+.report-done-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 4px auto 12px;
+  border-radius: 50%;
+  background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+}
+.report-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-dim);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.report-close:hover {
+  background: var(--border);
+}
+.share-link-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.share-actions {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.share-actions .share-stop-btn {
+  margin-right: auto;
+  color: var(--retry);
+}
+.shared-deck-kicker {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.shared-deck-preview {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.shared-deck-preview li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+}
+.shared-deck-preview li:last-child {
+  border-bottom: none;
+}
+.sdp-word {
+  flex: none;
+  max-width: 50%;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  color: var(--text);
+}
+.sdp-tr {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+/* Phones: stack dialog buttons full-width, main action on top. */
+@media (max-width: 480px) {
+  .report-box .modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .report-box .modal-actions button {
+    width: 100%;
+  }
+  .share-actions .share-stop-btn {
+    margin-right: 0;
+  }
+}

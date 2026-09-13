@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.5";
+import { UI_TEXT } from "./ui-text.js?v=20260913.6";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -1393,6 +1393,9 @@ async function checkAuth() {
       showLandingPage();
     }
   }
+
+  // A shared-deck link opened earlier waits here until it can be shown.
+  maybeShowSharedDeck();
 }
 
 function closeAuthScreen() {
@@ -2639,6 +2642,104 @@ document.getElementById("acctHelpBtn")?.addEventListener("click", () => {
   // address. Capacitor hands external URLs to the system browser.
   window.open("https://magicread.app/support.html", "_blank", "noopener");
 });
+
+/* -----------------------------
+   REPORT A BUG
+   A short form posting to /api/bug-report. The backend saves the report and
+   emails support@magicread.app with the details below attached.
+----------------------------- */
+
+async function collectBugReportContext() {
+  const context = {
+    platform: isIOSCapacitorShell() ? "ios" : isAndroidCapacitorShell() ? "android" : "web",
+    webBuild: new URL(import.meta.url).searchParams.get("v") || "",
+    uiLang: uiLangSelect?.value || "",
+    learningLang: sourceLangSelect?.value || "",
+    plan: userPlan.effectivePlan || "",
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    userAgent: navigator.userAgent
+  };
+  const App = window.Capacitor?.Plugins?.App;
+  if (isNativeCapacitorShell() && App?.getInfo) {
+    try {
+      const info = await App.getInfo();
+      context.appVersion = info.version;
+      context.appBuild = info.build;
+    } catch {}
+  }
+  return context;
+}
+
+function openBugReport() {
+  const t = getT();
+  document.querySelector(".bug-report-modal")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay bug-report-modal";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="bugReportTitle">
+      <h3 id="bugReportTitle" class="report-title">${escapeHtml(t.reportBug)}</h3>
+      <p class="report-sub">${escapeHtml(t.reportBugSub)}</p>
+      <textarea class="report-textarea auth-input" maxlength="5000" rows="6" placeholder="${escapeHtml(t.reportBugPlaceholder)}"></textarea>
+      <p class="report-note">${escapeHtml(t.reportBugNote)}</p>
+      <p class="report-error" hidden></p>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(t.dialogCancel)}</button>
+        <button class="modal-confirm primary-btn" type="button">${escapeHtml(t.reportBugSend)}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const box = overlay.querySelector(".report-box");
+  const textarea = overlay.querySelector(".report-textarea");
+  const errorEl = overlay.querySelector(".report-error");
+  const sendBtn = overlay.querySelector(".modal-confirm");
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-cancel").addEventListener("click", close);
+  textarea.focus();
+
+  sendBtn.addEventListener("click", async () => {
+    const message = textarea.value.trim();
+    errorEl.hidden = true;
+    if (message.length < 5) {
+      errorEl.textContent = t.reportBugTooShort;
+      errorEl.hidden = false;
+      textarea.focus();
+      return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = t.reportBugSending;
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/bug-report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, context: await collectBugReportContext() })
+      });
+      if (!res.ok) throw new Error(`Report failed (${res.status})`);
+
+      box.innerHTML = `
+        <div class="report-done">
+          <div class="report-done-icon" aria-hidden="true">✓</div>
+          <h3 class="report-title">${escapeHtml(t.reportBugThanksTitle)}</h3>
+          <p class="report-sub">${escapeHtml(t.reportBugThanks)}</p>
+          <div class="modal-actions">
+            <button class="modal-confirm primary-btn" type="button">${escapeHtml(t.dialogClose)}</button>
+          </div>
+        </div>`;
+      box.querySelector(".modal-confirm").addEventListener("click", close);
+    } catch (err) {
+      console.warn("[BugReport]", err.message);
+      errorEl.textContent = t.reportBugFailed;
+      errorEl.hidden = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = t.reportBugSend;
+    }
+  });
+}
+
+document.getElementById("acctBugBtn")?.addEventListener("click", openBugReport);
 
 document.getElementById("acctDeleteAccountBtn")?.addEventListener("click", async () => {
   const t = getT();
@@ -8476,6 +8577,257 @@ document.addEventListener("keydown", (e) => {
 document.getElementById("flashcardClearBtn")?.addEventListener("click", clearFlashcards);
 document.getElementById("flashcardNewDeckBtn")?.addEventListener("click", createDeck);
 document.getElementById("flashcardDeleteDeckBtn")?.addEventListener("click", deleteCurrentDeck);
+document.getElementById("flashcardShareDeckBtn")?.addEventListener("click", shareCurrentDeck);
+
+/* -----------------------------
+   DECK SHARING
+   "Share deck" makes a link (magicread.app/?deck=TOKEN). Opening it shows a
+   preview, and "Add to my cards" copies the cards into the visitor's account.
+   A signed-out visitor's token waits in localStorage through sign-up; the
+   preview comes back once they're signed in (checkAuth calls
+   maybeShowSharedDeck on every auth change).
+----------------------------- */
+
+function getPendingDeckToken() {
+  try { return localStorage.getItem("magicread_pending_deck"); } catch { return null; }
+}
+
+function setPendingDeckToken(token) {
+  try { localStorage.setItem("magicread_pending_deck", token); } catch {}
+}
+
+function clearPendingDeckToken() {
+  try { localStorage.removeItem("magicread_pending_deck"); } catch {}
+}
+
+function sharedDeckUrl(token) {
+  const origin = isNativeCapacitorShell() ? "https://magicread.app" : window.location.origin;
+  return `${origin}/?deck=${encodeURIComponent(token)}`;
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Older WebViews: fall back to a hidden textarea.
+    const input = document.createElement("textarea");
+    input.value = text;
+    input.setAttribute("readonly", "");
+    input.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    return copied;
+  }
+}
+
+async function shareCurrentDeck() {
+  const t = getT();
+  const deck = getCurrentDeck();
+  if (!deck) return;
+  if (!deck.cards.length) {
+    showToast(t.shareDeckEmpty, "error");
+    return;
+  }
+
+  let token;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/decks/${encodeURIComponent(deck.id)}/share`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) throw new Error(data.error || `Share failed (${res.status})`);
+    token = data.token;
+  } catch (err) {
+    console.warn("[DeckShare] create link:", err.message);
+    showToast(t.shareDeckFailed, "error");
+    return;
+  }
+
+  const url = sharedDeckUrl(token);
+  const shareText = t.shareDeckMessage.replace("{name}", deck.name);
+  const nativeShare = isNativeCapacitorShell() ? window.Capacitor?.Plugins?.Share : null;
+  const canShare = Boolean(nativeShare) || typeof navigator.share === "function";
+
+  document.querySelector(".share-deck-modal")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay share-deck-modal";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="shareDeckTitle">
+      <button class="report-close" type="button" aria-label="${escapeHtml(t.dialogClose)}">×</button>
+      <h3 id="shareDeckTitle" class="report-title">${escapeHtml(t.shareDeckTitle.replace("{name}", deck.name))}</h3>
+      <p class="report-sub">${escapeHtml(t.shareDeckNote)}</p>
+      <input class="share-link-input auth-input" type="text" readonly value="${escapeHtml(url)}" />
+      <div class="modal-actions share-actions">
+        <button class="share-stop-btn auth-link-btn" type="button">${escapeHtml(t.stopSharing)}</button>
+        <button class="share-copy-btn ghost-btn" type="button">${escapeHtml(t.copyLink)}</button>
+        ${canShare ? `<button class="share-send-btn primary-btn" type="button">${escapeHtml(t.shareLinkBtn)}</button>` : ""}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  overlay.querySelector(".report-close").addEventListener("click", close);
+  overlay.querySelector(".share-link-input").addEventListener("focus", e => e.target.select());
+
+  overlay.querySelector(".share-copy-btn").addEventListener("click", async () => {
+    const copied = await copyTextToClipboard(url);
+    showToast(copied ? t.linkCopied : t.shareDeckFailed, copied ? "info" : "error");
+  });
+
+  overlay.querySelector(".share-send-btn")?.addEventListener("click", async () => {
+    try {
+      if (nativeShare) await nativeShare.share({ title: deck.name, text: shareText, url, dialogTitle: t.shareDeck });
+      else await navigator.share({ title: deck.name, text: shareText, url });
+    } catch {
+      // The share sheet was dismissed.
+    }
+  });
+
+  overlay.querySelector(".share-stop-btn").addEventListener("click", async () => {
+    if (!(await showConfirm(t.stopSharingConfirm))) return;
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/decks/${encodeURIComponent(deck.id)}/share`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Stop sharing failed (${res.status})`);
+      close();
+      showToast(t.sharingStopped, "info");
+    } catch (err) {
+      console.warn("[DeckShare] stop sharing:", err.message);
+      showToast(t.shareDeckFailed, "error");
+    }
+  });
+}
+
+async function maybeShowSharedDeck() {
+  const params = new URLSearchParams(window.location.search);
+  const linkToken = params.get("deck");
+  if (linkToken) {
+    setPendingDeckToken(linkToken);
+    params.delete("deck");
+    const query = params.toString();
+    window.history.replaceState({}, document.title, `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  }
+
+  const token = getPendingDeckToken();
+  // checkAuth can run twice in quick succession — show one preview only.
+  if (!token || maybeShowSharedDeck.busy || document.querySelector(".shared-deck-modal")) return;
+  maybeShowSharedDeck.busy = true;
+  try {
+    await showSharedDeckPreview(token);
+  } finally {
+    maybeShowSharedDeck.busy = false;
+  }
+}
+
+async function showSharedDeckPreview(token) {
+  const t = getT();
+  let deck;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/shared-decks/${encodeURIComponent(token)}`);
+    deck = await res.json().catch(() => ({}));
+    if (res.status === 404) {
+      clearPendingDeckToken();
+      showToast(t.sharedDeckGone, "error");
+      return;
+    }
+    if (!res.ok) throw new Error(deck.error || `Preview failed (${res.status})`);
+  } catch (err) {
+    // Keep the token: the next launch or sign-in tries again.
+    console.warn("[DeckShare] preview:", err.message);
+    return;
+  }
+
+  if (deck.isOwner) {
+    clearPendingDeckToken();
+    showToast(t.sharedDeckOwn, "info");
+    return;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const signedIn = Boolean(session);
+  const preview = Array.isArray(deck.preview) ? deck.preview : [];
+  const more = Math.max(0, (deck.cardCount || 0) - preview.length);
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay shared-deck-modal";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="sharedDeckName">
+      <div class="shared-deck-kicker">${escapeHtml(t.sharedDeckKicker)}</div>
+      <h3 id="sharedDeckName" class="report-title">${escapeHtml(deck.name || "")}</h3>
+      <p class="report-sub">${escapeHtml(t.sharedDeckCount.replace("{n}", deck.cardCount || 0))}</p>
+      ${preview.length ? `<ul class="shared-deck-preview">${preview.map(card => `
+        <li>
+          <span class="sdp-word">${escapeHtml(card.word || "")}</span>
+          ${card.translation ? `<span class="sdp-tr">${escapeHtml(cleanTranslation(card.translation))}</span>` : ""}
+        </li>`).join("")}
+      </ul>` : ""}
+      ${more ? `<p class="report-note">${escapeHtml(t.sharedDeckMore.replace("{n}", more))}</p>` : ""}
+      <p class="report-error" hidden></p>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(t.notNow)}</button>
+        <button class="modal-confirm primary-btn" type="button">${escapeHtml(signedIn ? t.addToMyCards : t.signUpToAdd)}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  const errorEl = overlay.querySelector(".report-error");
+  const addBtn = overlay.querySelector(".modal-confirm");
+
+  overlay.querySelector(".modal-cancel").addEventListener("click", () => {
+    clearPendingDeckToken();
+    close();
+  });
+
+  addBtn.addEventListener("click", async () => {
+    if (!signedIn) {
+      // The token stays saved, so the preview returns right after sign-up.
+      close();
+      openAuthFromOverlay("signup");
+      return;
+    }
+
+    addBtn.disabled = true;
+    errorEl.hidden = true;
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/shared-decks/${encodeURIComponent(token)}/import`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 429 && data.code) {
+        clearPendingDeckToken();
+        close();
+        showUpgradePrompt(data.code);
+        return;
+      }
+      if (res.status === 404 || data.code === "OWN_DECK") {
+        clearPendingDeckToken();
+        close();
+        showToast(data.code === "OWN_DECK" ? t.sharedDeckOwn : t.sharedDeckGone, "error");
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || `Import failed (${res.status})`);
+
+      clearPendingDeckToken();
+      close();
+      flashcardsLoadedForUserId = null;
+      await loadFlashcardsFromStorage();
+      if (flashcardDecks.some(d => d.id === data.deckId)) currentDeckId = data.deckId;
+      currentFlashcardIndex = 0;
+      showScreen(screenFlashcards);
+      showToast(
+        data.added < data.total
+          ? t.sharedDeckAddedPartial.replace("{n}", data.added).replace("{total}", data.total)
+          : t.sharedDeckAdded,
+        "info"
+      );
+    } catch (err) {
+      console.warn("[DeckShare] import:", err.message);
+      errorEl.textContent = t.sharedDeckAddFailed;
+      errorEl.hidden = false;
+      addBtn.disabled = false;
+    }
+  });
+}
 document.getElementById("flashcardImportBtn")?.addEventListener("click", importWords);
 document.getElementById("flashcardExportBtn")?.addEventListener("click", exportCurrentDeck);
 
@@ -9208,7 +9560,16 @@ function renderCaptions(captions, lang) {
     }, cap.dur * 1000);
   }
 
-  // Line tap → seek and play; word tap → replay line + popup
+  // Word tap → pause so the learner can read the popup; "Listen" or a tap on
+  // the line replays it.
+  function pauseForWord() {
+    if (!vidPlayer) return;
+    clearTimeout(vidReplayTimer);
+    const state = vidPlayer.getPlayerState();
+    if (state === 1 || state === 3) vidPlayer.pauseVideo(); // playing / buffering
+  }
+
+  // Line tap → seek and play; word tap → pause + popup
   capList.querySelectorAll(".vid-line").forEach((lineEl, i) => {
     const cap = captions[i];
     if (!cap) return;
@@ -9224,7 +9585,7 @@ function renderCaptions(captions, lang) {
       replayCapLine(cap);
     });
 
-    // Chinese ruby tokens — replay line in video + show translate/save popup
+    // Chinese ruby tokens — pause the video + show translate/save popup
     lineEl.querySelectorAll(".vid-ruby").forEach(tokenEl => {
       tokenEl.addEventListener("click", e => {
         e.stopPropagation();
@@ -9232,7 +9593,7 @@ function renderCaptions(captions, lang) {
         const word = tokenEl.dataset.word;
         document.querySelectorAll(".vid-ruby.sel").forEach(el => el.classList.remove("sel"));
         tokenEl.classList.add("sel");
-        replayCapLine(cap);
+        pauseForWord();
         showVideoWordPopup(tokenEl, word, cap.text, "", true).catch(console.error);
       });
       tokenEl.addEventListener("mouseenter", e => {
@@ -9241,13 +9602,13 @@ function renderCaptions(captions, lang) {
       });
     });
 
-    // Non-Chinese word spans — replay line in video + show translate/save popup
+    // Non-Chinese word spans — pause the video + show translate/save popup
     lineEl.querySelectorAll(".vid-word").forEach(wordEl => {
       wordEl.addEventListener("click", e => {
         e.stopPropagation();
         unlockAudioForMobile();
         const word = wordEl.dataset.word;
-        replayCapLine(cap);
+        pauseForWord();
         showVideoWordPopup(wordEl, word, cap.text, "", true).catch(console.error);
       });
       wordEl.addEventListener("mouseenter", e => {
