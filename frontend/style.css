@@ -5389,11 +5389,44 @@ body.video-active .app-shell .main .site-container {
   width: min(100%, calc(36vh * 16 / 9));
   margin-inline: auto;
 }
-/* Website on wide screens: 36vh of a tall desktop window made the player so
-   big the captions were squeezed out of view. The apps keep the sizing above. */
-@media (min-width: 900px) {
+/* Website on wide screens: the app shell is 700px, too narrow to read
+   captions under a video. The Video screen widens the shell (and its tab bar)
+   and puts the player on the left, captions on the right, so the transcript
+   gets the full height. Phones and the apps (iPads too) keep the stacked layout. */
+@media (min-width: 1000px) {
+  body.video-active:not(.is-native) .app-shell,
+  body.video-active:not(.is-native) .sonic-tabbar {
+    max-width: min(1240px, calc(100vw - 48px));
+  }
+  body:not(.is-native) .vid-body {
+    flex-direction: row;
+  }
+  body:not(.is-native) .vid-pinned {
+    flex: 0 0 min(52%, 640px);
+    min-height: 0;
+    overflow-y: auto;
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
   body:not(.is-native) .vid-player-wrap {
-    width: min(100%, calc(26vh * 16 / 9), 560px);
+    width: 100%;
+  }
+  body:not(.is-native) .vid-scroll {
+    flex: 1;
+    min-width: 0;
+    padding-top: clamp(10px, 2.5vw, 14px);
+  }
+  body:not(.is-native) .vid-caption-area {
+    margin-top: 0;
+  }
+}
+
+/* Mid-size browser windows keep the stacked layout inside the 700px shell;
+   a smaller player there leaves room to read the captions. */
+@media (min-width: 720px) and (max-width: 999px) {
+  body:not(.is-native) .vid-player-wrap {
+    width: min(100%, calc(24vh * 16 / 9));
   }
 }
 .vid-placeholder {
