@@ -21,6 +21,14 @@ import { decideTextOpen, isLifetimeOfferEligible, normalizeTextKey } from "./lib
 import { getActivityRpcArgs, resolveActivityDay } from "./lib/activityRules.js";
 import { buildBugReportEmail, MAX_REPORT_LENGTH, sanitizeReportContext } from "./lib/bugReport.js";
 import { isShareToken, planDeckImport } from "./lib/deckShareRules.js";
+import {
+  isAssignmentToken,
+  MAX_STUDENTS_PER_ASSIGNMENT,
+  speechCheckLimit,
+  summarizeStudent,
+  validateAssignmentInput,
+  validateAttempt
+} from "./lib/assignmentRules.js";
 import { isAppleIapReady, verifyAppleTransaction } from "./lib/appleIap.js";
 import {
   TBANK_PLANS,
@@ -1882,7 +1890,8 @@ app.post("/api/check-text-quota", extractUser, requireUser, async (req, res) => 
     }
 
     const decision = decideTextOpen({
-      isPro: effectivePlan === "pro",
+      // A joined student's assignment text doesn't use up their free text.
+      isPro: effectivePlan === "pro" || (await isJoinedAssignment(req.body?.assignment, userId)),
       used: usageRow?.count || 0,
       openedKeys: usageRow?.text_keys || [],
       textKey: normalizeTextKey(req.body?.textKey),
@@ -2084,7 +2093,9 @@ app.post("/api/speech-token", extractUser, requireUser, async (req, res) => {
 
     // Speaking practice is Pro (FREE_DAILY_PRONUNCIATION_LIMIT is 0). Every
     // issued token is counted for Pro and trial users — record-only.
-    if (!isPro) {
+    // Joined students on the free plan may speak on their assignment's text.
+    const assignmentToken = typeof req.query.assignment === "string" ? req.query.assignment : "";
+    if (!isPro && !(assignmentToken && (await useAssignmentSpeechCheck(assignmentToken, userId)))) {
       return res.status(429).json({
         error: "Speaking practice is a Pro feature.",
         code: "QUOTA_EXCEEDED",
@@ -2449,6 +2460,417 @@ app.use("/exports", express.static(path.join(__dirname, "public", "exports")));
 
 app.get("/video-player.html", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "frontend", "video-player.html"));
+});
+
+/* -----------------------------
+   CLASS ASSIGNMENTS (Stage 1)
+   A teacher on Pro (or in the trial) turns a text into an assignment link.
+   Students sign in, read, do the exercises and say the text aloud; their
+   results go back to the teacher. For joined students on the free plan,
+   speaking on the assignment is unlocked (capped per student) and opening its
+   text doesn't use up their free text of the day. Tables: 15-assignments.sql.
+----------------------------- */
+
+const assignmentLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id || "anonymous",
+  message: { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" }
+});
+
+const ASSIGNMENT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function requireAssignments(res) {
+  if (hasSupabaseServiceRole) return true;
+  res.status(503).json({ error: "Assignments are not configured on this server." });
+  return false;
+}
+
+function assignmentNotFound(res) {
+  return res.status(404).json({ error: "This assignment link doesn't work.", code: "ASSIGNMENT_NOT_FOUND" });
+}
+
+function displayNameFor(user) {
+  const name = String(user?.user_metadata?.full_name || "").trim();
+  return (name || String(user?.email || "").split("@")[0] || "Student").slice(0, 60);
+}
+
+async function findAssignmentByToken(token) {
+  if (!isAssignmentToken(token)) return null;
+  const { data, error } = await supabaseAdmin.from("assignments").select("*").eq("token", token).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function findAssignmentMember(assignmentId, userId) {
+  const { data, error } = await supabaseAdmin
+    .from("assignment_students")
+    .select("display_name, speech_checks")
+    .eq("assignment_id", assignmentId)
+    .eq("student_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function countAssignmentStudents(assignmentId) {
+  const { count, error } = await supabaseAdmin
+    .from("assignment_students")
+    .select("student_id", { count: "exact", head: true })
+    .eq("assignment_id", assignmentId);
+  if (error) throw error;
+  return count || 0;
+}
+
+// For /api/check-text-quota: has this user joined the open assignment?
+async function isJoinedAssignment(token, userId) {
+  if (!hasSupabaseServiceRole || !isAssignmentToken(token)) return false;
+  try {
+    const assignment = await findAssignmentByToken(token);
+    if (!assignment || assignment.closed_at) return false;
+    return Boolean(await findAssignmentMember(assignment.id, userId));
+  } catch (error) {
+    console.error("[Assignments] membership check error:", error.message);
+    return false;
+  }
+}
+
+// For /api/speech-token: uses one of the student's speaking checks on this
+// assignment. False when speaking isn't unlocked for them.
+async function useAssignmentSpeechCheck(token, userId) {
+  if (!hasSupabaseServiceRole || !isAssignmentToken(token)) return false;
+  try {
+    const assignment = await findAssignmentByToken(token);
+    if (!assignment || assignment.closed_at) return false;
+    const member = await findAssignmentMember(assignment.id, userId);
+    if (!member || member.speech_checks >= speechCheckLimit(assignment.sentences?.length || 0)) return false;
+    const { error } = await supabaseAdmin
+      .from("assignment_students")
+      .update({ speech_checks: member.speech_checks + 1 })
+      .eq("assignment_id", assignment.id)
+      .eq("student_id", userId);
+    if (error) console.error("[Assignments] speech check count error:", error.message);
+    return true;
+  } catch (error) {
+    console.error("[Assignments] speech check error:", error.message);
+    return false;
+  }
+}
+
+// Teacher: create an assignment from the open text.
+app.post("/api/assignments", extractUser, requireUser, assignmentLimiter, async (req, res) => {
+  if (!requireAssignments(res)) return;
+  try {
+    const { effectivePlan } = await getUserPlan(req.user.id);
+    if (effectivePlan !== "pro") {
+      return res.status(403).json({ error: "Creating assignments is a Pro feature.", code: "PRO_FEATURE" });
+    }
+
+    const { value, error } = validateAssignmentInput(req.body);
+    if (error) return res.status(400).json({ error });
+
+    const { data, error: insertError } = await supabaseAdmin
+      .from("assignments")
+      .insert({
+        token: crypto.randomBytes(16).toString("base64url"),
+        teacher_id: req.user.id,
+        title: value.title,
+        source_lang: value.sourceLang,
+        target_lang: value.targetLang,
+        text: value.text,
+        sentences: value.sentences,
+        include_exercises: value.includeExercises,
+        due_date: value.dueDate,
+        max_students: MAX_STUDENTS_PER_ASSIGNMENT
+      })
+      .select("id, token")
+      .single();
+    if (insertError) throw insertError;
+
+    res.json({ id: data.id, token: data.token });
+  } catch (error) {
+    console.error("[Assignments] create error:", error.message);
+    res.status(500).json({ error: "Could not create the assignment." });
+  }
+});
+
+// Teacher and student: assignments I created and assignments I joined.
+app.get("/api/assignments", extractUser, requireUser, async (req, res) => {
+  if (!requireAssignments(res)) return;
+  try {
+    const userId = req.user.id;
+    const [createdResult, membershipsResult] = await Promise.all([
+      supabaseAdmin
+        .from("assignments")
+        .select("id, token, title, source_lang, due_date, include_exercises, closed_at, created_at")
+        .eq("teacher_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabaseAdmin
+        .from("assignment_students")
+        .select("assignment_id, joined_at")
+        .eq("student_id", userId)
+        .order("joined_at", { ascending: false })
+        .limit(100)
+    ]);
+    if (createdResult.error) throw createdResult.error;
+    if (membershipsResult.error) throw membershipsResult.error;
+
+    const created = createdResult.data || [];
+    const studentCounts = new Map();
+    if (created.length) {
+      const { data: rows, error } = await supabaseAdmin
+        .from("assignment_students")
+        .select("assignment_id")
+        .in("assignment_id", created.map(a => a.id));
+      if (error) throw error;
+      rows.forEach(r => studentCounts.set(r.assignment_id, (studentCounts.get(r.assignment_id) || 0) + 1));
+    }
+
+    let joined = [];
+    const joinedIds = (membershipsResult.data || []).map(m => m.assignment_id);
+    if (joinedIds.length) {
+      const [assignmentsResult, attemptsResult] = await Promise.all([
+        supabaseAdmin
+          .from("assignments")
+          .select("id, token, title, source_lang, due_date, include_exercises, closed_at")
+          .in("id", joinedIds),
+        supabaseAdmin
+          .from("assignment_attempts")
+          .select("assignment_id, kind, score, correct, total, mistakes, created_at")
+          .eq("student_id", userId)
+          .in("assignment_id", joinedIds)
+      ]);
+      if (assignmentsResult.error) throw assignmentsResult.error;
+      if (attemptsResult.error) throw attemptsResult.error;
+
+      const byId = new Map(assignmentsResult.data.map(a => [a.id, a]));
+      joined = joinedIds.map(id => byId.get(id)).filter(Boolean).map(a => {
+        const summary = summarizeStudent(attemptsResult.data.filter(t => t.assignment_id === a.id));
+        return {
+          token: a.token,
+          title: a.title,
+          sourceLang: a.source_lang,
+          dueDate: a.due_date,
+          includeExercises: a.include_exercises,
+          closed: Boolean(a.closed_at),
+          speakingBest: summary.speaking?.best ?? null,
+          exercisesDone: Boolean(summary.exercises)
+        };
+      });
+    }
+
+    res.json({
+      maxStudents: MAX_STUDENTS_PER_ASSIGNMENT,
+      created: created.map(a => ({
+        id: a.id,
+        token: a.token,
+        title: a.title,
+        sourceLang: a.source_lang,
+        dueDate: a.due_date,
+        includeExercises: a.include_exercises,
+        closed: Boolean(a.closed_at),
+        createdAt: a.created_at,
+        studentCount: studentCounts.get(a.id) || 0
+      })),
+      joined
+    });
+  } catch (error) {
+    console.error("[Assignments] list error:", error.message);
+    res.status(500).json({ error: "Could not load assignments." });
+  }
+});
+
+// Teacher: every student's results for one assignment.
+app.get("/api/assignments/:id/results", extractUser, requireUser, async (req, res) => {
+  if (!requireAssignments(res)) return;
+  const { id } = req.params;
+  if (!ASSIGNMENT_ID_RE.test(id)) return assignmentNotFound(res);
+
+  try {
+    const { data: assignment, error } = await supabaseAdmin
+      .from("assignments")
+      .select("id, token, title, source_lang, sentences, include_exercises, due_date, closed_at, max_students, created_at")
+      .eq("id", id)
+      .eq("teacher_id", req.user.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!assignment) return assignmentNotFound(res);
+
+    const [studentsResult, attemptsResult] = await Promise.all([
+      supabaseAdmin
+        .from("assignment_students")
+        .select("student_id, display_name, joined_at")
+        .eq("assignment_id", id)
+        .order("joined_at", { ascending: true }),
+      supabaseAdmin
+        .from("assignment_attempts")
+        .select("student_id, kind, score, sentence_scores, correct, skipped, total, mistakes, created_at")
+        .eq("assignment_id", id)
+        .order("created_at", { ascending: false })
+        .limit(3000)
+    ]);
+    if (studentsResult.error) throw studentsResult.error;
+    if (attemptsResult.error) throw attemptsResult.error;
+
+    // Student ids stay on the server; the teacher only sees names and results.
+    res.json({
+      assignment: {
+        id: assignment.id,
+        token: assignment.token,
+        title: assignment.title,
+        sourceLang: assignment.source_lang,
+        sentences: assignment.sentences || [],
+        includeExercises: assignment.include_exercises,
+        dueDate: assignment.due_date,
+        closed: Boolean(assignment.closed_at),
+        maxStudents: assignment.max_students,
+        createdAt: assignment.created_at
+      },
+      students: studentsResult.data.map(s => ({
+        name: s.display_name,
+        joinedAt: s.joined_at,
+        ...summarizeStudent(attemptsResult.data.filter(a => a.student_id === s.student_id))
+      }))
+    });
+  } catch (error) {
+    console.error("[Assignments] results error:", error.message);
+    res.status(500).json({ error: "Could not load the results." });
+  }
+});
+
+// Teacher: close an assignment (no new students or results) or reopen it.
+app.post("/api/assignments/:id/close", extractUser, requireUser, async (req, res) => {
+  if (!requireAssignments(res)) return;
+  const { id } = req.params;
+  if (!ASSIGNMENT_ID_RE.test(id)) return assignmentNotFound(res);
+
+  const closed = req.body?.closed !== false;
+  const { data, error } = await supabaseAdmin
+    .from("assignments")
+    .update({ closed_at: closed ? new Date().toISOString() : null })
+    .eq("id", id)
+    .eq("teacher_id", req.user.id)
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    console.error("[Assignments] close error:", error.message);
+    return res.status(500).json({ error: "Could not update the assignment." });
+  }
+  if (!data) return assignmentNotFound(res);
+  res.json({ closed });
+});
+
+// Anyone with the link: what the assignment is, before signing in.
+app.get("/api/assignment-links/:token", extractUser, async (req, res) => {
+  if (!requireAssignments(res)) return;
+  try {
+    const assignment = await findAssignmentByToken(req.params.token);
+    if (!assignment) return assignmentNotFound(res);
+
+    const isTeacher = req.user?.id === assignment.teacher_id;
+    const [member, studentCount, teacherResult] = await Promise.all([
+      req.user ? findAssignmentMember(assignment.id, req.user.id) : null,
+      countAssignmentStudents(assignment.id),
+      supabaseAdmin.auth.admin.getUserById(assignment.teacher_id)
+    ]);
+
+    res.json({
+      title: assignment.title,
+      sourceLang: assignment.source_lang,
+      teacherName: teacherResult?.data?.user ? displayNameFor(teacherResult.data.user) : "",
+      sentenceCount: assignment.sentences?.length || 0,
+      includeExercises: assignment.include_exercises,
+      dueDate: assignment.due_date,
+      closed: Boolean(assignment.closed_at),
+      full: !member && studentCount >= assignment.max_students,
+      joined: Boolean(member),
+      isTeacher
+    });
+  } catch (error) {
+    console.error("[Assignments] preview error:", error.message);
+    res.status(500).json({ error: "Could not load the assignment." });
+  }
+});
+
+// Student: join (or come back) and get the text.
+app.post("/api/assignment-links/:token/join", extractUser, requireUser, assignmentLimiter, async (req, res) => {
+  if (!requireAssignments(res)) return;
+  try {
+    const assignment = await findAssignmentByToken(req.params.token);
+    if (!assignment) return assignmentNotFound(res);
+
+    const userId = req.user.id;
+    const isTeacher = assignment.teacher_id === userId;
+    const member = await findAssignmentMember(assignment.id, userId);
+    const typedName = String(req.body?.displayName || "").trim().slice(0, 60);
+
+    if (!member && !isTeacher) {
+      if (assignment.closed_at) {
+        return res.status(403).json({ error: "This assignment is closed.", code: "ASSIGNMENT_CLOSED" });
+      }
+      if ((await countAssignmentStudents(assignment.id)) >= assignment.max_students) {
+        return res.status(403).json({ error: "This assignment is full.", code: "ASSIGNMENT_FULL" });
+      }
+      const { error } = await supabaseAdmin
+        .from("assignment_students")
+        .insert({ assignment_id: assignment.id, student_id: userId, display_name: typedName || displayNameFor(req.user) });
+      if (error && error.code !== "23505") throw error;
+    } else if (member && typedName && typedName !== member.display_name) {
+      const { error } = await supabaseAdmin
+        .from("assignment_students")
+        .update({ display_name: typedName })
+        .eq("assignment_id", assignment.id)
+        .eq("student_id", userId);
+      if (error) console.error("[Assignments] rename error:", error.message);
+    }
+
+    res.json({
+      title: assignment.title,
+      text: assignment.text,
+      sentences: assignment.sentences || [],
+      sourceLang: assignment.source_lang,
+      targetLang: assignment.target_lang,
+      includeExercises: assignment.include_exercises,
+      dueDate: assignment.due_date,
+      isTeacher
+    });
+  } catch (error) {
+    console.error("[Assignments] join error:", error.message);
+    res.status(500).json({ error: "Could not open the assignment." });
+  }
+});
+
+// Student: send a finished result (speaking or exercises).
+app.post("/api/assignment-links/:token/submit", extractUser, requireUser, assignmentLimiter, async (req, res) => {
+  if (!requireAssignments(res)) return;
+  try {
+    const assignment = await findAssignmentByToken(req.params.token);
+    if (!assignment) return assignmentNotFound(res);
+    if (assignment.closed_at) {
+      return res.status(403).json({ error: "This assignment is closed.", code: "ASSIGNMENT_CLOSED" });
+    }
+
+    const userId = req.user.id;
+    if (!(await findAssignmentMember(assignment.id, userId))) {
+      return res.status(403).json({ error: "Join the assignment first.", code: "NOT_JOINED" });
+    }
+
+    const { value, error } = validateAttempt(req.body, assignment.sentences?.length || 0);
+    if (error) return res.status(400).json({ error });
+
+    const { error: insertError } = await supabaseAdmin
+      .from("assignment_attempts")
+      .insert({ ...value, assignment_id: assignment.id, student_id: userId });
+    if (insertError) throw insertError;
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("[Assignments] submit error:", error.message);
+    res.status(500).json({ error: "Could not save the result." });
+  }
 });
 
 /* -----------------------------

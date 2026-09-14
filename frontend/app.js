@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.7";
+import { UI_TEXT } from "./ui-text.js?v=20260913.8";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -1093,7 +1093,7 @@ async function claimTextOpen(text) {
     const res = await fetchWithAuth(`${API_BASE}/api/check-text-quota`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ textKey: textKeyFor(text) })
+      body: JSON.stringify({ textKey: textKeyFor(text), assignment: assignmentForText(text)?.token || null })
     });
     const data = await res.json().catch(() => ({}));
     if (typeof data.used === "number") {
@@ -1337,6 +1337,11 @@ function getUpgradeMessage(code) {
       sub: fill(t.quotaCardSub, lim.cards),
       reassurance: null
     },
+    ASSIGNMENTS_PRO: {
+      title: t.asgProTitle,
+      sub: t.asgProSub,
+      reassurance: null
+    },
     CARD_REVIEW_PRO: {
       title: t.quotaLimitTitle,
       sub: t.quotaReviewSub,
@@ -1508,6 +1513,7 @@ async function checkAuth() {
 
   // A shared-deck link opened earlier waits here until it can be shown.
   maybeShowSharedDeck();
+  maybeShowAssignmentLink();
 }
 
 function closeAuthScreen() {
@@ -2233,6 +2239,7 @@ const TAB_BY_SCREEN = {
   "screen-writing":         null,
   "screen-onboarding":      null,
   "screen-account":         null,
+  "screen-assignments":     null,
 };
 
 function isNativeCapacitorShell() {
@@ -2753,6 +2760,584 @@ document.getElementById("acctHelpBtn")?.addEventListener("click", () => {
   // subscription, refunds and account deletion — more use than a toast with an
   // address. Capacitor hands external URLs to the system browser.
   window.open("https://magicread.app/support.html", "_blank", "noopener");
+});
+
+/* -----------------------------
+   CLASS ASSIGNMENTS (Stage 1)
+   Teachers (Pro or trial) turn the open text into a link:
+   magicread.app/?assignment=TOKEN. Students sign in, read, do the exercises
+   and say the text aloud; results go to the teacher's Assignments screen
+   (Account → Assignments). While a student works on an assignment, speaking
+   on its text is unlocked on the free plan and the text doesn't use up their
+   free text of the day — the server checks both.
+----------------------------- */
+
+// { token, title, includeExercises, isTeacher, textKey, sentenceCount, done }
+let activeAssignment = null;
+let assignmentsView = { mode: "list", id: null };
+
+function assignmentUrl(token) {
+  const origin = isNativeCapacitorShell() ? "https://magicread.app" : window.location.origin;
+  return `${origin}/?assignment=${encodeURIComponent(token)}`;
+}
+
+// The assignment this text was opened from, if any.
+function assignmentForText(text) {
+  return activeAssignment && text && activeAssignment.textKey === textKeyFor(text) ? activeAssignment : null;
+}
+
+// Speaking practice started from an assignment's text asks the server for a
+// token with the assignment attached, so free-plan students can speak.
+function speechTokenUrl() {
+  const assignment = spState.fromReader ? assignmentForText(R.text) : null;
+  return assignment
+    ? `${SPEECH_TOKEN_URL}?assignment=${encodeURIComponent(assignment.token)}`
+    : SPEECH_TOKEN_URL;
+}
+
+function formatAssignmentDate(value) {
+  if (!value) return "";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00`) : new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
+function getPendingAssignmentToken() {
+  try { return localStorage.getItem("magicread_pending_assignment"); } catch { return null; }
+}
+
+function setPendingAssignmentToken(token) {
+  try { localStorage.setItem("magicread_pending_assignment", token); } catch {}
+}
+
+function clearPendingAssignmentToken() {
+  try { localStorage.removeItem("magicread_pending_assignment"); } catch {}
+}
+
+// Reader bar while working on an assignment: its title and the steps left.
+function renderAssignmentBanner(text = R.text) {
+  const bar = document.getElementById("rdAssignmentBar");
+  if (!bar) return;
+  const assignment = assignmentForText(text);
+  if (!assignment) {
+    bar.hidden = true;
+    bar.innerHTML = "";
+    return;
+  }
+  const t = getT();
+  const done = assignment.done || {};
+  const step = (key, label, isDone) =>
+    `<button class="asg-step${isDone ? " done" : ""}" type="button" data-asg-step="${key}">${isDone ? "✓ " : ""}${escapeHtml(label)}</button>`;
+  bar.innerHTML = `
+    <div class="asg-bar-title"><span class="asg-bar-kicker">${escapeHtml(t.asgKicker)}</span>${escapeHtml(assignment.title)}</div>
+    <div class="asg-steps">
+      ${assignment.includeExercises ? step("exercises", t.asgStepExercises, done.exercises) : ""}
+      ${step("speaking", t.asgStepSpeak, done.speaking)}
+    </div>`;
+  bar.hidden = false;
+  bar.querySelector('[data-asg-step="exercises"]')?.addEventListener("click", () => {
+    document.getElementById("rdPracticeBtn")?.click();
+  });
+  bar.querySelector('[data-asg-step="speaking"]')?.addEventListener("click", rdStartSpeaking);
+}
+
+function setAssignmentStatus(statusEl, text, state = "") {
+  if (!statusEl) return;
+  statusEl.textContent = text;
+  statusEl.className = `asg-status${state ? ` ${state}` : ""}`;
+  statusEl.hidden = false;
+}
+
+// Sends a finished result for the assignment the reader's text came from.
+async function submitAssignmentResult(payload, statusEl) {
+  const assignment = assignmentForText(R.text);
+  if (statusEl) statusEl.hidden = true;
+  if (!assignment || assignment.isTeacher) return;
+
+  const t = getT();
+  setAssignmentStatus(statusEl, t.asgSending);
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/assignment-links/${encodeURIComponent(assignment.token)}/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || `Submit failed (${res.status})`), { code: data.code });
+    assignment.done = { ...(assignment.done || {}), [payload.kind]: true };
+    setAssignmentStatus(statusEl, `✓ ${t.asgSent}`, "ok");
+    renderAssignmentBanner(R.text);
+  } catch (err) {
+    console.warn("[Assignment] submit:", err.message);
+    setAssignmentStatus(statusEl, err.code === "ASSIGNMENT_CLOSED" ? t.asgClosed : t.asgSendFailed, "error");
+  }
+}
+
+function submitAssignmentExercises(statusEl) {
+  const assignment = assignmentForText(R.text);
+  const stats = rdExState.stats;
+  if (statusEl) statusEl.hidden = true;
+  if (!assignment || !stats) return;
+  if (stats.submitted) {
+    // The done view re-rendered — just show that it was sent.
+    if (assignment.done?.exercises) setAssignmentStatus(statusEl, `✓ ${getT().asgSent}`, "ok");
+    return;
+  }
+  stats.submitted = true;
+  submitAssignmentResult({
+    kind: "exercises",
+    total: rdExState.items.length,
+    correct: stats.correct,
+    skipped: stats.skipped,
+    mistakes: stats.mistakes
+  }, statusEl);
+}
+
+function submitAssignmentSpeaking() {
+  const statusEl = document.getElementById("spcAssignment");
+  const assignment = spState.fromReader ? assignmentForText(R.text) : null;
+  if (statusEl) statusEl.hidden = true;
+  if (!assignment || spState.sentences.length !== assignment.sentenceCount) return;
+  const sentenceScores = spState.results.map(r => (r ? Math.round(r.score) : null));
+  if (!sentenceScores.some(score => score != null)) return;
+  submitAssignmentResult({ kind: "speaking", sentenceScores }, statusEl);
+}
+
+// Opens an assignment's text in the reader.
+async function startAssignment(token, data) {
+  activeAssignment = {
+    token,
+    title: data.title,
+    includeExercises: data.includeExercises !== false,
+    isTeacher: Boolean(data.isTeacher),
+    textKey: textKeyFor(data.text),
+    sentenceCount: (data.sentences || []).length,
+    done: {}
+  };
+  if (data.sourceLang) sourceLangSelect.value = data.sourceLang;
+  if (data.targetLang && targetLangSelect) targetLangSelect.value = data.targetLang;
+  updateLanguageBasedUI();
+  appMode = "reading";
+  currentTextId = null;
+  currentTextTitle = data.title || "";
+  await startReadingFromText(data.text || "");
+}
+
+/* Teacher: create an assignment from the open text */
+
+async function openCreateAssignment() {
+  if (!R.sentences.length) return;
+  if (isOnFreePlan()) {
+    showUpgradePrompt("ASSIGNMENTS_PRO");
+    return;
+  }
+
+  const t = getT();
+  document.querySelector(".asg-create-modal")?.remove();
+  const defaultTitle = (currentTextTitle || R.sentences[0]?.text || "").slice(0, 80);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay asg-create-modal";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="asgCreateHeading">
+      <button class="report-close" type="button" aria-label="${escapeHtml(t.dialogClose)}">×</button>
+      <h3 id="asgCreateHeading" class="report-title">${escapeHtml(t.asgCreateTitle)}</h3>
+      <p class="report-sub">${escapeHtml(t.asgCreateSub)}</p>
+      <label class="asg-field"><span>${escapeHtml(t.asgTitleLabel)}</span><input class="auth-input asg-title-input" type="text" maxlength="120" value="${escapeHtml(defaultTitle)}" /></label>
+      <label class="asg-field"><span>${escapeHtml(t.asgDueLabel)}</span><input class="auth-input asg-due-input" type="date" /></label>
+      <label class="asg-check"><input class="asg-ex-input" type="checkbox" checked /><span>${escapeHtml(t.asgIncludeExercises)}</span></label>
+      <p class="report-note">${escapeHtml(t.asgLimitNote.replace("{n}", 30))}</p>
+      <p class="report-error" hidden></p>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(t.dialogCancel)}</button>
+        <button class="modal-confirm primary-btn" type="button">${escapeHtml(t.asgCreateBtn)}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  const errorEl = overlay.querySelector(".report-error");
+  const confirmBtn = overlay.querySelector(".modal-confirm");
+  overlay.querySelector(".report-close").addEventListener("click", close);
+  overlay.querySelector(".modal-cancel").addEventListener("click", close);
+
+  confirmBtn.addEventListener("click", async () => {
+    confirmBtn.disabled = true;
+    errorEl.hidden = true;
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: overlay.querySelector(".asg-title-input").value,
+          text: R.text,
+          sentences: R.sentences.map(s => s.text),
+          sourceLang: R.lang,
+          targetLang: targetLangSelect?.value || "",
+          includeExercises: overlay.querySelector(".asg-ex-input").checked,
+          dueDate: overlay.querySelector(".asg-due-input").value || null
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 403 && data.code === "PRO_FEATURE") {
+        close();
+        showUpgradePrompt("ASSIGNMENTS_PRO");
+        return;
+      }
+      if (!res.ok || !data.token) throw new Error(data.error || `Create failed (${res.status})`);
+      close();
+      showAssignmentLink(data.token, data.id);
+    } catch (err) {
+      console.warn("[Assignment] create:", err.message);
+      errorEl.textContent = t.asgCreateFailed;
+      errorEl.hidden = false;
+      confirmBtn.disabled = false;
+    }
+  });
+}
+
+function showAssignmentLink(token, id) {
+  const t = getT();
+  const url = assignmentUrl(token);
+  const nativeShare = isNativeCapacitorShell() ? window.Capacitor?.Plugins?.Share : null;
+  const canShare = Boolean(nativeShare) || typeof navigator.share === "function";
+
+  document.querySelector(".asg-link-modal")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay asg-link-modal";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="asgLinkHeading">
+      <button class="report-close" type="button" aria-label="${escapeHtml(t.dialogClose)}">×</button>
+      <h3 id="asgLinkHeading" class="report-title">${escapeHtml(t.asgLinkTitle)}</h3>
+      <p class="report-sub">${escapeHtml(t.asgLinkNote)}</p>
+      <input class="share-link-input auth-input" type="text" readonly value="${escapeHtml(url)}" />
+      <div class="modal-actions share-actions">
+        <button class="asg-results-btn auth-link-btn" type="button">${escapeHtml(t.asgSeeResults)}</button>
+        <button class="share-copy-btn ghost-btn" type="button">${escapeHtml(t.copyLink)}</button>
+        ${canShare ? `<button class="share-send-btn primary-btn" type="button">${escapeHtml(t.shareLinkBtn)}</button>` : ""}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  overlay.querySelector(".report-close").addEventListener("click", close);
+  overlay.querySelector(".share-link-input").addEventListener("focus", e => e.target.select());
+  overlay.querySelector(".share-copy-btn").addEventListener("click", async () => {
+    const copied = await copyTextToClipboard(url);
+    showToast(copied ? t.linkCopied : t.shareDeckFailed, copied ? "info" : "error");
+  });
+  overlay.querySelector(".share-send-btn")?.addEventListener("click", async () => {
+    try {
+      if (nativeShare) await nativeShare.share({ title: t.asgKicker, text: t.asgKicker, url, dialogTitle: t.asgAssignBtn });
+      else await navigator.share({ title: t.asgKicker, url });
+    } catch {
+      // The share sheet was dismissed.
+    }
+  });
+  overlay.querySelector(".asg-results-btn").addEventListener("click", () => {
+    close();
+    openAssignmentsScreen(id);
+  });
+}
+
+/* Student: open an assignment link */
+
+async function maybeShowAssignmentLink() {
+  const params = new URLSearchParams(window.location.search);
+  const linkToken = params.get("assignment");
+  if (linkToken) {
+    setPendingAssignmentToken(linkToken);
+    params.delete("assignment");
+    const query = params.toString();
+    window.history.replaceState({}, document.title, `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  }
+
+  const token = getPendingAssignmentToken();
+  // checkAuth can run twice in quick succession — show one preview only.
+  if (!token || maybeShowAssignmentLink.busy || document.querySelector(".asg-join-modal")) return;
+  maybeShowAssignmentLink.busy = true;
+  try {
+    await showAssignmentPreview(token);
+  } finally {
+    maybeShowAssignmentLink.busy = false;
+  }
+}
+
+async function showAssignmentPreview(token) {
+  const t = getT();
+  let info;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/assignment-links/${encodeURIComponent(token)}`);
+    info = await res.json().catch(() => ({}));
+    if (res.status === 404) {
+      clearPendingAssignmentToken();
+      showToast(t.asgNotFound, "error");
+      return;
+    }
+    if (!res.ok) throw new Error(info.error || `Preview failed (${res.status})`);
+  } catch (err) {
+    // Keep the token: the next launch or sign-in tries again.
+    console.warn("[Assignment] preview:", err.message);
+    return;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const signedIn = Boolean(session);
+  const blocked = !info.joined && !info.isTeacher && (info.closed || info.full);
+  const askName = signedIn && !info.joined && !info.isTeacher && !blocked;
+  const defaultName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "";
+  const primaryLabel = !signedIn ? t.asgSignUpToStart
+    : info.isTeacher ? t.asgOpenText
+    : info.joined ? t.asgContinue
+    : t.asgStart;
+  const meta = (info.includeExercises ? t.asgMetaFull : t.asgMetaNoEx).replace("{n}", info.sentenceCount || 0);
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay asg-join-modal";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="asgJoinHeading">
+      <div class="shared-deck-kicker">${escapeHtml(t.asgKicker)}</div>
+      <h3 id="asgJoinHeading" class="report-title">${escapeHtml(info.title || "")}</h3>
+      ${info.teacherName ? `<p class="report-sub">${escapeHtml(t.asgFrom.replace("{name}", info.teacherName))}</p>` : ""}
+      <ul class="asg-meta">
+        <li>${escapeHtml(meta)}</li>
+        ${info.dueDate ? `<li>${escapeHtml(t.asgDue.replace("{date}", formatAssignmentDate(info.dueDate)))}</li>` : ""}
+      </ul>
+      ${info.isTeacher ? `<p class="report-note">${escapeHtml(t.asgOwn)}</p>` : ""}
+      ${blocked ? `<p class="report-error">${escapeHtml(info.closed ? t.asgClosed : t.asgFull)}</p>` : ""}
+      ${askName ? `<label class="asg-field"><span>${escapeHtml(t.asgYourName)}</span><input class="auth-input asg-name-input" type="text" maxlength="60" value="${escapeHtml(defaultName)}" /></label>` : ""}
+      <p class="report-error asg-join-error" hidden></p>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(blocked ? t.dialogClose : t.notNow)}</button>
+        ${blocked ? "" : `<button class="modal-confirm primary-btn" type="button">${escapeHtml(primaryLabel)}</button>`}
+      </div>
+    </div>`;
+  if (document.querySelector(".asg-join-modal")) return;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-cancel").addEventListener("click", () => {
+    clearPendingAssignmentToken();
+    close();
+  });
+
+  const startBtn = overlay.querySelector(".modal-confirm");
+  startBtn?.addEventListener("click", async () => {
+    if (!signedIn) {
+      // The token stays saved, so the preview returns right after sign-up.
+      close();
+      openAuthFromOverlay("signup");
+      return;
+    }
+
+    const errorEl = overlay.querySelector(".asg-join-error");
+    startBtn.disabled = true;
+    errorEl.hidden = true;
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/assignment-links/${encodeURIComponent(token)}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: overlay.querySelector(".asg-name-input")?.value || "" })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errorEl.textContent = data.code === "ASSIGNMENT_CLOSED" ? t.asgClosed
+          : data.code === "ASSIGNMENT_FULL" ? t.asgFull
+          : res.status === 404 ? t.asgNotFound
+          : t.asgLoadFailed;
+        errorEl.hidden = false;
+        startBtn.disabled = false;
+        return;
+      }
+      clearPendingAssignmentToken();
+      close();
+      await startAssignment(token, data);
+    } catch (err) {
+      console.warn("[Assignment] join:", err.message);
+      errorEl.textContent = t.asgLoadFailed;
+      errorEl.hidden = false;
+      startBtn.disabled = false;
+    }
+  });
+}
+
+/* Assignments screen (Account → Assignments) */
+
+async function openAssignmentsScreen(resultsId = null) {
+  const screen = document.getElementById("screen-assignments");
+  const body = document.getElementById("asgBody");
+  if (!screen || !body) return;
+  showScreen(screen);
+  if (resultsId) {
+    openAssignmentResults(resultsId);
+    return;
+  }
+
+  assignmentsView = { mode: "list", id: null };
+  const t = getT();
+  body.innerHTML = `<p class="asg-loading">…</p>`;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/assignments`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Load failed (${res.status})`);
+    if (assignmentsView.mode === "list") renderAssignmentsList(body, data);
+  } catch (err) {
+    console.warn("[Assignment] list:", err.message);
+    body.innerHTML = `<p class="asg-empty">${escapeHtml(t.asgLoadFailed)}</p>`;
+  }
+}
+
+const ASG_CHEVRON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg>`;
+
+function renderAssignmentsList(body, data) {
+  const t = getT();
+  const created = data.created || [];
+  const joined = data.joined || [];
+  const maxStudents = data.maxStudents || 30;
+
+  const createdHtml = created.length
+    ? created.map(a => `
+      <button class="asg-row" type="button" data-asg-id="${escapeHtml(a.id)}">
+        <span class="asg-row-main">
+          <span class="asg-row-title">${escapeHtml(a.title)}</span>
+          <span class="asg-row-meta">${escapeHtml([
+            t.asgStudentsCount.replace("{n}", a.studentCount).replace("{max}", maxStudents),
+            a.dueDate ? t.asgDue.replace("{date}", formatAssignmentDate(a.dueDate)) : "",
+            a.closed ? t.asgClosedTag : ""
+          ].filter(Boolean).join(" · "))}</span>
+        </span>
+        ${ASG_CHEVRON}
+      </button>`).join("")
+    : `<p class="asg-empty">${escapeHtml(t.asgCreatedEmpty)}</p>`;
+
+  const joinedHtml = joined.map(a => `
+      <button class="asg-row" type="button" data-asg-token="${escapeHtml(a.token)}">
+        <span class="asg-row-main">
+          <span class="asg-row-title">${escapeHtml(a.title)}</span>
+          <span class="asg-row-meta">${escapeHtml([
+            a.speakingBest != null ? t.asgSpeakingScore.replace("{n}", a.speakingBest) : t.asgNotStarted,
+            a.includeExercises && a.exercisesDone ? t.asgExercisesDone : "",
+            a.dueDate ? t.asgDue.replace("{date}", formatAssignmentDate(a.dueDate)) : "",
+            a.closed ? t.asgClosedTag : ""
+          ].filter(Boolean).join(" · "))}</span>
+        </span>
+        ${ASG_CHEVRON}
+      </button>`).join("");
+
+  body.innerHTML = `
+    <h4 class="asg-section-title">${escapeHtml(t.asgCreatedTitle)}</h4>
+    <div class="asg-list">${createdHtml}</div>
+    ${joined.length ? `<h4 class="asg-section-title">${escapeHtml(t.asgJoinedTitle)}</h4><div class="asg-list">${joinedHtml}</div>` : ""}`;
+
+  body.querySelectorAll("[data-asg-id]").forEach(btn =>
+    btn.addEventListener("click", () => openAssignmentResults(btn.dataset.asgId)));
+  body.querySelectorAll("[data-asg-token]").forEach(btn =>
+    btn.addEventListener("click", () => {
+      setPendingAssignmentToken(btn.dataset.asgToken);
+      maybeShowAssignmentLink();
+    }));
+}
+
+async function openAssignmentResults(id) {
+  const body = document.getElementById("asgBody");
+  if (!body) return;
+  assignmentsView = { mode: "results", id };
+  const t = getT();
+  body.innerHTML = `<p class="asg-loading">…</p>`;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/assignments/${encodeURIComponent(id)}/results`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Load failed (${res.status})`);
+    if (assignmentsView.mode === "results" && assignmentsView.id === id) renderAssignmentResults(body, data);
+  } catch (err) {
+    console.warn("[Assignment] results:", err.message);
+    body.innerHTML = `<p class="asg-empty">${escapeHtml(t.asgLoadFailed)}</p>`;
+  }
+}
+
+function renderAssignmentResults(body, data) {
+  const t = getT();
+  const a = data.assignment;
+  const students = data.students || [];
+  const url = assignmentUrl(a.token);
+  const chip = score => score == null
+    ? `<span class="asg-chip asg-muted">–</span>`
+    : `<span class="asg-chip" style="color:${spColor(score)}">${score}%</span>`;
+
+  const studentsHtml = students.map((s, i) => {
+    const sp = s.speaking;
+    const ex = s.exercises;
+    const sentences = sp && sp.sentenceScores?.length
+      ? `<div class="asg-sentences-title">${escapeHtml(t.asgSentenceScores)}</div>
+         <ol class="asg-sentences">${(a.sentences || []).map((sentence, k) =>
+           `<li>${chip(sp.sentenceScores[k] ?? null)}<span>${escapeHtml(sentence)}</span></li>`).join("")}</ol>`
+      : "";
+    return `
+      <div class="asg-student">
+        <button class="asg-student-head" type="button" data-asg-student="${i}" aria-expanded="false">
+          <span class="asg-student-name">${escapeHtml(s.name)}</span>
+          ${sp ? chip(sp.latest) : `<span class="asg-muted">${escapeHtml(t.asgNotStarted)}</span>`}
+        </button>
+        <div class="asg-student-detail" hidden>
+          <div class="asg-detail-row"><b>${escapeHtml(t.asgColSpeaking)}</b><span>${sp ? escapeHtml(t.asgBestAttempts.replace("{best}", sp.best).replace("{n}", sp.attempts)) : "—"}</span></div>
+          ${a.includeExercises ? `<div class="asg-detail-row"><b>${escapeHtml(t.asgColExercises)}</b><span>${ex ? escapeHtml(t.asgExerciseResult.replace("{correct}", ex.correct).replace("{total}", ex.total).replace("{mistakes}", ex.mistakes)) : "—"}</span></div>` : ""}
+          ${sentences}
+        </div>
+      </div>`;
+  }).join("");
+
+  body.innerHTML = `
+    <div class="asg-summary">
+      <h3 class="asg-summary-title">${escapeHtml(a.title)}</h3>
+      <p class="asg-row-meta">${escapeHtml([
+        t.asgStudentsCount.replace("{n}", students.length).replace("{max}", a.maxStudents || 30),
+        a.dueDate ? t.asgDue.replace("{date}", formatAssignmentDate(a.dueDate)) : "",
+        a.closed ? t.asgClosedTag : ""
+      ].filter(Boolean).join(" · "))}</p>
+      <input class="share-link-input auth-input" type="text" readonly value="${escapeHtml(url)}" />
+      <div class="asg-summary-actions">
+        <button class="ghost-btn asg-copy-btn" type="button">${escapeHtml(t.copyLink)}</button>
+        <button class="auth-link-btn asg-close-btn" type="button">${escapeHtml(a.closed ? t.asgReopenBtn : t.asgCloseBtn)}</button>
+      </div>
+    </div>
+    ${students.length ? `<div class="asg-students">${studentsHtml}</div>` : `<p class="asg-empty">${escapeHtml(t.asgNoStudents)}</p>`}`;
+
+  body.querySelector(".share-link-input")?.addEventListener("focus", e => e.target.select());
+  body.querySelector(".asg-copy-btn")?.addEventListener("click", async () => {
+    const copied = await copyTextToClipboard(url);
+    showToast(copied ? t.linkCopied : t.shareDeckFailed, copied ? "info" : "error");
+  });
+  body.querySelector(".asg-close-btn")?.addEventListener("click", async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/assignments/${encodeURIComponent(a.id)}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ closed: !a.closed })
+      });
+      if (!res.ok) throw new Error(`Close failed (${res.status})`);
+    } catch (err) {
+      console.warn("[Assignment] close:", err.message);
+      showToast(t.asgLoadFailed, "error");
+    }
+    openAssignmentResults(a.id);
+  });
+  body.querySelectorAll("[data-asg-student]").forEach(head => head.addEventListener("click", () => {
+    const detail = head.nextElementSibling;
+    const open = detail.hidden;
+    detail.hidden = !open;
+    head.setAttribute("aria-expanded", open ? "true" : "false");
+  }));
+}
+
+document.getElementById("rdAssignBtn")?.addEventListener("click", openCreateAssignment);
+document.getElementById("acctAssignmentsBtn")?.addEventListener("click", () => openAssignmentsScreen());
+document.getElementById("asgBackBtn")?.addEventListener("click", () => {
+  if (assignmentsView.mode === "results") {
+    openAssignmentsScreen();
+    return;
+  }
+  renderAccountScreen();
+  showScreen(screenAccount);
 });
 
 /* -----------------------------
@@ -4309,7 +4894,7 @@ async function spOnMicTap() {
 
   try {
     const session = await startPronunciationSession(sentence, azureLang, {
-      tokenUrl: SPEECH_TOKEN_URL,
+      tokenUrl: speechTokenUrl(),
       fetchWithAuth
     });
     spState.session = session;
@@ -4437,12 +5022,14 @@ function spOnPrimary() {
   if (spState.fromComplete) {
     spState.fromComplete = false;
     spRenderComplete();
+    submitAssignmentSpeaking();
     showScreen(screenSpeakComplete);
     return;
   }
   if (spState.idx >= spState.sentences.length - 1) {
     spRenderComplete();
     renderReminderOffer(document.getElementById("spcReminder"));
+    submitAssignmentSpeaking();
     showScreen(screenSpeakComplete);
     spFireConfetti("spcConfetti", true);
     return;
@@ -4539,7 +5126,8 @@ const R = {
   trans: false,
 };
 let rdOnClozeComplete = null; // completion hook fired from checkCloze
-const rdExState = { view: "menu", done: { order: false, choice: false } };
+// stats: this session's results, sent to the teacher for assignments.
+const rdExState = { view: "menu", done: { order: false, choice: false }, stats: null };
 
 function startReader(text, sentences) {
   R.text = text;
@@ -4559,6 +5147,7 @@ function startReader(text, sentences) {
   rdExState.idx = 0;
   const bm = document.getElementById("rdBookmarkBtn");
   bm?.classList.toggle("on", !!currentTextId && !String(currentTextId).startsWith("lib_"));
+  renderAssignmentBanner(text);
   rdBuildParagraphs(text, sentences);
   rdRenderPassage();
   rdUpdateToolbar();
@@ -4913,7 +5502,7 @@ function rdOfferSpeaking() {
 
 function rdStartSpeaking() {
   if (!R.sentences.length) return;
-  if (isOnFreePlan()) {
+  if (isOnFreePlan() && !assignmentForText(R.text)) {
     rdCloseSheet();
     showUpgradePrompt("QUOTA_EXCEEDED");
     return;
@@ -4926,6 +5515,7 @@ function rdStartSpeaking() {
 }
 
 function rdStartExerciseSession() {
+  rdExState.stats = { correct: 0, skipped: 0, mistakes: 0, submitted: false };
   rdExState.view = "exercise";
   rdExState.idx = 0;
   rdExState.items = rdBuildExerciseItems();
@@ -5031,6 +5621,7 @@ function rdBuildExerciseItems() {
 
 function rdCompleteCurrentExercise(wordsRead = 1) {
   const item = rdExState.items[rdExState.idx];
+  if (item && !item.done && rdExState.stats) rdExState.stats.correct++;
   if (item) item.done = true;
   recordActivity("words_read", wordsRead);
   setTimeout(() => {
@@ -5044,6 +5635,7 @@ function rdCompleteCurrentExercise(wordsRead = 1) {
 }
 
 function rdSkipCurrentExercise() {
+  if (rdExState.stats) rdExState.stats.skipped++;
   if (rdExState.idx >= rdExState.items.length - 1) {
     rdExState.view = "done";
   } else {
@@ -5139,6 +5731,7 @@ function rdRenderSequentialOrder(body, item) {
     const placed = item.slots.map(id => id == null ? null : item.bank.find(b => b.id === id)?.t);
     const ok = JSON.stringify(placed) === JSON.stringify(item.target);
     item.fb = ok ? "correct" : "wrong";
+    if (!ok && rdExState.stats) rdExState.stats.mistakes++;
     rdRenderSequentialOrder(body, item);
     if (ok) rdCompleteCurrentExercise(item.target.length);
   });
@@ -5179,6 +5772,7 @@ function rdRenderSequentialCloze(body, item) {
     if (item.choice == null) return;
     const ok = item.choice === item.answer;
     item.fb = ok ? "correct" : "wrong";
+    if (!ok && rdExState.stats) rdExState.stats.mistakes++;
     rdRenderSequentialCloze(body, item);
     if (ok) rdCompleteCurrentExercise(1);
   });
@@ -5347,9 +5941,11 @@ function rdRenderExDone(body) {
         <button class="sp-btn sp-btn-ghost" id="rdDoneRetry" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> <span>Try again</span></button>
       </div>
       <div id="rdDoneReminder" class="reminder-offer" hidden></div>
+      <div id="rdDoneAssignment" class="asg-status" hidden></div>
     </div>`;
   spFireConfetti("rdConfetti", true);
   renderReminderOffer(document.getElementById("rdDoneReminder"));
+  submitAssignmentExercises(document.getElementById("rdDoneAssignment"));
   document.getElementById("rdDoneBack")?.addEventListener("click", () => showScreen(screenReadReader));
   document.getElementById("rdDoneRetry")?.addEventListener("click", () => {
     rdExState.done = { order: false, choice: false };

@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260913.7" />
+  <link rel="stylesheet" href="style.css?v=20260913.8" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -752,6 +752,7 @@
           <div class="sp-recap-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-retry"/></svg> <span data-i18n="tapToRetrySentence">Tap a sentence to practise it again</span></div>
 
           <div id="spcReminder" class="reminder-offer" hidden></div>
+          <div id="spcAssignment" class="asg-status" hidden></div>
 
           <div class="sp-complete-cta">
             <button class="sp-btn sp-btn-primary" id="spcNewBtn" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-plus"/></svg> <span data-i18n="pasteAnotherText">Paste another text</span></button>
@@ -797,10 +798,15 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
           </button>
           <div class="rd-ttl"><b id="rdTitle">Reading</b><span id="rdSub"></span></div>
+          <button class="rd-iconbtn" id="rdAssignBtn" type="button" aria-label="Assign to students" data-i18n-aria-label="asgAssignBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </button>
           <button class="rd-iconbtn" id="rdBookmarkBtn" type="button" aria-label="Save this text">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-bookmark"/></svg>
           </button>
         </div>
+
+        <div id="rdAssignmentBar" class="asg-bar" hidden></div>
 
         <div class="rd-toolbar">
           <button class="rd-pill" id="rdPinyinPill" type="button">拼 Pinyin</button>
@@ -1031,6 +1037,17 @@
         </div>
       </section>
 
+      <section id="screen-assignments" class="app-screen">
+        <div class="acct-appbar">
+          <button id="asgBackBtn" type="button" class="acct-iconbtn" aria-label="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+          </button>
+          <span class="acct-appbar-title" data-i18n="asgScreenTitle">Assignments</span>
+          <span style="width:40px"></span>
+        </div>
+        <div class="asg-body" id="asgBody"></div>
+      </section>
+
       <section id="screen-account" class="app-screen">
         <div class="acct-appbar">
           <button id="acctBackBtn" type="button" class="acct-iconbtn" aria-label="Back">
@@ -1097,6 +1114,11 @@
             <button id="acctReminderSave" class="sp-btn sp-btn-primary" type="button" data-i18n="reminderSave">Save</button>
             <button id="acctReminderOff" class="auth-link-btn" type="button" data-i18n="reminderTurnOff">Turn off</button>
           </div>
+          <button class="acct-mrow" id="acctAssignmentsBtn" type="button">
+            <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <span class="acct-ml" data-i18n="asgScreenTitle">Assignments</span>
+            <span class="acct-mv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-chevr"/></svg></span>
+          </button>
           <button class="acct-mrow" id="acctAboutBtn" type="button">
             <span class="acct-mi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-info"/></svg></span>
             <span class="acct-ml" data-i18n="about">About</span>
@@ -1519,7 +1541,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20260913.7"></script>
+  <script type="module" src="app.js?v=20260913.8"></script>
 
   <footer class="footer">
     <div>
