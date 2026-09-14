@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.8";
+import { UI_TEXT } from "./ui-text.js?v=20260913.9";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -2765,7 +2765,7 @@ document.getElementById("acctHelpBtn")?.addEventListener("click", () => {
 /* -----------------------------
    CLASS ASSIGNMENTS (Stage 1)
    Teachers (Pro or trial) turn the open text into a link:
-   magicread.app/?assignment=TOKEN. Students sign in, read, do the exercises
+   magicread.app/assignment/TOKEN. Students sign in, read, do the exercises
    and say the text aloud; results go to the teacher's Assignments screen
    (Account → Assignments). While a student works on an assignment, speaking
    on its text is unlocked on the free plan and the text doesn't use up their
@@ -2778,7 +2778,7 @@ let assignmentsView = { mode: "list", id: null };
 
 function assignmentUrl(token) {
   const origin = isNativeCapacitorShell() ? "https://magicread.app" : window.location.origin;
-  return `${origin}/?assignment=${encodeURIComponent(token)}`;
+  return `${origin}/assignment/${encodeURIComponent(token)}`;
 }
 
 // The assignment this text was opened from, if any.
@@ -3958,6 +3958,43 @@ window.Capacitor?.Plugins?.Keyboard?.addListener?.("keyboardWillShow", () => {
 window.Capacitor?.Plugins?.Keyboard?.addListener?.("keyboardWillHide", () => {
   document.body.classList.remove("kb-open");
 });
+
+// Share and assignment links — magicread.app/deck/TOKEN and
+// magicread.app/assignment/TOKEN — open the installed app (Android App Links,
+// iOS Universal Links; see frontend/.well-known). In a browser the website
+// redirects them to ?deck= / ?assignment=, so both forms are accepted here.
+// The token waits in localStorage and the usual preview appears.
+function handleIncomingAppLink(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (!/^(www\.)?magicread\.app$/.test(parsed.hostname)) return false;
+  const [, kind, pathToken] = parsed.pathname.match(/^\/(deck|assignment)\/([A-Za-z0-9_-]{16,64})\/?$/) || [];
+  const deckToken = kind === "deck" ? pathToken : parsed.searchParams.get("deck");
+  const assignmentToken = kind === "assignment" ? pathToken : parsed.searchParams.get("assignment");
+  if (deckToken) {
+    setPendingDeckToken(deckToken);
+    maybeShowSharedDeck();
+    return true;
+  }
+  if (assignmentToken) {
+    setPendingAssignmentToken(assignmentToken);
+    maybeShowAssignmentLink();
+    return true;
+  }
+  return false;
+}
+
+window.Capacitor?.Plugins?.App?.addListener("appUrlOpen", ({ url }) => {
+  if (url) handleIncomingAppLink(url);
+});
+// A link that launched the app from closed arrives as the launch URL.
+window.Capacitor?.Plugins?.App?.getLaunchUrl?.()
+  .then(result => { if (result?.url) handleIncomingAppLink(result.url); })
+  .catch(() => {});
 
 window.Capacitor?.Plugins?.App?.addListener("appUrlOpen", async ({ url }) => {
   if (!url || !url.startsWith(OAUTH_DEEP_LINK)) return;
@@ -9287,7 +9324,7 @@ document.getElementById("flashcardShareDeckBtn")?.addEventListener("click", shar
 
 /* -----------------------------
    DECK SHARING
-   "Share deck" makes a link (magicread.app/?deck=TOKEN). Opening it shows a
+   "Share deck" makes a link (magicread.app/deck/TOKEN). Opening it shows a
    preview, and "Add to my cards" copies the cards into the visitor's account.
    A signed-out visitor's token waits in localStorage through sign-up; the
    preview comes back once they're signed in (checkAuth calls
@@ -9308,7 +9345,7 @@ function clearPendingDeckToken() {
 
 function sharedDeckUrl(token) {
   const origin = isNativeCapacitorShell() ? "https://magicread.app" : window.location.origin;
-  return `${origin}/?deck=${encodeURIComponent(token)}`;
+  return `${origin}/deck/${encodeURIComponent(token)}`;
 }
 
 async function copyTextToClipboard(text) {

@@ -32,6 +32,16 @@
                 <data android:scheme="magicread" />
             </intent-filter>
 
+            <!-- Share and assignment links open the app (Android App Links).
+                 Verified against https://magicread.app/.well-known/assetlinks.json. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="magicread.app" android:pathPrefix="/deck/" />
+                <data android:scheme="https" android:host="magicread.app" android:pathPrefix="/assignment/" />
+            </intent-filter>
+
         </activity>
 
         <provider

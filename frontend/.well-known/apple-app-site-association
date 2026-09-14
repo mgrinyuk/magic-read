@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "7Q48DX4AH9.com.magicread.ios"
+        ],
+        "components": [
+          {
+            "/": "/deck/*",
+            "comment": "Shared flashcard decks"
+          },
+          {
+            "/": "/assignment/*",
+            "comment": "Class assignments"
+          }
+        ]
+      }
+    ]
+  }
+}
