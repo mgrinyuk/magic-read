@@ -17,7 +17,7 @@ import Papa from "papaparse";
 import Stripe from "stripe";
 import kuromoji from "kuromoji";
 import wanakana from "wanakana";
-import { isLifetimeOfferEligible } from "./lib/planRules.js";
+import { decideTextOpen, isLifetimeOfferEligible, normalizeTextKey } from "./lib/planRules.js";
 import { getActivityRpcArgs, resolveActivityDay } from "./lib/activityRules.js";
 import { buildBugReportEmail, MAX_REPORT_LENGTH, sanitizeReportContext } from "./lib/bugReport.js";
 import { isShareToken, planDeckImport } from "./lib/deckShareRules.js";
@@ -89,11 +89,16 @@ const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY;
 const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION;
 // --- Free-plan limits (Pro & welcome-week trial users are unlimited) ---
 // All overridable via env vars; defaults match the plan definition.
-const FREE_DAILY_PRONUNCIATION_LIMIT = Number(process.env.FREE_DAILY_PRONUNCIATION_LIMIT || 20);
-const FREE_DAILY_TEXT_LIMIT = Number(process.env.FREE_DAILY_TEXT_LIMIT || 3);
-const FREE_MAX_SAVED_TEXTS = Number(process.env.FREE_MAX_SAVED_TEXTS || 5);
-const FREE_MAX_DECKS = Number(process.env.FREE_MAX_DECKS || 2);
-const FREE_MAX_CARDS = Number(process.env.FREE_MAX_CARDS || 100);
+// Free plan (after the Pro trial): one text a day with listening, translations
+// and reading exercises. Speaking practice, videos, flashcards and saved texts
+// are Pro. Fixed in code on purpose, so an old env override (3 texts a day,
+// 20 checks) can't quietly bring back the previous plan. The database triggers
+// in 14-free-plan-v2.sql mirror these numbers.
+const FREE_DAILY_PRONUNCIATION_LIMIT = 0;
+const FREE_DAILY_TEXT_LIMIT = 1;
+const FREE_MAX_SAVED_TEXTS = 0;
+const FREE_MAX_DECKS = 1; // the default deck every account gets
+const FREE_MAX_CARDS = 0;
 const FREE_VIDEO_TRIAL_LIMIT = Number(process.env.FREE_VIDEO_TRIAL_LIMIT || 3);
 // Abuse caps for third-party-billed APIs (Google TTS / Translate). Generous on
 // purpose: normal free-tier app usage stays far below them; they only stop
@@ -157,7 +162,7 @@ function getGooglePlayPublisher() {
 async function getUserPlan(userId) {
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
-    .select("plan, trial_ends_at")
+    .select("plan, trial_ends_at, created_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) console.error("[Plan] profile lookup error:", error.message);
@@ -194,7 +199,8 @@ async function getUserPlan(userId) {
     trialEndsAt,
     trialActive,
     effectivePlan,
-    lifetimeOfferEligible
+    lifetimeOfferEligible,
+    accountCreatedAt: profile?.created_at || null
   };
 }
 
@@ -206,7 +212,8 @@ async function enforceFreeApiCap(req, res, kind, limit) {
   try {
     const userId = req.user.id;
     const { effectivePlan } = await getUserPlan(userId);
-    if (effectivePlan === "pro") return true;
+    // Pro/trial users are never limited, but their usage is recorded too.
+    const isPro = effectivePlan === "pro";
 
     const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
     const { data: row, error } = await supabaseAdmin
@@ -222,7 +229,7 @@ async function enforceFreeApiCap(req, res, kind, limit) {
     }
 
     const used = row?.count || 0;
-    if (used >= limit) {
+    if (!isPro && used >= limit) {
       res.status(429).json({
         error: "You've reached today's free limit. Upgrade to Pro for unlimited use.",
         code: `${kind.toUpperCase()}_QUOTA_EXCEEDED`,
@@ -570,8 +577,11 @@ function drawCharacterGrid(doc, items, fontPath, titleText) {
   }
 }
 
-app.post("/api/create-writing-sheet", extractUser, requireUser, (req, res) => {
+app.post("/api/create-writing-sheet", extractUser, requireUser, async (req, res) => {
   try {
+    if ((await getUserPlan(req.user.id)).effectivePlan !== "pro") {
+      return res.status(403).json({ error: "Writing sheets are a Pro feature.", code: "PRO_FEATURE" });
+    }
     const { text, sourceLang } = req.body || {};
 
     if (!text) {
@@ -1566,6 +1576,7 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const {
+      accountCreatedAt,
       plan,
       planEndsAt,
       planProvider,
@@ -1598,6 +1609,7 @@ app.get("/api/my-plan", extractUser, requireUser, async (req, res) => {
       trialActive,
       lifetimeOfferEligible,
       tbankAvailable,
+      accountCreatedAt,
       textUsedToday: textRes.data?.count || 0,
       pronouncedToday: pronRes.data?.count || 0,
       videosOpened: videoRes.data?.opens || 0,
@@ -1847,39 +1859,56 @@ app.get("/api/video-captions", extractUser, requireUser, async (req, res) => {
   }
 });
 
-// Metered: increments the per-day text counter for free users.
+// One counter row per user per UTC day. Free users may open
+// FREE_DAILY_TEXT_LIMIT distinct texts a day; reopening a text already opened
+// today (same textKey, a hash the app sends) doesn't count again. Pro and
+// trial opens are recorded too, never limited.
 app.post("/api/check-text-quota", extractUser, requireUser, async (req, res) => {
   try {
     const userId = req.user.id;
     const { effectivePlan } = await getUserPlan(userId);
-    if (effectivePlan === "pro") return res.json({ allowed: true });
-
     const day = new Date().toISOString().slice(0, 10);
+
     const { data: usageRow, error: usageErr } = await supabaseAdmin
       .from("text_processing_usage")
-      .select("count")
+      .select("count, text_keys")
       .eq("user_id", userId)
       .eq("day", day)
       .maybeSingle();
-    if (usageErr) console.error("[Quota] text usage lookup error:", usageErr.message);
+    if (usageErr) {
+      // Fail open, as before: a storage problem must not lock everyone out.
+      console.error("[Quota] text usage lookup error:", usageErr.message);
+      return res.json({ allowed: true, limit: FREE_DAILY_TEXT_LIMIT });
+    }
 
-    const used = usageRow?.count || 0;
-    if (used >= FREE_DAILY_TEXT_LIMIT) {
+    const decision = decideTextOpen({
+      isPro: effectivePlan === "pro",
+      used: usageRow?.count || 0,
+      openedKeys: usageRow?.text_keys || [],
+      textKey: normalizeTextKey(req.body?.textKey),
+      limit: FREE_DAILY_TEXT_LIMIT
+    });
+
+    if (!decision.allowed) {
       return res.status(429).json({
-        error: `You've used your ${FREE_DAILY_TEXT_LIMIT} free texts today. Upgrade to Pro for unlimited.`,
+        error: `The free plan includes ${FREE_DAILY_TEXT_LIMIT} text a day. Upgrade to Pro for unlimited texts.`,
         code: "TEXT_QUOTA_EXCEEDED",
-        used,
+        used: decision.used,
         limit: FREE_DAILY_TEXT_LIMIT
       });
     }
 
-    const { error: incErr } = await supabaseAdmin.rpc("increment_text_usage", {
-      p_user_id: userId,
-      p_day: day
-    });
-    if (incErr) console.error("[Quota] text usage increment error:", incErr.message);
+    if (decision.record) {
+      const { error: saveErr } = await supabaseAdmin
+        .from("text_processing_usage")
+        .upsert(
+          { user_id: userId, day, count: decision.used, text_keys: decision.openedKeys },
+          { onConflict: "user_id,day" }
+        );
+      if (saveErr) console.error("[Quota] text usage save error:", saveErr.message);
+    }
 
-    res.json({ allowed: true, used: used + 1, limit: FREE_DAILY_TEXT_LIMIT });
+    res.json({ allowed: true, used: decision.used, limit: FREE_DAILY_TEXT_LIMIT });
   } catch (error) {
     console.error("[Quota] text quota error:", error.message);
     res.status(500).json({ error: "Quota check failed." });
@@ -1893,8 +1922,19 @@ app.post("/api/check-video-quota", extractUser, requireUser, async (req, res) =>
     const userId = req.user.id;
     const { plan, trialActive } = await getUserPlan(userId);
 
-    // Paid Pro — always allowed.
-    if (plan === "pro") return res.json({ allowed: true });
+    // Paid Pro — always allowed; opens are still counted (record-only).
+    if (plan === "pro") {
+      const { data: proRow } = await supabaseAdmin
+        .from("video_usage")
+        .select("opens")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const { error: proIncErr } = await supabaseAdmin
+        .from("video_usage")
+        .upsert({ user_id: userId, opens: (proRow?.opens || 0) + 1 }, { onConflict: "user_id" });
+      if (proIncErr) console.error("[VideoQuota] increment error:", proIncErr.message);
+      return res.json({ allowed: true });
+    }
 
     // Trial expired (free user, no active trial) — Videos are Pro-only.
     if (!trialActive) {
@@ -1953,7 +1993,7 @@ app.post("/api/check-save-text-quota", extractUser, requireUser, async (req, res
     const used = count || 0;
     if (used >= FREE_MAX_SAVED_TEXTS) {
       return res.status(429).json({
-        error: `You've saved ${FREE_MAX_SAVED_TEXTS} texts (free limit). Upgrade to Pro to save unlimited texts.`,
+        error: `Saving texts is a Pro feature.`,
         code: "SAVE_TEXT_QUOTA_EXCEEDED",
         used,
         limit: FREE_MAX_SAVED_TEXTS
@@ -1984,7 +2024,7 @@ app.post("/api/check-deck-quota", extractUser, requireUser, async (req, res) => 
 
     if (intent !== "add-card" && (deckCount || 0) >= FREE_MAX_DECKS) {
       return res.status(429).json({
-        error: `You have ${FREE_MAX_DECKS} decks (free limit). Upgrade to Pro for unlimited decks.`,
+        error: `Flashcard decks are a Pro feature.`,
         code: "DECK_QUOTA_EXCEEDED",
         used: deckCount || 0,
         limit: FREE_MAX_DECKS
@@ -2000,7 +2040,7 @@ app.post("/api/check-deck-quota", extractUser, requireUser, async (req, res) => 
 
       if ((cardCount || 0) >= FREE_MAX_CARDS) {
         return res.status(429).json({
-          error: `You've reached ${FREE_MAX_CARDS} cards (free limit). Upgrade to Pro for unlimited cards.`,
+          error: `Saving flashcards is a Pro feature.`,
           code: "CARD_QUOTA_EXCEEDED",
           used: cardCount || 0,
           limit: FREE_MAX_CARDS
@@ -2042,36 +2082,22 @@ app.post("/api/speech-token", extractUser, requireUser, async (req, res) => {
     const { effectivePlan } = await getUserPlan(userId);
     const isPro = effectivePlan === "pro";
 
-    // Quota: free users are capped per UTC day. Metered at token issuance.
+    // Speaking practice is Pro (FREE_DAILY_PRONUNCIATION_LIMIT is 0). Every
+    // issued token is counted for Pro and trial users — record-only.
     if (!isPro) {
-      const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-
-      const { data: usageRow, error: usageErr } = await supabaseAdmin
-        .from("pronunciation_usage")
-        .select("count")
-        .eq("user_id", userId)
-        .eq("day", day)
-        .maybeSingle();
-
-      if (usageErr) console.error("[Speech] usage lookup error:", usageErr.message);
-
-      const used = usageRow?.count || 0;
-      if (used >= FREE_DAILY_PRONUNCIATION_LIMIT) {
-        return res.status(429).json({
-          error: "You've used today's free pronunciation checks. Upgrade for unlimited.",
-          code: "QUOTA_EXCEEDED",
-          used,
-          limit: FREE_DAILY_PRONUNCIATION_LIMIT
-        });
-      }
-
-      // Atomic increment (Postgres function). Counts this check.
-      const { error: incErr } = await supabaseAdmin.rpc("increment_pronunciation_usage", {
-        p_user_id: userId,
-        p_day: day
+      return res.status(429).json({
+        error: "Speaking practice is a Pro feature.",
+        code: "QUOTA_EXCEEDED",
+        used: 0,
+        limit: FREE_DAILY_PRONUNCIATION_LIMIT
       });
-      if (incErr) console.error("[Speech] usage increment error:", incErr.message);
     }
+
+    const { error: incErr } = await supabaseAdmin.rpc("increment_pronunciation_usage", {
+      p_user_id: userId,
+      p_day: new Date().toISOString().slice(0, 10)
+    });
+    if (incErr) console.error("[Speech] usage increment error:", incErr.message);
 
     // Mint a short-lived (~10 min) Azure authorization token.
     const tokenResponse = await fetch(
@@ -2689,8 +2715,8 @@ app.post("/api/shared-decks/:token/import", extractUser, requireUser, deckImport
     if (!plan.allowed) {
       return res.status(429).json({
         error: plan.code === "DECK_QUOTA_EXCEEDED"
-          ? `You have ${FREE_MAX_DECKS} decks (free limit). Upgrade to Pro for unlimited decks.`
-          : `You've reached ${FREE_MAX_CARDS} cards (free limit). Upgrade to Pro for unlimited cards.`,
+          ? `Flashcard decks are a Pro feature.`
+          : `Saving flashcards is a Pro feature.`,
         code: plan.code
       });
     }
@@ -2721,8 +2747,11 @@ app.post("/api/shared-decks/:token/import", extractUser, requireUser, deckImport
   }
 });
 
-app.post("/api/export-flashcard-deck", extractUser, requireUser, (req, res) => {
+app.post("/api/export-flashcard-deck", extractUser, requireUser, async (req, res) => {
   try {
+    if ((await getUserPlan(req.user.id)).effectivePlan !== "pro") {
+      return res.status(403).json({ error: "Deck export is a Pro feature.", code: "PRO_FEATURE" });
+    }
     const { deckName, words } = req.body || {};
 
     if (!deckName || !Array.isArray(words)) {

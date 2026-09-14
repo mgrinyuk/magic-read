@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.6";
+import { UI_TEXT } from "./ui-text.js?v=20260913.7";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -833,7 +833,7 @@ let userPlan = {
   wordsPracticed: 0,
   currentStreak: 0,
   lastActiveDate: null,
-  limits: { textPerDay: 3, pronunciationPerDay: 20, savedTexts: 5, decks: 2, cards: 100, videosPerTrial: 3 }
+  limits: { textPerDay: 1, pronunciationPerDay: 0, savedTexts: 0, decks: 1, cards: 0, videosPerTrial: 3 }
 };
 
 const GUEST_PLAN = { ...userPlan };
@@ -852,8 +852,9 @@ async function fetchMyPlan() {
     const res = await fetchWithAuth(`${API_BASE}/api/my-plan`);
     if (!res.ok) return;
     const data = await res.json();
-    userPlan = { ...userPlan, ...data, limits: { ...userPlan.limits, ...(data.limits || {}) } };
+    userPlan = { ...userPlan, ...data, planLoaded: true, limits: { ...userPlan.limits, ...(data.limits || {}) } };
     renderPlanUI();
+    maybeShowFreePlanNotice();
   } catch {
     // Keep last-known plan on a network hiccup.
   }
@@ -1048,6 +1049,107 @@ function saveProgress(activity, itemId, position, title) {
   }, 1500);
 }
 
+/* -----------------------------
+   FREE PLAN (after the Pro trial)
+   One text a day with listening, translations and reading exercises.
+   Speaking practice, videos, flashcards and saved texts are Pro. The server
+   enforces every rule; these checks only show the upgrade screen before a
+   blocked action starts.
+----------------------------- */
+
+// False until /api/my-plan has answered, so a Pro user is never shown the
+// upgrade screen while their plan is still loading.
+function isOnFreePlan() {
+  return Boolean(userPlan.planLoaded) &&
+    document.body.classList.contains("is-logged-in") &&
+    userPlan.effectivePlan === "free";
+}
+
+// A short hash of the text, so reopening today's text doesn't use up another
+// free text. Not cryptographic — it only has to be stable across devices.
+function textKeyFor(text) {
+  const s = String(text).replace(/\s+/g, " ").trim();
+  const hash = seed => {
+    let h1 = 0xdeadbeef ^ seed;
+    let h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h2 >>> 0).toString(16).padStart(8, "0") + (h1 >>> 0).toString(16).padStart(8, "0");
+  };
+  return hash(1) + hash(2);
+}
+
+// Claims a text open with the server: free users get one text a day, Pro and
+// trial opens are just recorded. Shows the upgrade screen and returns false
+// when the day's free text is used up.
+async function claimTextOpen(text) {
+  if (!document.body.classList.contains("is-logged-in")) return true;
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/check-text-quota`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ textKey: textKeyFor(text) })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (typeof data.used === "number") {
+      userPlan.textUsedToday = data.used;
+      renderTextCounter();
+    }
+    if (!res.ok) {
+      if (data.code) showUpgradePrompt(data.code);
+      else showToast(data.error || "Could not start.", "error");
+      return false;
+    }
+    return true;
+  } catch {
+    return true; // Fail open on network error — don't block a legitimate user.
+  }
+}
+
+// One-time notice for accounts created before this free plan, shown the first
+// time they're on it. Remembered per device.
+function maybeShowFreePlanNotice() {
+  if (!isOnFreePlan() || isPaidProUser()) return;
+  const created = userPlan.accountCreatedAt ? new Date(userPlan.accountCreatedAt) : null;
+  if (!created || !(created < new Date("2026-09-15T00:00:00Z"))) return;
+  try {
+    if (localStorage.getItem("magicread_free_plan_v2_seen")) return;
+  } catch {
+    return;
+  }
+  if (document.querySelector(".modal-overlay")) return;
+  try { localStorage.setItem("magicread_free_plan_v2_seen", "1"); } catch {}
+
+  const t = getT();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay free-plan-notice";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="freePlanNoticeTitle">
+      <h3 id="freePlanNoticeTitle" class="report-title">${escapeHtml(t.planChangeTitle)}</h3>
+      <p class="report-sub">${escapeHtml(t.planChangeBody)}</p>
+      <ul class="plan-change-list">
+        <li><span class="plan-change-tag">${escapeHtml(t.freeLabel)}</span><span>${escapeHtml(t.planChangeFree.replace("{n}", userPlan.limits.textPerDay))}</span></li>
+        <li><span class="plan-change-tag is-pro">${escapeHtml(t.proLabel)}</span><span>${escapeHtml(t.planChangePro)}</span></li>
+      </ul>
+      <p class="report-note">${escapeHtml(t.planChangeKept)}</p>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(t.planChangeOk)}</button>
+        <button class="modal-confirm primary-btn" type="button">${escapeHtml(t.planChangeCta)}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector(".modal-cancel").addEventListener("click", () => overlay.remove());
+  overlay.querySelector(".modal-confirm").addEventListener("click", () => {
+    overlay.remove();
+    showUpgradePrompt("PRO_FEATURE");
+  });
+}
+
 function trialDaysLeft() {
   if (!userPlan.trialEndsAt) return 0;
   const ms = new Date(userPlan.trialEndsAt) - new Date();
@@ -1108,6 +1210,7 @@ function renderPlanUI() {
     }
   }
 
+  document.body.classList.toggle("plan-free", isOnFreePlan());
   renderWelcomeBanner();
   renderTextCounter();
   renderSpeakMeter();
@@ -1161,7 +1264,9 @@ function renderTextCounter() {
 
   const loggedIn = document.body.classList.contains("is-logged-in");
   if (loggedIn && userPlan.effectivePlan === "free") {
-    counter.textContent = `${userPlan.textUsedToday || 0} of ${userPlan.limits.textPerDay} texts used today`;
+    counter.textContent = getT().freeTextsToday
+      .replace("{used}", userPlan.textUsedToday || 0)
+      .replace("{limit}", userPlan.limits.textPerDay);
     counter.hidden = false;
   } else {
     counter.hidden = true;
@@ -1175,7 +1280,8 @@ function renderSpeakMeter() {
   const loggedIn = document.body.classList.contains("is-logged-in");
   const isFree = loggedIn && userPlan.effectivePlan === "free";
 
-  if (!isFree) {
+  // Speaking is Pro now (a limit of 0): there's no daily meter to show.
+  if (!isFree || !userPlan.limits.pronunciationPerDay) {
     meter.hidden = true;
     return;
   }
@@ -1208,13 +1314,13 @@ function getUpgradeMessage(code) {
   const msgs = {
     QUOTA_EXCEEDED: {
       title: t.quotaChecksTitle,
-      sub: fill(t.quotaChecksSub, lim.pronunciationPerDay),
-      reassurance: t.quotaResetTomorrow
+      sub: t.quotaChecksSub,
+      reassurance: null
     },
     TEXT_QUOTA_EXCEEDED: {
       title: t.quotaTextsTitle,
       sub: fill(t.quotaTextsSub, lim.textPerDay),
-      reassurance: null
+      reassurance: t.quotaTextTomorrow
     },
     SAVE_TEXT_QUOTA_EXCEEDED: {
       title: t.quotaTextsTitle,
@@ -1229,6 +1335,11 @@ function getUpgradeMessage(code) {
     CARD_QUOTA_EXCEEDED: {
       title: t.quotaLimitTitle,
       sub: fill(t.quotaCardSub, lim.cards),
+      reassurance: null
+    },
+    CARD_REVIEW_PRO: {
+      title: t.quotaLimitTitle,
+      sub: t.quotaReviewSub,
       reassurance: null
     },
     VIDEO_QUOTA_EXCEEDED: {
@@ -1265,11 +1376,12 @@ function showUpgradePrompt(code) {
       <p class="upgrade-modal-sub">${escapeHtml(msg.sub)}</p>
       <div class="upgrade-compare">
         <div class="uc-row uc-head"><span></span><span>${escapeHtml(t.freeLabel)}</span><span class="uc-pro">${escapeHtml(t.proLabel)}</span></div>
-        <div class="uc-row"><span>${escapeHtml(t.cmpTextsDay)}</span><span>3</span><span class="uc-pro">∞</span></div>
-        <div class="uc-row"><span>${escapeHtml(t.cmpChecksDay)}</span><span>20</span><span class="uc-pro">∞</span></div>
-        <div class="uc-row"><span>${escapeHtml(t.cmpSavedTexts)}</span><span>5</span><span class="uc-pro">∞</span></div>
-        <div class="uc-row"><span>${escapeHtml(t.cmpDecksCards)}</span><span>2 · 100</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpTextsDay)}</span><span>${userPlan.limits.textPerDay}</span><span class="uc-pro">∞</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpReadTools)}</span><span>✓</span><span class="uc-pro">✓</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpChecksDay)}</span><span>—</span><span class="uc-pro">✓</span></div>
         <div class="uc-row"><span>${escapeHtml(t.cmpVideos)}</span><span>—</span><span class="uc-pro">✓</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpDecksCards)}</span><span>—</span><span class="uc-pro">✓</span></div>
+        <div class="uc-row"><span>${escapeHtml(t.cmpSavedTexts)}</span><span>—</span><span class="uc-pro">✓</span></div>
       </div>
       <div class="upgrade-modal-plans">
         <button class="upgrade-plan-btn" data-price-type="annual" type="button">
@@ -2847,17 +2959,20 @@ document.getElementById("homeResume")?.addEventListener("click", async () => {
   showMagicLoadingOverlay();
   try {
     await activateReaderMode(activity === "reading" ? "reading" : "pronunciation");
+    // false = the free plan stopped it (upgrade screen already shown).
+    let opened;
     if (item_id.startsWith("lib_")) {
-      await loadLibraryText(item_id.slice(4));
+      opened = await loadLibraryText(item_id.slice(4));
     } else {
       const { data: saved } = await supabase.from("saved_texts").select("*").eq("id", item_id).single();
       if (saved) {
         if (saved.source_lang) sourceLangSelect.value = saved.source_lang;
         if (saved.target_lang) targetLangSelect.value = saved.target_lang;
         updateLanguageBasedUI();
-        await startReadingFromText(saved.text || "");
+        opened = await startReadingFromText(saved.text || "");
       }
     }
+    if (opened === false) return;
     const sentenceIdx = position?.sentence ?? 0;
     if (activity === "speaking") {
       // startReadingFromText already launched the spotlight — jump to the saved sentence.
@@ -3819,6 +3934,18 @@ async function startReadingFromText(text) {
   if (!cleanText) {
     showToast("Please paste a text first.", "error");
     return;
+  }
+
+  // Every way into the reader or speaking practice comes through here.
+  // Speaking is Pro: stop before the day's free text is used up on it.
+  if (appMode === "pronunciation" && isOnFreePlan()) {
+    hideMagicLoadingOverlay();
+    showUpgradePrompt("QUOTA_EXCEEDED");
+    return false;
+  }
+  if (!(await claimTextOpen(cleanText))) {
+    hideMagicLoadingOverlay();
+    return false;
   }
 
   showMagicLoadingOverlay();
@@ -4786,6 +4913,11 @@ function rdOfferSpeaking() {
 
 function rdStartSpeaking() {
   if (!R.sentences.length) return;
+  if (isOnFreePlan()) {
+    rdCloseSheet();
+    showUpgradePrompt("QUOTA_EXCEEDED");
+    return;
+  }
   rdStopPlay();
   rdCloseSheet();
   appMode = "pronunciation";
@@ -5768,31 +5900,7 @@ async function spSetupStart() {
 spSetupInit();
 
 createBtn?.addEventListener("click", async () => {
-  // Gate text processing for signed-in users (guests are unlimited). Free users
-  // get FREE_DAILY_TEXT_LIMIT/day; this call also meters the count.
-  const { data: sess } = await supabase.auth.getSession();
-  if (sess.session) {
-    try {
-      const res = await fetchWithAuth(`${API_BASE}/api/check-text-quota`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (typeof data.used === "number") userPlan.textUsedToday = data.used;
-        renderTextCounter();
-        if (data.code) showUpgradePrompt(data.code, createBtn);
-        else showToast(data.error || "Could not start.", "error");
-        return;
-      }
-      if (typeof data.used === "number") {
-        userPlan.textUsedToday = data.used;
-        renderTextCounter();
-      }
-    } catch {
-      // Fail open on network error — don't block a legitimate user.
-    }
-  }
+  // The day's free text is claimed inside startReadingFromText.
   currentTextId    = null;
   currentTextTitle = "";
   await startReadingFromText(inputText.value);
@@ -5927,7 +6035,7 @@ async function loadLibraryText(id) {
 
     currentTextId    = `lib_${id}`;
     currentTextTitle = data.title || "Library text";
-    await startReadingFromText(fullText);
+    return await startReadingFromText(fullText);
   } catch (err) {
     console.error("Text load error:", err);
     showToast("Could not open this text.", "error");
@@ -8348,6 +8456,7 @@ function limitMeanings(text, max = 3) {
 }
 
 async function importWords() {
+  if (isOnFreePlan()) { showUpgradePrompt("CARD_QUOTA_EXCEEDED"); return; }
   const deck = getCurrentDeck();
   if (!deck) {
     showToast("Please select or create a deck first.", "error");
@@ -8481,6 +8590,7 @@ async function importWords() {
 }
 
 async function exportCurrentDeck() {
+  if (isOnFreePlan()) { showUpgradePrompt("PRO_FEATURE"); return; }
   const deck = getCurrentDeck();
 
   if (!deck) {
@@ -8841,6 +8951,7 @@ document.getElementById("flashcardDeckSelect")?.addEventListener("change", (e) =
 });
 
 document.getElementById("flashcardSpeakEasyBtn")?.addEventListener("click", () => {
+  if (isOnFreePlan()) { showUpgradePrompt("QUOTA_EXCEEDED"); return; }
   if (!getCurrentCards().length) { showToast(getT().noCardsInDeck, "error"); return; }
   fcMode = "browse";
   flashcardSpeakingMode = "easy";
@@ -8852,6 +8963,7 @@ document.getElementById("flashcardSpeakEasyBtn")?.addEventListener("click", () =
 });
 
 document.getElementById("flashcardSpeakHardBtn")?.addEventListener("click", () => {
+  if (isOnFreePlan()) { showUpgradePrompt("QUOTA_EXCEEDED"); return; }
   if (!getCurrentCards().length) { showToast(getT().noCardsInDeck, "error"); return; }
   fcMode = "browse";
   flashcardSpeakingMode = "hard";
@@ -8923,6 +9035,11 @@ function setFcMode(mode) {
 document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("click", () => {
   const mode = btn.dataset.fcMode;
   if (mode === fcMode) return;
+  // Free plan: cards can be browsed; Learn and Check review are Pro.
+  if ((mode === "learn" || mode === "check") && isOnFreePlan()) {
+    showUpgradePrompt("CARD_REVIEW_PRO");
+    return;
+  }
   if (mode === "learn" && (getCurrentDeck()?.cards.length || 0) < FC_LEARN_MIN_CARDS) {
     showToast(getT().learnLocked, "info");
     return;
@@ -9122,6 +9239,7 @@ function renderFcCheck() {
 createWritingSheetBtn?.addEventListener("click", async (event) => {
   event.preventDefault();
   event.stopPropagation();
+  if (isOnFreePlan()) { showUpgradePrompt("PRO_FEATURE"); return; }
 
   showScreen(screenWriting);
 

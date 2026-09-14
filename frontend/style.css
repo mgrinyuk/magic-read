@@ -7245,3 +7245,59 @@ body {
     margin-right: 0;
   }
 }
+
+/* -----------------------------
+   Free plan: PRO tags on the tabs whose features need Pro, and the one-time
+   "free plan has changed" notice.
+----------------------------- */
+body.plan-free .sonic-tab[data-tab="speak"],
+body.plan-free .sonic-tab[data-tab="video"] {
+  position: relative;
+}
+body.plan-free .sonic-tab[data-tab="speak"]::after,
+body.plan-free .sonic-tab[data-tab="video"]::after {
+  content: "PRO";
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.plan-change-list {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.plan-change-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.plan-change-tag {
+  flex: none;
+  min-width: 44px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+.plan-change-tag.is-pro {
+  border-color: transparent;
+  background: linear-gradient(95deg, var(--primary), var(--primary-soft));
+  color: #fff;
+}
