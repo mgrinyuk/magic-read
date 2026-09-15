@@ -5,6 +5,7 @@
       "namespace": "android_app",
       "package_name": "com.magicread.app",
       "sha256_cert_fingerprints": [
+        "45:6C:24:8A:27:92:9A:45:88:49:B4:9F:4D:2D:FF:02:F0:CA:93:BE:92:61:B6:17:DC:3B:81:9B:4F:D6:FD:2C",
         "2E:6B:5D:37:B0:6C:98:8A:9E:92:30:6B:02:48:E7:99:7D:14:99:82:EE:AF:A7:6C:D1:6C:2C:AF:FB:D8:1E:72",
         "21:E4:FF:02:55:2E:6D:E7:5F:A5:CA:F3:40:F2:FF:C3:7D:39:3B:10:53:69:52:54:10:1A:2F:B3:1A:86:94:53"
       ]
