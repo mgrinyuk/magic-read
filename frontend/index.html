@@ -955,7 +955,10 @@
             <div id="fcBrowsePanel">
             <div class="flashcard-meta">
               <span id="flashcardCounter">Card 1 of 1</span>
-              <button id="flashcardDeleteBtn" class="flashcard-delete-btn" type="button" data-i18n="deleteCard">Delete card</button>
+              <div class="flashcard-meta-actions">
+                <button id="flashcardPictureBtn" class="flashcard-picture-btn" type="button" data-i18n="addPicture">Add picture</button>
+                <button id="flashcardDeleteBtn" class="flashcard-delete-btn" type="button" data-i18n="deleteCard">Delete card</button>
+              </div>
             </div>
 
             <div class="flashcard-area">
@@ -972,6 +975,10 @@
                   </div>
 
                   <div class="flashcard-face flashcard-back">
+                    <figure id="flashcardImageWrap" class="flashcard-image-wrap" hidden>
+                      <img id="flashcardImage" class="flashcard-image" alt="" />
+                      <figcaption id="flashcardImageCredit" class="flashcard-image-credit"></figcaption>
+                    </figure>
                     <p id="flashcardWordBack" class="flashcard-word-back"></p>
                     <p id="flashcardTranslation" class="flashcard-translation"></p>
                   </div>
@@ -1002,6 +1009,22 @@
 
             <div id="flashcardSpeakingResult" class="flashcard-speaking-result" hidden></div>
             </div><!-- /#fcBrowsePanel -->
+          </div>
+
+          <!-- Picture picker. Photos come from Pexels and are referenced by URL,
+               so nothing is uploaded and there is no user imagery to moderate. -->
+          <div class="rd-scrim" id="fcPicScrim"></div>
+          <div class="rd-sheet" id="fcPicSheet">
+            <div class="rd-grab"></div>
+            <div class="rd-sheet-title" data-i18n="addPicture">Add picture</div>
+            <div class="rd-sheet-sub" data-i18n="addPictureHint">Pick a photo to help you remember this word.</div>
+            <form id="fcPicForm" class="fc-pic-form">
+              <input id="fcPicQuery" class="fc-pic-input" type="search" autocomplete="off" />
+              <button class="primary-btn fc-pic-search-btn" type="submit" data-i18n="search">Search</button>
+            </form>
+            <div id="fcPicStatus" class="fc-pic-status" hidden></div>
+            <div id="fcPicResults" class="fc-pic-results"></div>
+            <button id="fcPicRemoveBtn" class="flashcard-delete-btn fc-pic-remove" type="button" hidden data-i18n="removePicture">Remove picture</button>
           </div>
         </section>
       </section>

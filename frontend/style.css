@@ -7585,3 +7585,120 @@ body.plan-free .sonic-tab[data-tab="video"]::after {
   min-width: 44px;
   font-size: 13.5px;
 }
+
+/* ================================================================
+   CARD PICTURES
+   Appended at the end on purpose: base rules that land after a media
+   query win at equal specificity, so anything placed earlier in this
+   file would be silently overridden by the mobile blocks above.
+   ================================================================ */
+.flashcard-meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.flashcard-picture-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.flashcard-image-wrap {
+  margin: 0 0 12px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flashcard-image {
+  width: 100%;
+  max-width: 220px;
+  /* A fixed box keeps every card the same height whether or not it has a
+     picture, so flipping through a deck doesn't make the layout jump. */
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.flashcard-image-credit {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.fc-pic-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.fc-pic-input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 15px;
+}
+
+.fc-pic-search-btn {
+  flex: none;
+  padding: 11px 18px;
+}
+
+.fc-pic-status {
+  font-size: 13.5px;
+  color: var(--text-soft);
+  padding: 6px 0 10px;
+}
+
+.fc-pic-results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.fc-pic-choice {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--surface-2);
+  cursor: pointer;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+}
+
+.fc-pic-choice:hover,
+.fc-pic-choice:focus-visible {
+  border-color: var(--primary);
+}
+
+.fc-pic-choice img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fc-pic-remove {
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .flashcard-image {
+    max-width: 150px;
+  }
+  .fc-pic-results {
+    max-height: 38vh;
+  }
+}

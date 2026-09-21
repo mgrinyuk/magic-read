@@ -8668,7 +8668,10 @@ async function loadFlashcardsFromStorage() {
         sentence,
         sentence_pinyin,
         translation,
-        lang
+        lang,
+        image_url,
+        image_alt,
+        image_credit
       )
     `)
     .eq("user_id", user.id)
@@ -8691,7 +8694,10 @@ async function loadFlashcardsFromStorage() {
       sentence: card.sentence,
       sentencePinyin: card.sentence_pinyin,
       translation: card.translation,
-      lang: card.lang
+      lang: card.lang,
+      imageUrl: card.image_url || "",
+      imageAlt: card.image_alt || "",
+      imageCredit: card.image_credit || ""
     }))
   }));
 
@@ -8822,6 +8828,145 @@ function cleanTranslation(str = "") {
     .trim();
 }
 
+/* -----------------------------
+   CARD PICTURES
+   Photos are searched on Pexels through our backend (which holds the key) and
+   stored on the card as a URL. Nothing is uploaded, so there is no bucket to
+   manage and no user-supplied imagery travelling into shared decks.
+   ----------------------------- */
+
+function renderCardPicture(card) {
+  const wrap = document.getElementById("flashcardImageWrap");
+  const img = document.getElementById("flashcardImage");
+  const credit = document.getElementById("flashcardImageCredit");
+  const removeBtn = document.getElementById("fcPicRemoveBtn");
+  if (!wrap || !img) return;
+
+  const url = card?.imageUrl || "";
+  wrap.hidden = !url;
+  if (removeBtn) removeBtn.hidden = !url;
+  if (!url) {
+    img.removeAttribute("src");
+    return;
+  }
+  img.src = url;
+  img.alt = card.imageAlt || card.translation || "";
+  if (credit) {
+    credit.textContent = card.imageCredit ? `Photo: ${card.imageCredit} / Pexels` : "";
+  }
+}
+
+function setPicStatus(message) {
+  const el = document.getElementById("fcPicStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.hidden = !message;
+}
+
+function openPicturePicker() {
+  const card = getCurrentCards()[currentFlashcardIndex];
+  if (!card) return;
+
+  const scrim = document.getElementById("fcPicScrim");
+  const sheet = document.getElementById("fcPicSheet");
+  const query = document.getElementById("fcPicQuery");
+  if (!sheet) return;
+
+  // The card's own word is usually not searchable as a photo — "图书馆" finds
+  // nothing useful — so seed the box with the translation instead.
+  if (query) query.value = cleanTranslation(card.translation) || card.word || "";
+  document.getElementById("fcPicResults").innerHTML = "";
+  setPicStatus("");
+  renderCardPicture(card);
+
+  scrim?.classList.add("open");
+  sheet.classList.add("open");
+  query?.focus();
+}
+
+function closePicturePicker() {
+  document.getElementById("fcPicScrim")?.classList.remove("open");
+  document.getElementById("fcPicSheet")?.classList.remove("open");
+}
+
+async function searchCardPictures(term) {
+  const results = document.getElementById("fcPicResults");
+  if (!results) return;
+  const query = String(term || "").trim();
+  if (!query) return;
+
+  results.innerHTML = "";
+  setPicStatus(getT().searching || "Searching…");
+
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/api/image-search?q=${encodeURIComponent(query)}`);
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 403) {
+      setPicStatus(data.error || "Card pictures are a Pro feature.");
+      return;
+    }
+    if (!res.ok) {
+      setPicStatus(data.error || "Picture search failed.");
+      return;
+    }
+    if (!data.photos?.length) {
+      setPicStatus(getT().noPictures || "No pictures found. Try another word.");
+      return;
+    }
+
+    setPicStatus("");
+    data.photos.forEach((photo) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "fc-pic-choice";
+      btn.title = photo.credit ? `Photo: ${photo.credit} / Pexels` : "Pexels";
+      const img = document.createElement("img");
+      img.src = photo.thumb;
+      img.alt = photo.alt || query;
+      img.loading = "lazy";
+      btn.appendChild(img);
+      btn.addEventListener("click", () => attachCardPicture(photo));
+      results.appendChild(btn);
+    });
+  } catch (e) {
+    console.error("Picture search error:", e);
+    setPicStatus("Picture search failed.");
+  }
+}
+
+async function saveCardPicture(card, fields) {
+  const { error } = await supabase.from("flashcards").update(fields).eq("id", card.id);
+  if (error) {
+    console.error("Save card picture error:", error);
+    showToast("Couldn't save the picture.", "error");
+    return false;
+  }
+  card.imageUrl = fields.image_url || "";
+  card.imageAlt = fields.image_alt || "";
+  card.imageCredit = fields.image_credit || "";
+  renderCardPicture(card);
+  return true;
+}
+
+async function attachCardPicture(photo) {
+  const card = getCurrentCards()[currentFlashcardIndex];
+  if (!card) return;
+  const ok = await saveCardPicture(card, {
+    image_url: photo.full || photo.thumb,
+    image_alt: photo.alt || "",
+    image_credit: photo.credit || ""
+  });
+  if (ok) closePicturePicker();
+}
+
+async function removeCardPicture() {
+  const card = getCurrentCards()[currentFlashcardIndex];
+  if (!card) return;
+  await saveCardPicture(card, { image_url: null, image_alt: null, image_credit: null });
+  closePicturePicker();
+}
+
 async function renderFlashcards() {
   const cards = getCurrentCards();
   const deck = getCurrentDeck();
@@ -8883,6 +9028,7 @@ async function renderFlashcards() {
   wordPinyinEl.textContent = card.pinyin || "";
   if (wordBackEl) wordBackEl.textContent = card.word || "";
   if (translationEl) translationEl.textContent = cleanTranslation(card.translation);
+  renderCardPicture(card);
 
   flashcardFlipped = false;
   cardEl.classList.remove("is-flipped");
@@ -9323,6 +9469,14 @@ document.getElementById("flashcardCard")?.addEventListener("click", flipFlashcar
 document.getElementById("flashcardNextBtn")?.addEventListener("click", goToNextFlashcard);
 document.getElementById("flashcardPrevBtn")?.addEventListener("click", goToPrevFlashcard);
 document.getElementById("flashcardDeleteBtn")?.addEventListener("click", deleteCurrentFlashcard);
+
+document.getElementById("flashcardPictureBtn")?.addEventListener("click", openPicturePicker);
+document.getElementById("fcPicScrim")?.addEventListener("click", closePicturePicker);
+document.getElementById("fcPicRemoveBtn")?.addEventListener("click", removeCardPicture);
+document.getElementById("fcPicForm")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  searchCardPictures(document.getElementById("fcPicQuery")?.value);
+});
 
 document.addEventListener("keydown", (e) => {
   if (!screenFlashcards?.classList.contains("active")) return;

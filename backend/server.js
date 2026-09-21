@@ -620,6 +620,58 @@ function drawCharacterGrid(doc, items, fontPath, titleText) {
   }
 }
 
+// Picture search for flashcards. Cards store the photo's URL rather than a copy,
+// so there is no upload, no bucket and no user-supplied imagery to moderate —
+// which matters because decks get shared and assigned to classes.
+const PEXELS_API_KEY = process.env.PEXELS_API_KEY || "";
+const imageSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many searches, please slow down." }
+});
+
+app.get("/api/image-search", imageSearchLimiter, extractUser, requireUser, async (req, res) => {
+  try {
+    if (!PEXELS_API_KEY) {
+      return res.status(503).json({ error: "Picture search isn't configured.", code: "NOT_CONFIGURED" });
+    }
+    if ((await getUserPlan(req.user.id)).effectivePlan !== "pro") {
+      return res.status(403).json({ error: "Card pictures are a Pro feature.", code: "PRO_FEATURE" });
+    }
+
+    const query = String(req.query.q || "").trim().slice(0, 100);
+    if (!query) return res.status(400).json({ error: "Search term is required" });
+
+    const url = "https://api.pexels.com/v1/search?per_page=12&orientation=square&query=" +
+      encodeURIComponent(query);
+    const response = await fetch(url, { headers: { Authorization: PEXELS_API_KEY } });
+
+    if (!response.ok) {
+      console.error("[ImageSearch] Pexels responded", response.status);
+      return res.status(502).json({ error: "Picture search is unavailable right now." });
+    }
+
+    const data = await response.json();
+    // Hand back only what the card needs, so a change in their payload can't
+    // reach the client and the attribution always travels with the picture.
+    res.json({
+      photos: (data.photos || []).map((p) => ({
+        id: p.id,
+        thumb: p.src?.medium || p.src?.small || "",
+        full: p.src?.large || p.src?.medium || "",
+        alt: p.alt || query,
+        credit: p.photographer || "",
+        creditUrl: p.photographer_url || ""
+      }))
+    });
+  } catch (e) {
+    console.error("[ImageSearch] error:", e.message);
+    res.status(500).json({ error: "Picture search failed." });
+  }
+});
+
 app.post("/api/create-writing-sheet", extractUser, requireUser, async (req, res) => {
   try {
     if ((await getUserPlan(req.user.id)).effectivePlan !== "pro") {
