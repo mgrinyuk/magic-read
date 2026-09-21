@@ -8660,26 +8660,24 @@ async function loadFlashcardsFromStorage() {
   if (flashcardsLoadedForUserId === user.id) return;
   flashcardsLoadedForUserId = user.id;
 
-  const { data: decks, error: deckError } = await supabase
+  // Picture columns arrived after the code that reads them, and asking for a
+  // column that doesn't exist fails the whole query — which would empty every
+  // deck on screen, not just drop the pictures. So fall back to the columns that
+  // have always been there rather than leaving people without their cards.
+  const CARD_FIELDS = "id, word, pinyin, sentence, sentence_pinyin, translation, lang";
+  const loadDecks = (cardFields) => supabase
     .from("flashcard_decks")
-    .select(`
-      id,
-      name,
-      flashcards (
-        id,
-        word,
-        pinyin,
-        sentence,
-        sentence_pinyin,
-        translation,
-        lang,
-        image_url,
-        image_alt,
-        image_credit
-      )
-    `)
+    .select(`id, name, flashcards ( ${cardFields} )`)
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
+
+  let { data: decks, error: deckError } =
+    await loadDecks(`${CARD_FIELDS}, image_url, image_alt, image_credit`);
+
+  if (deckError) {
+    console.warn("Load decks with pictures failed, retrying without:", deckError.message);
+    ({ data: decks, error: deckError } = await loadDecks(CARD_FIELDS));
+  }
 
   if (deckError) {
     console.error("Load decks error:", deckError);
