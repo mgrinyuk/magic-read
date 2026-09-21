@@ -943,11 +943,22 @@
           </div>
 
           <div id="flashcardDeck" class="flashcard-deck" hidden>
+            <!-- Shown only in focus mode, where the app header and tab bar are
+                 hidden: this is the one way back out to the mode chooser. -->
+            <div class="fc-focus-bar" id="fcFocusBar" hidden>
+              <button id="fcCollapseBtn" class="fc-collapse-btn" type="button" aria-label="Back to modes">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+              </button>
+              <span class="fc-focus-title" id="fcFocusTitle"></span>
+            </div>
+
             <div class="fc-mode-tabs" id="fcModeTabs">
               <button class="fc-mode-tab on" data-fc-mode="browse" type="button" data-i18n="fcBrowse">Browse</button>
               <button class="fc-mode-tab" data-fc-mode="learn" type="button" data-i18n="fcLearnTab">Learn</button>
               <button class="fc-mode-tab" data-fc-mode="check" type="button" data-i18n="fcCheckTab">Check</button>
             </div>
+
+            <p class="fc-chooser-hint" id="fcChooserHint" hidden></p>
 
             <div id="fcLearnPanel" class="fc-quiz" hidden></div>
             <div id="fcCheckPanel" class="fc-quiz" hidden></div>

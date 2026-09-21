@@ -2313,6 +2313,10 @@ function openVideoSurface(videoId = "") {
 function showScreen(screen) {
   if (!screen) return;
 
+  // Focus mode hides the tab bar, so it must never outlive the cards screen —
+  // otherwise the chrome stays hidden on whatever screen comes next.
+  if (screen !== screenFlashcards && typeof exitFcFocus === "function") exitFcFocus();
+
   document.querySelectorAll(".app-screen").forEach(s => {
     s.classList.remove("active");
   });
@@ -9007,12 +9011,30 @@ async function renderFlashcards() {
     }
   });
 
+  // Collapsed, the screen is a chooser: deck picker plus the three modes, and no
+  // cards. Focus mode shows exactly one panel and the way back out.
+  const focusBar = document.getElementById("fcFocusBar");
+  const focusTitle = document.getElementById("fcFocusTitle");
+  const chooserHint = document.getElementById("fcChooserHint");
+  if (focusBar) focusBar.hidden = !fcFocus;
+  if (chooserHint) {
+    chooserHint.hidden = fcFocus;
+    chooserHint.textContent = `${cards.length} ${cards.length === 1 ? t.card : (t.cards || "cards")}`;
+  }
+  if (focusTitle) {
+    const modeLabel = fcMode === "learn" ? (t.fcLearnTab || "Learn")
+      : fcMode === "check" ? (t.fcCheckTab || "Check")
+      : (t.fcBrowse || "Browse");
+    focusTitle.textContent = `${deck?.name || t.deck} · ${modeLabel}`;
+  }
+
   const browsePanel = document.getElementById("fcBrowsePanel");
   const learnPanel = document.getElementById("fcLearnPanel");
   const checkPanel = document.getElementById("fcCheckPanel");
-  if (browsePanel) browsePanel.hidden = fcMode !== "browse";
-  if (learnPanel) learnPanel.hidden = fcMode !== "learn";
-  if (checkPanel) checkPanel.hidden = fcMode !== "check";
+  if (browsePanel) browsePanel.hidden = !fcFocus || fcMode !== "browse";
+  if (learnPanel) learnPanel.hidden = !fcFocus || fcMode !== "learn";
+  if (checkPanel) checkPanel.hidden = !fcFocus || fcMode !== "check";
+  if (!fcFocus) return;
   if (fcMode === "learn") { renderFcLearn(); return; }
   if (fcMode === "check") { renderFcCheck(); return; }
 
@@ -9470,6 +9492,18 @@ document.getElementById("flashcardNextBtn")?.addEventListener("click", goToNextF
 document.getElementById("flashcardPrevBtn")?.addEventListener("click", goToPrevFlashcard);
 document.getElementById("flashcardDeleteBtn")?.addEventListener("click", deleteCurrentFlashcard);
 
+document.getElementById("fcCollapseBtn")?.addEventListener("click", exitFcFocus);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !fcFocus) return;
+  // The picker sits on top of focus mode, so Escape closes that first.
+  if (document.getElementById("fcPicSheet")?.classList.contains("open")) {
+    closePicturePicker();
+    return;
+  }
+  exitFcFocus();
+});
+
 document.getElementById("flashcardPictureBtn")?.addEventListener("click", openPicturePicker);
 document.getElementById("fcPicScrim")?.addEventListener("click", closePicturePicker);
 document.getElementById("fcPicRemoveBtn")?.addEventListener("click", removeCardPicture);
@@ -9820,6 +9854,32 @@ function fcShuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
+/* -----------------------------
+   FOCUS MODE
+   A study session takes over the screen: the deck picker, the mode tabs, the app
+   header and the bottom tab bar all go away, leaving the cards. Collapsing comes
+   back to the chooser. Because the header is what normally holds content clear
+   of the status bar, focus mode carries its own safe-area padding.
+   ----------------------------- */
+
+let fcFocus = false;
+
+function enterFcFocus() {
+  fcFocus = true;
+  document.body.classList.add("fc-focus");
+  renderFlashcards();
+}
+
+function exitFcFocus() {
+  if (!fcFocus) return;
+  fcFocus = false;
+  document.body.classList.remove("fc-focus");
+  // Leaving a session mid-way shouldn't leave speech recognition running.
+  flashcardSpeakingMode = null;
+  stopFlashcardRecognition();
+  renderFlashcards();
+}
+
 function setFcMode(mode) {
   fcMode = mode;
   // Any mode switch leaves speaking practice.
@@ -9830,12 +9890,15 @@ function setFcMode(mode) {
   if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
   if (mode === "learn") fcStartLearn();
   if (mode === "check") fcStartCheck();
-  renderFlashcards();
+  // Picking a mode is the gesture that starts it, so go straight to fullscreen.
+  enterFcFocus();
 }
 
 document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("click", () => {
   const mode = btn.dataset.fcMode;
-  if (mode === fcMode) return;
+  // Re-picking the mode you were last in still has to open it, since collapsing
+  // leaves fcMode untouched.
+  if (mode === fcMode && fcFocus) return;
   // Free plan: cards can be browsed; Learn and Check review are Pro.
   if ((mode === "learn" || mode === "check") && isOnFreePlan()) {
     showUpgradePrompt("CARD_REVIEW_PRO");

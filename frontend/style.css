@@ -7702,3 +7702,146 @@ body.plan-free .sonic-tab[data-tab="video"]::after {
     max-height: 38vh;
   }
 }
+
+/* ================================================================
+   FLASHCARD FOCUS MODE
+   Appended last so these win over the mobile blocks earlier in the
+   file at equal specificity.
+   ================================================================ */
+.fc-chooser-hint {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--text-soft);
+}
+
+.fc-focus-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* The app header is hidden in focus mode, so this bar is what keeps content
+     clear of the status bar and Dynamic Island. */
+  padding: calc(env(safe-area-inset-top) + 6px) 4px 10px;
+}
+
+.fc-collapse-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.fc-focus-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.fc-focus .app-header,
+body.fc-focus .sonic-tabbar,
+body.fc-focus .flashcard-top-actions,
+body.fc-focus .fc-mode-tabs,
+body.fc-focus .fc-screen > .workspace-head {
+  display: none !important;
+}
+
+/* With the tab bar gone, the space it reserved is dead weight. */
+body.fc-focus .app-shell .main {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+body.fc-focus .fc-screen {
+  padding: 0 16px calc(env(safe-area-inset-bottom) + 12px);
+  border-radius: 0;
+}
+
+/* Centre the card in the space the hidden chrome freed up. Done by making the
+   chain from the shell down a flex column rather than by picking a height, so
+   nothing has to be re-tuned when the focus bar or the insets change. */
+body.fc-focus .app-shell .main,
+body.fc-focus .app-shell .site-container,
+body.fc-focus #screen-flashcards.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+body.fc-focus .fc-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+body.fc-focus #flashcardDeck {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+body.fc-focus #fcBrowsePanel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The mode tabs are now the collapsed screen's only real content — they open a
+   fullscreen session rather than switching a panel in place — so they read as a
+   list of choices instead of thin pills floating above an empty screen. The
+   chevron is a pseudo-element because applyTranslations() sets textContent on
+   these buttons and would wipe any child markup. */
+.fc-mode-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+  background: none;
+  padding: 0;
+}
+
+.fc-mode-tab {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 17px 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.fc-mode-tab::after {
+  content: "›";
+  margin-left: auto;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.fc-mode-tab.on {
+  border-color: var(--primary);
+}
+
+.fc-mode-tab.locked {
+  opacity: .55;
+}
+
+.fc-chooser-hint {
+  margin: 16px 0 0;
+}
