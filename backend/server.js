@@ -258,6 +258,40 @@ async function enforceFreeApiCap(req, res, kind, limit) {
   }
 }
 
+// Remember which shell a user last opened the app in. The store consoles each
+// only see their own platform and the website's analytics skips the native
+// shells, so without this there is no single view of who is on iOS, Android or
+// the web. One write per user per hour is plenty for that question.
+const PLATFORM_WRITE_INTERVAL_MS = 60 * 60 * 1000;
+const PLATFORMS = new Set(["ios", "android", "web"]);
+const lastPlatformWrite = new Map();
+
+function recordPlatform(userId, header) {
+  const platform = String(header || "").toLowerCase();
+  if (!userId || !PLATFORMS.has(platform)) return;
+
+  const now = Date.now();
+  const written = lastPlatformWrite.get(userId);
+  if (written && now - written < PLATFORM_WRITE_INTERVAL_MS) return;
+
+  if (lastPlatformWrite.size > 5000) {
+    for (const [id, at] of lastPlatformWrite) {
+      if (now - at >= PLATFORM_WRITE_INTERVAL_MS) lastPlatformWrite.delete(id);
+    }
+  }
+  lastPlatformWrite.set(userId, now);
+
+  // Deliberately not awaited: knowing the platform is never worth slowing down
+  // or failing the request the user actually made.
+  supabaseAdmin
+    .from("profiles")
+    .update({ last_platform: platform, last_seen_at: new Date().toISOString() })
+    .eq("id", userId)
+    .then(({ error }) => {
+      if (error) console.error("[Platform] update failed:", error.message);
+    });
+}
+
 // Attaches req.user from a Bearer JWT; silently treats invalid tokens as guests.
 async function extractUser(req, _res, next) {
   req.user = null;
@@ -270,6 +304,7 @@ async function extractUser(req, _res, next) {
       // network hiccup — treat as guest
     }
   }
+  recordPlatform(req.user?.id, req.headers["x-client"]);
   next();
 }
 

@@ -425,13 +425,27 @@ const supabase = createClient(
     : undefined
 );
 
+// Which shell this copy of the app is running in. Sent with every signed-in
+// request so the split between the iOS app, the Android app and the website is
+// visible in one place — the store consoles only see their own platform, and
+// analytics on the site deliberately skips the native shells.
+function clientPlatform() {
+  if (isIOSCapacitorShell()) return "ios";
+  if (isNativeCapacitorShell()) return "android";
+  return "web";
+}
+
 async function fetchWithAuth(url, options = {}) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) return fetch(url, options);
   return fetch(url, {
     ...options,
-    headers: { ...options.headers, Authorization: `Bearer ${token}` }
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+      "X-Client": clientPlatform()
+    }
   });
 }
 
