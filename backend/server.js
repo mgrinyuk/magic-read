@@ -3183,6 +3183,41 @@ app.get("/api/shared-decks/:token", extractUser, async (req, res) => {
   }
 });
 
+// Every account starts with a deck called "My first deck", so sharing a default
+// deck handed the recipient a second deck with the same name — indistinguishable
+// in the dropdown, and easy to mistake for the words having gone missing.
+async function uniqueDeckName(userId, wanted) {
+  // Trim before falling back: a name of only spaces is truthy but useless.
+  const desired = (wanted || "").trim() || "Shared deck";
+  const { data, error } = await supabaseAdmin
+    .from("flashcard_decks")
+    .select("name")
+    .eq("user_id", userId);
+  if (error) return desired;
+
+  const taken = new Set((data || []).map((d) => d.name));
+  if (!taken.has(desired)) return desired;
+  if (!taken.has(`${desired} (shared)`)) return `${desired} (shared)`;
+  for (let n = 2; n < 50; n++) {
+    const candidate = `${desired} (shared ${n})`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${desired} (shared ${Date.now()})`;
+}
+
+// Returns the deck this user already made from this link, if any. A missing
+// column just means nothing has been recorded yet.
+async function findImportedDeck(userId, token) {
+  const { data, error } = await supabaseAdmin
+    .from("flashcard_decks")
+    .select("id, name")
+    .eq("user_id", userId)
+    .eq("imported_from_token", token)
+    .maybeSingle();
+  if (error) return null;
+  return data || null;
+}
+
 app.post("/api/shared-decks/:token/import", extractUser, requireUser, deckImportLimiter, async (req, res) => {
   if (!requireDeckSharing(res)) return;
   const { token } = req.params;
@@ -3230,11 +3265,38 @@ app.post("/api/shared-decks/:token/import", extractUser, requireUser, deckImport
       });
     }
 
-    const { data: newDeck, error: newDeckError } = await supabaseAdmin
+    // Opening the link again used to make another copy, so a deck could be
+    // imported three times over without a word of warning.
+    const existing = await findImportedDeck(userId, token);
+    if (existing) {
+      return res.json({
+        deckId: existing.id,
+        name: existing.name,
+        added: 0,
+        total: cards.length,
+        alreadyImported: true
+      });
+    }
+
+    const deckRow = {
+      user_id: userId,
+      name: await uniqueDeckName(userId, deck.name),
+      lang: deck.lang
+    };
+    const createDeck = (row) => supabaseAdmin
       .from("flashcard_decks")
-      .insert({ user_id: userId, name: deck.name, lang: deck.lang })
+      .insert(row)
       .select("id, name")
       .single();
+
+    // Remembering the token is worth having but not worth failing an import
+    // over, so fall back to a plain deck if the column isn't there yet.
+    let { data: newDeck, error: newDeckError } =
+      await createDeck({ ...deckRow, imported_from_token: token });
+    if (newDeckError) {
+      console.warn("[DeckShare] import without token column:", newDeckError.message);
+      ({ data: newDeck, error: newDeckError } = await createDeck(deckRow));
+    }
     if (newDeckError) throw newDeckError;
 
     const rows = cards

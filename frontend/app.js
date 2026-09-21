@@ -9753,9 +9753,11 @@ async function showSharedDeckPreview(token) {
       currentFlashcardIndex = 0;
       showScreen(screenFlashcards);
       showToast(
-        data.added < data.total
-          ? t.sharedDeckAddedPartial.replace("{n}", data.added).replace("{total}", data.total)
-          : t.sharedDeckAdded,
+        data.alreadyImported
+          ? (t.sharedDeckAlready || "You already have this deck — opening it.")
+          : data.added < data.total
+            ? t.sharedDeckAddedPartial.replace("{n}", data.added).replace("{total}", data.total)
+            : t.sharedDeckAdded,
         "info"
       );
     } catch (err) {
