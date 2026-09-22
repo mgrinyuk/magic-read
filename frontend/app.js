@@ -8972,6 +8972,10 @@ async function removeCardPicture() {
 async function renderFlashcards() {
   const cards = getCurrentCards();
   const deck = getCurrentDeck();
+  // Declared up here because the focus bar below reads it: a `const` further
+  // down is in the temporal dead zone until then, and touching it early threw
+  // out of this function before a single card was drawn.
+  const t = getT();
 
   const emptyEl = document.getElementById("flashcardEmptyState");
   const deckEl = document.getElementById("flashcardDeck");
@@ -9036,7 +9040,6 @@ async function renderFlashcards() {
 
   const card = cards[currentFlashcardIndex];
 
-  const t = getT();
   counterEl.textContent = `${deck?.name || t.deck} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
