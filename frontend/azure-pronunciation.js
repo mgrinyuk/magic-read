@@ -109,15 +109,16 @@ export async function assessPronunciation(referenceText, lang, { tokenUrl, fetch
   // Be forgiving about start latency: there's a beat between tapping "Repeat"
   // and the recognizer actually listening (token + SDK init). A longer initial
   // silence window stops short drill clips from returning "no speech" when the
-  // user starts a moment late.
+  // user starts a moment late — but Azure bills the silence it listens to, so
+  // the window is only as long as a late start plausibly needs.
   try {
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
-      "10000"
+      "6000"
     );
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-      "1200"
+      "1000"
     );
   } catch {
     /* property names vary across SDK builds; safe to skip */
@@ -197,6 +198,10 @@ export async function assessPronunciation(referenceText, lang, { tokenUrl, fetch
    taps again. Resolves the same shape as assessPronunciation. Multiple
    recognized segments (user paused mid-sentence) are merged: words are
    concatenated and metrics averaged weighted by word count. */
+// Longest a single open-mic take may stream to Azure. Azure charges for audio
+// it listens to, including silence, and nothing but the caller ends a session.
+const MAX_SESSION_MS = 120000;
+
 export async function startPronunciationSession(referenceText, lang, { tokenUrl, fetchWithAuth }) {
   if (!micWarmedUp && navigator.mediaDevices?.getUserMedia) {
     let warmup = null;
@@ -226,14 +231,16 @@ export async function startPronunciationSession(referenceText, lang, { tokenUrl,
   const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
   speechConfig.speechRecognitionLanguage = lang;
   try {
-    // The user decides when the take ends — be maximally patient about silence.
+    // The user decides when the take ends, so stay patient — but every second
+    // of that patience is streamed to Azure and billed, and nobody who hasn't
+    // started after twenty seconds is about to.
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
-      "60000"
+      "20000"
     );
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-      "5000"
+      "2500"
     );
   } catch { /* property names vary across SDK builds */ }
 
@@ -289,16 +296,27 @@ export async function startPronunciationSession(referenceText, lang, { tokenUrl,
     );
   });
 
+  let closed = false;
   const shutdown = () =>
     new Promise((resolve) => {
+      if (closed) return resolve();
+      closed = true;
       recognizer.stopContinuousRecognitionAsync(
         () => { try { recognizer.close(); } catch { /* ignore */ } resolve(); },
         () => { try { recognizer.close(); } catch { /* ignore */ } resolve(); }
       );
     });
 
+  // Nothing else ends this session: it streams to Azure, and bills, until the
+  // caller stops it. A take abandoned mid-way — app backgrounded, tab forgotten,
+  // attention elsewhere — would run indefinitely, so cap it. Two minutes is far
+  // longer than any sentence while still bounding the damage, and whatever was
+  // said up to that point is still scored.
+  const guard = setTimeout(() => { shutdown(); }, MAX_SESSION_MS);
+
   return {
     async stop() {
+      clearTimeout(guard);
       await shutdown();
       if (sessionError) throw sessionError;
       if (!segments.length) throw makeErr("No speech recognized", "NO_SPEECH");
