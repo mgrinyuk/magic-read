@@ -103,6 +103,10 @@ const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION;
 // 20 checks) can't quietly bring back the previous plan. The database triggers
 // in 14-free-plan-v2.sql mirror these numbers.
 const FREE_DAILY_PRONUNCIATION_LIMIT = 0;
+// Ceiling on a trial day's speaking. Chosen from the real distribution — median
+// 10 a day, ninetieth percentile 52 — so ordinary practice never meets it; it
+// only catches the outliers, one of which reached 401 in a single day.
+const TRIAL_DAILY_PRONUNCIATION_LIMIT = Number(process.env.TRIAL_DAILY_PRONUNCIATION_LIMIT || 100);
 const FREE_DAILY_TEXT_LIMIT = 1;
 const FREE_MAX_SAVED_TEXTS = 0;
 const FREE_MAX_DECKS = 1; // the default deck every account gets
@@ -2163,6 +2167,22 @@ app.post("/api/check-deck-quota", extractUser, requireUser, async (req, res) => 
    one token = one pronunciation check. Free signed-in users are quota-limited
    here; pro users are unlimited. The Azure key never reaches the browser.
 ----------------------------- */
+// Today's issued speech tokens for one user. Read-only: the counter itself is
+// incremented after the entitlement checks pass.
+async function pronunciationUsedToday(userId) {
+  const { data, error } = await supabaseAdmin
+    .from("pronunciation_usage")
+    .select("count")
+    .eq("user_id", userId)
+    .eq("day", new Date().toISOString().slice(0, 10))
+    .maybeSingle();
+  if (error) {
+    console.error("[Speech] usage lookup error:", error.message);
+    return 0; // never block practice because the counter was unreadable
+  }
+  return data?.count || 0;
+}
+
 app.post("/api/speech-token", extractUser, requireUser, async (req, res) => {
   try {
     if (!AZURE_SPEECH_KEY || !AZURE_SPEECH_REGION) {
@@ -2175,8 +2195,24 @@ app.post("/api/speech-token", extractUser, requireUser, async (req, res) => {
     const userId = req.user.id;
 
     // Entitlement via the centralized resolver: paid pro OR active trial → pro.
-    const { effectivePlan } = await getUserPlan(userId);
+    const { effectivePlan, plan, trialActive } = await getUserPlan(userId);
     const isPro = effectivePlan === "pro";
+
+    // Trial users account for ~89% of everything Azure bills us for, and Azure
+    // charges by the second it listens. A normal trial day is ten attempts and
+    // the busiest tenth reach fifty, so this ceiling is far above real practice
+    // — it exists to stop one runaway day, not to ration the trial.
+    if (isPro && plan !== "pro" && trialActive) {
+      const used = await pronunciationUsedToday(userId);
+      if (used >= TRIAL_DAILY_PRONUNCIATION_LIMIT) {
+        return res.status(429).json({
+          error: "You've reached today's speaking practice limit for the free trial. Subscribe for unlimited practice.",
+          code: "QUOTA_EXCEEDED",
+          used,
+          limit: TRIAL_DAILY_PRONUNCIATION_LIMIT
+        });
+      }
+    }
 
     // Speaking practice is Pro (FREE_DAILY_PRONUNCIATION_LIMIT is 0). Every
     // issued token is counted for Pro and trial users — record-only.
