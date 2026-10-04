@@ -52,9 +52,19 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
     fetchMyPlan(); // refresh today's pronunciation count / plan state
     return { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), result };
   } catch (err) {
-    // Guest / not configured / SDK unavailable -> use legacy scoring instead.
-    if (err.code === "NO_AUTH" || err.code === "NOT_CONFIGURED" || err.code === "SDK_LOAD_FAILED") {
+    // Not configured, or the SDK won't load: nothing will change within this
+    // page, so stop asking and score the old way.
+    if (err.code === "NOT_CONFIGURED" || err.code === "SDK_LOAD_FAILED") {
       azurePronDisabled = true;
+      return null;
+    }
+    // NO_AUTH is temporary — an access token that lapsed mid-practice, which is
+    // normal after an hour of drilling. Latching here used to kill scoring for
+    // the rest of the visit: a Pro user drilled ~50 sentences, hit one expired
+    // token, and every attempt afterwards failed until they reloaded. Refresh
+    // the session instead and let the next attempt through.
+    if (err.code === "NO_AUTH") {
+      try { await supabase.auth.refreshSession(); } catch { /* next attempt retries */ }
       return null;
     }
     // Out of free checks: show a contextual upgrade prompt at the result area.
@@ -436,8 +446,21 @@ function clientPlatform() {
 }
 
 async function fetchWithAuth(url, options = {}) {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  let { data } = await supabase.auth.getSession();
+  let token = data.session?.access_token;
+
+  // A long session can find the access token already gone — an hour of speaking
+  // practice is enough. Sending the request bare makes the server answer 401,
+  // and callers read that as "signed out" rather than "try again", so take one
+  // shot at refreshing before falling back.
+  if (!token) {
+    try {
+      const refreshed = await supabase.auth.refreshSession();
+      token = refreshed.data?.session?.access_token || null;
+    } catch {
+      /* genuinely signed out — fall through to the unauthenticated request */
+    }
+  }
   if (!token) return fetch(url, options);
   return fetch(url, {
     ...options,
