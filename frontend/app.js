@@ -1624,6 +1624,86 @@ guestLoginBtn?.addEventListener("click", () => {
   openAuthFromOverlay("login");
 });
 
+/* -----------------------------
+   SIGN-UP EMAIL CHECKS
+   A mistyped or throwaway address bounces, and a high bounce rate gets the
+   sending domain throttled — which takes confirmation and password-reset mail
+   down with it. Cheapest place to stop that is before the address is used.
+   ----------------------------- */
+
+// Domains people reach for, and the slips that actually happen when typing them.
+const COMMON_EMAIL_DOMAINS = [
+  "gmail.com", "googlemail.com", "yahoo.com", "hotmail.com", "outlook.com",
+  "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com",
+  "mail.ru", "yandex.ru", "qq.com", "163.com", "web.de", "gmx.de", "magicread.app"
+];
+
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "mailinator.com", "tempmail.com", "temp-mail.org", "guerrillamail.com",
+  "10minutemail.com", "throwawaymail.com", "yopmail.com", "trashmail.com",
+  "sharklasers.com", "getnada.com", "dispostable.com", "maildrop.cc",
+  "fakeinbox.com", "mailnesia.com", "mohmal.com", "spam4.me"
+]);
+
+let lastEmailSuggestion = null;
+
+// Levenshtein, capped: we only care whether a domain is within a typo or two.
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 99;
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const candidate = Math.min(
+        prev[j] + 1,
+        prev[j - 1] + 1,
+        diagonal + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      diagonal = prev[j];
+      prev[j] = candidate;
+    }
+  }
+  return prev[b.length];
+}
+
+function suggestEmailDomain(domain) {
+  if (COMMON_EMAIL_DOMAINS.includes(domain)) return null;
+  for (const known of COMMON_EMAIL_DOMAINS) {
+    // One edit catches gmial/gmai; two catches gmaill.con without reaching so
+    // far that an unrelated company domain gets "corrected" to gmail.
+    if (editDistance(domain, known) <= (known.length > 8 ? 2 : 1)) return known;
+  }
+  return null;
+}
+
+function checkSignupEmail(raw) {
+  const email = String(raw || "").trim().toLowerCase();
+  const at = email.lastIndexOf("@");
+  const domain = at === -1 ? "" : email.slice(at + 1);
+
+  // Deliberately loose: the job is catching addresses that cannot receive mail,
+  // not adjudicating RFC 5322.
+  if (at < 1 || !/^[^\s@]+\.[^\s@.]{2,}$/.test(domain)) {
+    return { reject: true, message: "That email address doesn't look right. Please check it." };
+  }
+  if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    return {
+      reject: true,
+      message: "Please use a permanent email address — we send your confirmation link there."
+    };
+  }
+  const suggestion = suggestEmailDomain(domain);
+  if (suggestion) {
+    return {
+      reject: false,
+      suggestion,
+      message: `Did you mean ${email.slice(0, at)}@${suggestion}? Press Sign up again to use ${domain}.`
+    };
+  }
+  return { reject: false };
+}
+
 signUpBtn?.addEventListener("click", async () => {
   if (authNameGroup?.hidden) {
     openAuthFromOverlay("signup");
@@ -1640,6 +1720,22 @@ signUpBtn?.addEventListener("click", async () => {
     if (authMessage) authMessage.textContent = t.enterAllFields;
     return;
   }
+
+  // Every address that can't receive mail becomes a bounce against our sending
+  // reputation, and enough of them get the whole domain throttled.
+  const verdict = checkSignupEmail(email);
+  if (verdict.reject) {
+    if (authMessage) authMessage.textContent = verdict.message;
+    return;
+  }
+  if (verdict.suggestion && lastEmailSuggestion !== verdict.suggestion) {
+    // A typo is a guess, not a certainty, so offer the correction once and let
+    // a second press through with whatever they typed.
+    lastEmailSuggestion = verdict.suggestion;
+    if (authMessage) authMessage.textContent = verdict.message;
+    return;
+  }
+  lastEmailSuggestion = null;
 
   signUpBtn.disabled = true;
   if (authMessage) authMessage.textContent = t.creatingAccount;
