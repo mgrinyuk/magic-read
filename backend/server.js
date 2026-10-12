@@ -2116,6 +2116,19 @@ app.post("/api/check-deck-quota", extractUser, requireUser, async (req, res) => 
 
     const intent = req.body?.intent; // 'new-deck' | 'add-card' | undefined
 
+    // A student keeps words saved from a text their teacher set, even on the
+    // free plan. The database trigger applies the same function, so the two
+    // can't disagree; if 16-assignment-cards.sql hasn't run yet the call fails
+    // and the card is refused exactly as before.
+    if (intent === "add-card" && typeof req.body?.word === "string") {
+      const { data: viaAssignment, error: ruleErr } = await supabaseAdmin.rpc("assignment_allows_card", {
+        p_user_id: userId,
+        p_word: req.body.word
+      });
+      if (ruleErr) console.error("[Quota] assignment card rule error:", ruleErr.message);
+      if (viaAssignment === true) return res.json({ allowed: true, viaAssignment: true });
+    }
+
     const { count: deckCount, error: deckErr } = await supabaseAdmin
       .from("flashcard_decks")
       .select("id", { count: "exact", head: true })

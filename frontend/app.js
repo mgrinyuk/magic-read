@@ -1469,14 +1469,16 @@ function showUpgradePrompt(code) {
 
 // Gate deck/card creation. intent: 'new-deck' | 'add-card'. Returns true if
 // allowed; shows an inline upgrade prompt and returns false if blocked.
-async function checkDeckQuota(intent, targetEl) {
+// `word` lets the server allow a free student to keep a word from a text their
+// teacher assigned; without it the free plan refuses every card.
+async function checkDeckQuota(intent, targetEl, word) {
   const { data: sess } = await supabase.auth.getSession();
   if (!sess.session) return true; // decks require login elsewhere
   try {
     const res = await fetchWithAuth(`${API_BASE}/api/check-deck-quota`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent })
+      body: JSON.stringify(word ? { intent, word } : { intent })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -8888,7 +8890,7 @@ async function addFlashcard(cardData) {
   if (exists) return false;
 
   // Gate: free users can have up to FREE_MAX_CARDS cards total.
-  const allowed = await checkDeckQuota("add-card", null);
+  const allowed = await checkDeckQuota("add-card", null, cardData.word);
   if (!allowed) return false;
 
   const { data, error } = await supabase
