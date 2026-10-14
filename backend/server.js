@@ -322,9 +322,15 @@ const globalLimiter = rateLimit({
 });
 
 function requireAdmin(req, res, next) {
-  if (req.headers["x-admin-secret"] !== process.env.ADMIN_SECRET) {
-    return res.status(403).json({ error: "Forbidden" });
-  }
+  // Compared with `!==`, an unset ADMIN_SECRET let a request with no header
+  // through: undefined !== undefined is false. Refuse outright when there's no
+  // secret, and compare in constant time so the response doesn't leak how much
+  // of a guess matched.
+  const expected = Buffer.from(process.env.ADMIN_SECRET || "");
+  const given = Buffer.from(String(req.headers["x-admin-secret"] || ""));
+  const ok = expected.length >= 16 && given.length === expected.length &&
+    crypto.timingSafeEqual(given, expected);
+  if (!ok) return res.status(403).json({ error: "Forbidden" });
   next();
 }
 
@@ -2372,6 +2378,138 @@ app.post("/api/grammar", async (req, res) => {
   } catch (error) {
     console.error("Grammar analysis route error:", error);
     res.status(500).json({ error: "Grammar analysis failed." });
+  }
+});
+
+/* -----------------------------
+   ADMIN DASHBOARD
+   Everything is counted here and only totals leave the server — no email, name
+   or user id reaches the page. Small enough today (hundreds of users) to read the
+   tables whole and aggregate in memory.
+----------------------------- */
+
+async function fetchAllRows(table, columns, filter = (query) => query) {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await filter(supabaseAdmin.from(table).select(columns)).range(from, from + 999);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    rows.push(...data);
+    if (data.length < 1000) return rows;
+  }
+}
+
+// The same rules as getUserPlan, applied to a row already in hand and at any
+// moment — so past pronunciation can be attributed to the plan the user had then.
+function planStateAt(profile, atMs) {
+  if (!profile) return "free";
+  const lifetime = ["lifetime", "forever"].includes(profile.plan_provider);
+  const paid = profile.plan === "pro" &&
+    (lifetime || !profile.plan_ends_at || Date.parse(profile.plan_ends_at) > atMs);
+  if (paid) return "pro";
+  if (profile.trial_ends_at && Date.parse(profile.trial_ends_at) > atMs) return "trial";
+  return "free";
+}
+
+function tally(rows, keyOf) {
+  const counts = {};
+  for (const row of rows) {
+    const key = keyOf(row);
+    if (key) counts[key] = (counts[key] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+
+app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
+  try {
+    const DAY = 864e5;
+    const now = Date.now();
+    const dayKey = (ms) => new Date(ms).toISOString().slice(0, 10);
+    const days = Array.from({ length: 30 }, (_, i) => dayKey(now - (29 - i) * DAY));
+    const since = (n) => dayKey(now - (n - 1) * DAY);
+
+    const optional = (promise) => promise.catch((error) => {
+      console.error("[Admin] stats:", error.message);
+      return [];
+    });
+    const [profiles, stats, activity, texts, cards, speech, assignments, students] = await Promise.all([
+      fetchAllRows("profiles", "id, created_at, plan, plan_provider, plan_ends_at, trial_ends_at, last_platform"),
+      fetchAllRows("user_stats", "words_read, words_spoken, longest_streak"),
+      fetchAllRows("activity_days", "user_id, day", (q) => q.gte("day", days[0])),
+      fetchAllRows("saved_texts", "source_lang, target_lang, created_at"),
+      fetchAllRows("flashcards", "lang, created_at"),
+      fetchAllRows("pronunciation_usage", "user_id, day, count", (q) => q.gte("day", days[0])),
+      optional(fetchAllRows("assignments", "closed_at")),
+      optional(fetchAllRows("assignment_students", "joined_at"))
+    ]);
+
+    const byId = new Map(profiles.map((p) => [p.id, p]));
+    const activeSince = (n) => new Set(activity.filter((a) => a.day >= since(n)).map((a) => a.user_id)).size;
+
+    const plans = { pro: 0, trial: 0, free: 0 };
+    const paying = {};
+    for (const p of profiles) {
+      const state = planStateAt(p, now);
+      plans[state]++;
+      if (state === "pro") paying[p.plan_provider || "unknown"] = (paying[p.plan_provider || "unknown"] || 0) + 1;
+    }
+    // Lifetime accounts are granted by hand (the owner's, App Review's), not bought.
+    const paidCount = Object.entries(paying)
+      .filter(([provider]) => !["lifetime", "forever"].includes(provider))
+      .reduce((n, [, count]) => n + count, 0);
+
+    const speechByDay = Object.fromEntries(days.map((d) => [d, { pro: 0, trial: 0, free: 0 }]));
+    for (const row of speech) {
+      if (!speechByDay[row.day]) continue;
+      speechByDay[row.day][planStateAt(byId.get(row.user_id), Date.parse(`${row.day}T12:00:00Z`))] += row.count || 0;
+    }
+
+    const used = stats.filter((s) => (s.words_read || 0) > 0).length;
+
+    res.json({
+      generatedAt: new Date(now).toISOString(),
+      days,
+      users: {
+        total: profiles.length,
+        new7: profiles.filter((p) => p.created_at >= since(7)).length,
+        new30: profiles.filter((p) => p.created_at >= since(30)).length,
+        signupsByDay: days.map((d) => profiles.filter((p) => (p.created_at || "").startsWith(d)).length),
+        activated: used
+      },
+      activity: {
+        today: activeSince(1),
+        week: activeSince(7),
+        month: activeSince(30),
+        byDay: days.map((d) => new Set(activity.filter((a) => a.day === d).map((a) => a.user_id)).size),
+        spoke: stats.filter((s) => (s.words_spoken || 0) > 0).length,
+        streak3: stats.filter((s) => (s.longest_streak || 0) >= 3).length,
+        streak7: stats.filter((s) => (s.longest_streak || 0) >= 7).length
+      },
+      plans: { ...plans, paying: paidCount, byProvider: paying },
+      languages: {
+        reading: tally(texts, (t) => t.source_lang),
+        pairs: tally(texts, (t) => t.source_lang && t.target_lang && `${t.source_lang} → ${t.target_lang}`).slice(0, 8),
+        cards: tally(cards, (c) => c.lang)
+      },
+      content: {
+        texts: texts.length,
+        texts7: texts.filter((t) => t.created_at >= since(7)).length,
+        cards: cards.length,
+        cards7: cards.filter((c) => c.created_at >= since(7)).length
+      },
+      platforms: tally(profiles, (p) => p.last_platform || "not recorded"),
+      speech: {
+        byDay: days.map((d) => speechByDay[d]),
+        total30: speech.reduce((n, row) => n + (row.count || 0), 0)
+      },
+      teachers: {
+        assignments: assignments.length,
+        open: assignments.filter((a) => !a.closed_at).length,
+        students: students.length
+      }
+    });
+  } catch (error) {
+    console.error("[Admin] stats error:", error.message);
+    res.status(500).json({ error: "Could not build stats." });
   }
 });
 

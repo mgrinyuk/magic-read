@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Private page: keep it out of search results. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Magic Read Admin</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <style>
+    /* Self-contained on purpose: style.css carries the whole app's layout rules,
+       which would fight a page that isn't the app. */
+    :root {
+      color-scheme: light;
+      --bg: #f1f2f8;
+      --card: #ffffff;
+      --ink: #1c1233;
+      --ink-2: #6a6480;
+      --ink-3: #8e88a1;
+      --line: #e9e7f0;
+      --grid: #eeecf3;
+      --primary: #e5267e;
+      /* Series colours validated as a set (CVD + contrast) on the card surface. */
+      --s-trial: #e5267e;
+      --s-pro: #2a78d6;
+      --s-free: #1baf7a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #141219;
+        --card: #1d1a26;
+        --ink: #f4f2fa;
+        --ink-2: #bdb7cc;
+        --ink-3: #948da7;
+        --line: #2e2a3a;
+        --grid: #2a2635;
+        --primary: #ef4d93;
+        --s-trial: #ef4d93;
+        --s-pro: #3987e5;
+        --s-free: #199e70;
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #141219;
+      --card: #1d1a26;
+      --ink: #f4f2fa;
+      --ink-2: #bdb7cc;
+      --ink-3: #948da7;
+      --line: #2e2a3a;
+      --grid: #2a2635;
+      --primary: #ef4d93;
+      --s-trial: #ef4d93;
+      --s-pro: #3987e5;
+      --s-free: #199e70;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    header.top {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+    }
+    header.top h1 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+    header.top h1 span { color: var(--primary); }
+    .updated { color: var(--ink-3); font-size: 13px; }
+    .spacer { flex: 1; }
+    button, .btn {
+      font: inherit; font-size: 14px; font-weight: 600;
+      border: 1px solid var(--line); background: var(--card); color: var(--ink);
+      border-radius: 10px; padding: 8px 14px; cursor: pointer;
+    }
+    button:hover { border-color: var(--ink-3); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    button:focus-visible, input:focus-visible, svg:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 16px; padding: 18px;
+    }
+    h2 { font-size: 15px; margin: 0; }
+    .card .sub { color: var(--ink-2); font-size: 13px; margin: 2px 0 12px; }
+    .section-title { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); margin: 28px 0 10px; }
+
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .tile .label { color: var(--ink-2); font-size: 13px; }
+    .tile .value { font-size: 28px; font-weight: 650; letter-spacing: -0.02em; margin: 2px 0; font-variant-numeric: tabular-nums; }
+    .tile .note { color: var(--ink-3); font-size: 12.5px; }
+
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; }
+    .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+
+    .chart { position: relative; }
+    .chart svg { display: block; overflow: visible; }
+    .chart .axis { fill: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .chart .gridline { stroke: var(--grid); stroke-width: 1; }
+    .chart .baseline { stroke: var(--line); stroke-width: 1; }
+    .chart .hit { fill: transparent; cursor: default; }
+    .chart .col.dim { opacity: .45; }
+    .tooltip {
+      position: absolute; pointer-events: none; z-index: 2;
+      background: var(--card); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 10px; padding: 8px 10px; font-size: 13px; white-space: nowrap;
+      box-shadow: 0 6px 20px rgba(28,18,51,.14); transform: translate(-50%, calc(-100% - 10px));
+    }
+    .tooltip .t-date { color: var(--ink-2); font-size: 12px; margin-bottom: 2px; }
+    .tooltip .t-row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+    .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+    .table-toggle { margin-top: 10px; font-size: 13px; padding: 6px 10px; }
+    table.data { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+    table.data th, table.data td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+    table.data th:first-child, table.data td:first-child { text-align: left; }
+    table.data th { color: var(--ink-2); font-weight: 600; }
+    .table-wrap { max-height: 260px; overflow: auto; }
+
+    .hlist { display: grid; gap: 8px; }
+    .hrow { display: grid; grid-template-columns: minmax(84px, 38%) 1fr auto; align-items: center; gap: 10px; font-size: 14px; }
+    .hrow .hlabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .htrack { height: 12px; }
+    .hbar { display: block; height: 12px; background: var(--primary); border-radius: 0 4px 4px 0; min-width: 2px; }
+    .hval { color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 2.5em; text-align: right; }
+
+    .kv { display: grid; gap: 8px; margin: 0; }
+    .kv div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+    .kv dt { color: var(--ink-2); }
+    .kv dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .muted-note { color: var(--ink-3); font-size: 12.5px; margin-top: 10px; }
+
+    .login { max-width: 380px; margin: 12vh auto 0; }
+    .login h1 { font-size: 22px; margin: 0 0 6px; }
+    .login p { color: var(--ink-2); margin: 0 0 16px; font-size: 14px; }
+    .login input[type=password] {
+      width: 100%; font: inherit; padding: 11px 12px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-bottom: 10px;
+    }
+    .login label.check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); margin-bottom: 14px; }
+    .login button { width: 100%; }
+    .message { color: var(--ink-2); padding: 40px 0; text-align: center; }
+    .error { color: #d03b3b; font-size: 13.5px; margin-bottom: 10px; }
+    footer { color: var(--ink-3); font-size: 12.5px; margin-top: 32px; text-align: center; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section id="loginView" class="card login" hidden>
+      <h1>Magic Read <span style="color:var(--primary)">admin</span></h1>
+      <p>Enter the admin key (the <code>ADMIN_SECRET</code> set on Render).</p>
+      <form id="loginForm">
+        <div id="loginError" class="error" hidden></div>
+        <input id="keyInput" type="password" autocomplete="current-password" placeholder="Admin key" required />
+        <label class="check"><input id="rememberInput" type="checkbox" checked /> Remember on this device</label>
+        <button class="primary" type="submit">Open dashboard</button>
+      </form>
+    </section>
+
+    <section id="dashView" hidden>
+      <header class="top">
+        <h1>Magic Read <span>admin</span></h1>
+        <span id="updated" class="updated"></span>
+        <span class="spacer"></span>
+        <button id="refreshBtn" type="button">Refresh</button>
+        <button id="lockBtn" type="button">Lock</button>
+      </header>
+      <div id="message" class="message" hidden></div>
+      <div id="dash"></div>
+      <footer>Counts only — no names, emails or user ids are sent to this page.</footer>
+    </section>
+  </div>
+
+  <script>
+    const API = "https://magic-read.onrender.com";
+    const STORE = "magicread_admin_key";
+    const LANGS = { zh: "Chinese", en: "English", de: "German", fr: "French", es: "Spanish", ru: "Russian", ja: "Japanese", tr: "Turkish" };
+    const PROVIDERS = { apple: "App Store", google_play: "Google Play", stripe: "Website (Stripe)", tbank: "T-Bank", lifetime: "Complimentary", forever: "Complimentary" };
+    const SERIES = [
+      { key: "trial", name: "Trial", color: "var(--s-trial)" },
+      { key: "pro", name: "Pro", color: "var(--s-pro)" },
+      { key: "free", name: "Free", color: "var(--s-free)" }
+    ];
+    const fmt = new Intl.NumberFormat();
+    let memoryKey = "";
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const langName = (code) => LANGS[code] || code;
+    const pairName = (pair) => pair.split(" → ").map(langName).join(" → ");
+    const dayLabel = (d) => new Date(d + "T12:00:00Z").toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    const pct = (part, whole) => whole ? `${Math.round((part / whole) * 100)}%` : "—";
+
+    // Storage can be unavailable (private mode, blocked site data): fall back to
+    // keeping the key in memory for this visit.
+    function readKey() { try { return localStorage.getItem(STORE) || ""; } catch { return ""; } }
+    function writeKey(value) { try { value ? localStorage.setItem(STORE, value) : localStorage.removeItem(STORE); } catch {} }
+
+    function showLogin(error) {
+      $("dashView").hidden = true;
+      $("loginView").hidden = false;
+      $("loginError").hidden = !error;
+      $("loginError").textContent = error || "";
+      $("keyInput").value = "";
+      $("keyInput").focus();
+    }
+
+    function showMessage(text) {
+      $("message").hidden = !text;
+      $("message").textContent = text || "";
+    }
+
+    async function load() {
+      const key = memoryKey || readKey();
+      if (!key) return showLogin();
+      $("loginView").hidden = true;
+      $("dashView").hidden = false;
+      showMessage("Loading…");
+      try {
+        const res = await fetch(`${API}/api/admin/stats`, { headers: { "x-admin-secret": key }, cache: "no-store" });
+        if (res.status === 403) {
+          memoryKey = "";
+          writeKey("");
+          return showLogin("That key wasn't accepted.");
+        }
+        if (res.status === 404) return showMessage("The stats endpoint isn't live yet — wait for Render to finish deploying, then refresh.");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        showMessage("");
+        render(data);
+      } catch (error) {
+        showMessage(`Couldn't load the numbers (${error.message}). The server may be waking up — try Refresh in a few seconds.`);
+      }
+    }
+
+    // ---------- charts ----------
+
+    function niceMax(value) {
+      if (value <= 5) return 5;
+      const magnitude = 10 ** Math.floor(Math.log10(value));
+      for (const step of [1, 2, 2.5, 5, 10]) {
+        if (step * magnitude >= value) return step * magnitude;
+      }
+      return 10 * magnitude;
+    }
+
+    // Column chart, single or stacked. Bars are capped at 24px, rounded only at
+    // the data end, and stacked segments are separated by a 2px surface gap.
+    // Drawn at the container's real pixel width rather than scaled from a
+    // viewBox: scaling made a full-width chart twice the size, bars twice the
+    // 24px cap and axis text oversized. Redrawn when the container resizes.
+    function columnChart(el, options) {
+      el._chart = options;
+      drawColumns(el);
+      if (!el._observer && "ResizeObserver" in window) {
+        let lastWidth = el.clientWidth;
+        el._observer = new ResizeObserver(() => {
+          if (el.clientWidth !== lastWidth) {
+            lastWidth = el.clientWidth;
+            drawColumns(el);
+          }
+        });
+        el._observer.observe(el);
+      }
+    }
+
+    function drawColumns(el) {
+      const { days, series, unit } = el._chart;
+      const W = Math.max(280, el.clientWidth || 640), H = 200, padL = 36, padR = 6, padT = 8, padB = 24;
+      const plotW = W - padL - padR, plotH = H - padT - padB, base = padT + plotH;
+      const n = days.length;
+      const totals = days.map((_, i) => series.reduce((sum, s) => sum + (s.values[i] || 0), 0));
+      const max = niceMax(Math.max(1, ...totals));
+      const slot = plotW / n;
+      const barW = Math.min(24, Math.max(2, slot - 2));
+      const scale = plotH / max;
+
+      let svg = "";
+      for (const tick of [0, max / 2, max]) {
+        const y = base - tick * scale;
+        svg += `<line class="${tick ? "gridline" : "baseline"}" x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}"/>`;
+        svg += `<text class="axis" x="${padL - 6}" y="${y + 4}" text-anchor="end">${fmt.format(tick)}</text>`;
+      }
+      // Count back from today so labels are always a week apart: "every 7th
+      // day plus the last" put two labels side by side at the right edge.
+      days.forEach((d, i) => {
+        if ((n - 1 - i) % 7 === 0) {
+          svg += `<text class="axis" x="${padL + i * slot + slot / 2}" y="${H - 6}" text-anchor="middle">${esc(dayLabel(d))}</text>`;
+        }
+      });
+
+      days.forEach((_, i) => {
+        const x = padL + i * slot + (slot - barW) / 2;
+        let cumulative = 0;
+        const segments = series.map((s) => ({ color: s.color, value: s.values[i] || 0 })).filter((s) => s.value > 0);
+        let col = "";
+        segments.forEach((seg, k) => {
+          const y0 = base - cumulative * scale;
+          cumulative += seg.value;
+          let y1 = base - cumulative * scale;
+          const isTop = k === segments.length - 1;
+          if (!isTop && y0 - y1 > 3) y1 += 2; // surface gap under the next segment
+          const h = Math.max(1, y0 - y1);
+          if (isTop) {
+            const r = Math.min(4, barW / 2, h);
+            col += `<path fill="${seg.color}" d="M${x},${y0} L${x},${y1 + r} Q${x},${y1} ${x + r},${y1} L${x + barW - r},${y1} Q${x + barW},${y1} ${x + barW},${y1 + r} L${x + barW},${y0} Z"/>`;
+          } else {
+            col += `<rect fill="${seg.color}" x="${x}" y="${y0 - h}" width="${barW}" height="${h}"/>`;
+          }
+        });
+        svg += `<g class="col" data-i="${i}">${col}</g>`;
+      });
+      // Hit targets span the full slot and height, far larger than thin bars.
+      days.forEach((_, i) => {
+        svg += `<rect class="hit" data-i="${i}" x="${padL + i * slot}" y="${padT}" width="${slot}" height="${plotH}"/>`;
+      });
+
+      el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="${esc(unit)} per day, last 30 days">${svg}</svg><div class="tooltip" hidden></div>`;
+      const svgEl = el.querySelector("svg");
+      const tip = el.querySelector(".tooltip");
+      const cols = [...el.querySelectorAll(".col")];
+      let current = -1;
+
+      function show(i) {
+        current = i;
+        cols.forEach((c, j) => c.classList.toggle("dim", j !== i));
+        const rows = series.length > 1
+          ? series.map((s) => `<div class="t-row"><span class="swatch" style="background:${s.color}"></span>${esc(s.name)}: ${fmt.format(s.values[i] || 0)}</div>`).join("") +
+            `<div class="t-row"><strong>Total: ${fmt.format(totals[i])}</strong></div>`
+          : `<div class="t-row"><strong>${fmt.format(totals[i])}</strong>&nbsp;${esc(unit)}</div>`;
+        tip.innerHTML = `<div class="t-date">${esc(dayLabel(days[i]))}</div>${rows}`;
+        const left = padL + i * slot + slot / 2;
+        const top = base - totals[i] * scale;
+        tip.style.left = `${Math.min(Math.max(left, 70), W - 70)}px`;
+        tip.style.top = `${Math.max(top, 40)}px`;
+        tip.hidden = false;
+      }
+      function hide() {
+        current = -1;
+        cols.forEach((c) => c.classList.remove("dim"));
+        tip.hidden = true;
+      }
+      el.querySelectorAll(".hit").forEach((r) => {
+        r.addEventListener("pointerenter", () => show(Number(r.dataset.i)));
+      });
+      svgEl.addEventListener("pointerleave", hide);
+      svgEl.addEventListener("blur", hide);
+      svgEl.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        const next = current < 0 ? n - 1 : current + (e.key === "ArrowRight" ? 1 : -1);
+        show(Math.min(n - 1, Math.max(0, next)));
+      });
+    }
+
+    function tableToggle(host, days, series) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "table-toggle";
+      button.textContent = "Show table";
+      const wrap = document.createElement("div");
+      wrap.className = "table-wrap";
+      wrap.hidden = true;
+      const head = `<tr><th>Day</th>${series.map((s) => `<th>${esc(s.name)}</th>`).join("")}</tr>`;
+      const body = days.map((d, i) => `<tr><td>${esc(dayLabel(d))}</td>${series.map((s) => `<td>${fmt.format(s.values[i] || 0)}</td>`).join("")}</tr>`).reverse().join("");
+      wrap.innerHTML = `<table class="data"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+      button.addEventListener("click", () => {
+        wrap.hidden = !wrap.hidden;
+        button.textContent = wrap.hidden ? "Show table" : "Hide table";
+      });
+      host.append(button, wrap);
+    }
+
+    function hbarList(rows, labelOf) {
+      if (!rows.length) return `<p class="muted-note">Nothing yet.</p>`;
+      const max = Math.max(...rows.map((r) => r[1]), 1);
+      return `<div class="hlist">${rows.map(([key, value]) => `
+        <div class="hrow">
+          <span class="hlabel" title="${esc(labelOf(key))}">${esc(labelOf(key))}</span>
+          <span class="htrack"><span class="hbar" style="width:${(value / max) * 100}%"></span></span>
+          <span class="hval">${fmt.format(value)}</span>
+        </div>`).join("")}</div>`;
+    }
+
+    function tile(label, value, note) {
+      return `<div class="card tile"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="note">${esc(note)}</div></div>`;
+    }
+
+    function kv(pairs) {
+      return `<dl class="kv">${pairs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
+    }
+
+    // ---------- page ----------
+
+    function render(d) {
+      $("updated").textContent = `Updated ${new Date(d.generatedAt).toLocaleString(undefined, { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })}`;
+      const u = d.users, a = d.activity, p = d.plans;
+      const providers = Object.entries(p.byProvider || {}).sort((x, y) => y[1] - x[1]);
+
+      $("dash").innerHTML = `
+        <div class="tiles">
+          ${tile("Users", fmt.format(u.total), `+${fmt.format(u.new7)} this week · +${fmt.format(u.new30)} in 30 days`)}
+          ${tile("Active this week", fmt.format(a.week), `${fmt.format(a.today)} today · ${fmt.format(a.month)} in 30 days`)}
+          ${tile("Paying", fmt.format(p.paying), `${fmt.format(p.trial)} on a trial now`)}
+          ${tile("Activation", pct(u.activated, u.total), "read at least one text")}
+          ${tile("Conversion", pct(p.paying, u.total), "of all accounts pay")}
+          ${tile("Speaking, 30 days", fmt.format(d.speech.total30), "pronunciation checks")}
+        </div>
+
+        <div class="section-title">Growth</div>
+        <div class="grid2">
+          <div class="card"><h2>Sign-ups per day</h2><p class="sub">New accounts, last 30 days</p><div class="chart" id="chartSignups"></div></div>
+          <div class="card"><h2>Active users per day</h2><p class="sub">Read, spoke or practised that day</p><div class="chart" id="chartActive"></div></div>
+        </div>
+
+        <div class="section-title">Speaking</div>
+        <div class="card">
+          <h2>Pronunciation checks per day</h2>
+          <p class="sub">By the plan the user was on that day. Azure bills for every check.</p>
+          <div class="legend">${SERIES.map((s) => `<span><span class="swatch" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
+          <div class="chart" id="chartSpeech"></div>
+          <div id="speechTable"></div>
+        </div>
+
+        <div class="section-title">Languages</div>
+        <div class="grid3">
+          <div class="card"><h2>Languages people read</h2><p class="sub">Saved texts, by language</p>${hbarList(d.languages.reading, langName)}</div>
+          <div class="card"><h2>Top pairs</h2><p class="sub">Reading → translation</p>${hbarList(d.languages.pairs, pairName)}</div>
+          <div class="card"><h2>Words saved</h2><p class="sub">Flashcards, by language</p>${hbarList(d.languages.cards, langName)}</div>
+        </div>
+
+        <div class="section-title">Plans, engagement and platforms</div>
+        <div class="grid3">
+          <div class="card"><h2>Plans now</h2><p class="sub">Where Pro comes from</p>
+            ${kv([...providers.map(([k, v]) => [PROVIDERS[k] || k, fmt.format(v)]), ["On a trial", fmt.format(p.trial)], ["Free", fmt.format(p.free)]])}
+            <p class="muted-note">Complimentary accounts are granted by hand and don't count as paying.</p>
+          </div>
+          <div class="card"><h2>Engagement</h2><p class="sub">How far people get</p>
+            ${kv([
+              ["Tried speaking", `${fmt.format(a.spoke)} (${pct(a.spoke, u.total)})`],
+              ["Reached a 3-day streak", fmt.format(a.streak3)],
+              ["Reached a 7-day streak", fmt.format(a.streak7)],
+              ["Texts saved this week", fmt.format(d.content.texts7)],
+              ["Words saved this week", fmt.format(d.content.cards7)]
+            ])}
+          </div>
+          <div class="card"><h2>Platforms</h2><p class="sub">Where each user last opened the app</p>
+            ${hbarList(d.platforms, (k) => ({ ios: "iPhone app", android: "Android app", web: "Website" }[k] || k))}
+            <p class="muted-note">Recorded since 21 September, and only by app versions released after that, so "not recorded" shrinks as people update.</p>
+          </div>
+        </div>
+
+        <div class="section-title">Teachers</div>
+        <div class="tiles">
+          ${tile("Assignments", fmt.format(d.teachers.assignments), `${fmt.format(d.teachers.open)} still open`)}
+          ${tile("Students joined", fmt.format(d.teachers.students), "across all assignments")}
+        </div>`;
+
+      columnChart($("chartSignups"), { days: d.days, unit: "sign-ups", series: [{ name: "Sign-ups", color: "var(--primary)", values: u.signupsByDay }] });
+      columnChart($("chartActive"), { days: d.days, unit: "active users", series: [{ name: "Active users", color: "var(--primary)", values: a.byDay }] });
+      const speechSeries = SERIES.map((s) => ({ name: s.name, color: s.color, values: d.speech.byDay.map((day) => day[s.key] || 0) }));
+      columnChart($("chartSpeech"), { days: d.days, unit: "checks", series: speechSeries });
+      tableToggle($("speechTable"), d.days, speechSeries);
+    }
+
+    $("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const key = $("keyInput").value.trim();
+      if (!key) return;
+      memoryKey = key;
+      writeKey($("rememberInput").checked ? key : "");
+      load();
+    });
+    $("refreshBtn").addEventListener("click", load);
+    $("lockBtn").addEventListener("click", () => {
+      memoryKey = "";
+      writeKey("");
+      showLogin();
+    });
+
+    load();
+  </script>
+</body>
+</html>
