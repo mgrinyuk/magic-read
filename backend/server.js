@@ -1056,6 +1056,16 @@ app.post("/api/translate", extractUser, requireUser, async (req, res) => {
       return res.status(400).json({ error: "Sentence is required" });
     }
 
+    // Reading a language "into" itself — people practising English
+    // pronunciation pick en → en. Google rejects that pair ("Bad language
+    // pair: en|en"), so every tap failed, and each failure still spent a free
+    // account's daily allowance because the cap is charged first. The text
+    // already is its own translation.
+    const baseLang = (lang) => String(lang || "").toLowerCase().split(/[-_]/)[0];
+    if (baseLang(sourceLang) && baseLang(sourceLang) === baseLang(targetLang)) {
+      return res.json({ translation: sentence });
+    }
+
     // Google Translate is billed — cap free accounts server-side.
     if (!(await enforceFreeApiCap(req, res, "translate", FREE_DAILY_TRANSLATE_LIMIT))) return;
 
