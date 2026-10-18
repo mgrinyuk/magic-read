@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20260913.9";
+import { UI_TEXT } from "./ui-text.js?v=20261018.5";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -6272,6 +6272,38 @@ function rdSetupInit() {
   });
   document.getElementById("rdSetupStartBtn")?.addEventListener("click", () => rdSetupStart("reading"));
   document.getElementById("rdSetupSpeakBtn")?.addEventListener("click", () => rdSetupStart("pronunciation"));
+
+  // Scan a page: the iOS shell's TextScanner plugin photographs a page and
+  // reads it on-device. No plugin on the web or Android, so no button there.
+  const scanBtn = document.getElementById("rdSetupScanBtn");
+  const scanner = window.Capacitor?.Plugins?.TextScanner;
+  if (scanBtn && scanner) {
+    scanBtn.hidden = false;
+    scanBtn.addEventListener("click", rdSetupScan);
+  }
+}
+
+async function rdSetupScan() {
+  const scanner = window.Capacitor?.Plugins?.TextScanner;
+  const box = document.getElementById("rdSetupInput");
+  if (!scanner || !box) return;
+  const scanBtn = document.getElementById("rdSetupScanBtn");
+  if (scanBtn) scanBtn.disabled = true;
+  try {
+    const { text = "" } = await scanner.scan({ languages: [sourceLangSelect?.value || "zh"] });
+    if (!text.trim()) return; // cancelled
+    // Recognized text comes one printed line per row, like a PDF copy; the
+    // same clean-up joins the lines back into sentences, in any script.
+    const cleaned = normalizeCjkText(text);
+    box.value = box.value.trim() ? `${box.value.trimEnd()}\n\n${cleaned}` : cleaned;
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    analyticsEvent("page_scanned", { chars: cleaned.length });
+  } catch (err) {
+    console.error("Scan failed:", err);
+    showToast("Could not read text from that photo.", "error");
+  } finally {
+    if (scanBtn) scanBtn.disabled = false;
+  }
 }
 rdSetupInit();
 

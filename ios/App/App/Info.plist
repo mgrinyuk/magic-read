@@ -37,6 +37,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Magic Read uses the camera to read the text from a book or worksheet page, so you can practise it.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Magic Read uses the microphone to score your pronunciation practice.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

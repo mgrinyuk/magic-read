@@ -19,6 +19,7 @@
 		AAB100010000000000000002 /* ApplePurchasesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB100010000000000000001 /* ApplePurchasesPlugin.swift */; };
 		AAB100010000000000000004 /* AppleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB100010000000000000003 /* AppleSignInPlugin.swift */; };
 		AAB1000100000000000000A1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB1000100000000000000A0 /* SceneDelegate.swift */; };
+		AAB1000100000000000000B1 /* TextScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB1000100000000000000B0 /* TextScannerPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		AAB100010000000000000001 /* ApplePurchasesPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePurchasesPlugin.swift; sourceTree = "<group>"; };
 		AAB100010000000000000003 /* AppleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInPlugin.swift; sourceTree = "<group>"; };
 		AAB1000100000000000000A0 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		AAB1000100000000000000B0 /* TextScannerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextScannerPlugin.swift; sourceTree = "<group>"; };
 		AAB100010000000000000005 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -75,6 +77,7 @@
 				AAB100010000000000000001 /* ApplePurchasesPlugin.swift */,
 				AAB100010000000000000003 /* AppleSignInPlugin.swift */,
 				AAB1000100000000000000A0 /* SceneDelegate.swift */,
+				AAB1000100000000000000B0 /* TextScannerPlugin.swift */,
 				AAB100010000000000000005 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -174,6 +177,7 @@
 				AAB100010000000000000002 /* ApplePurchasesPlugin.swift in Sources */,
 				AAB100010000000000000004 /* AppleSignInPlugin.swift in Sources */,
 				AAB1000100000000000000A1 /* SceneDelegate.swift in Sources */,
+				AAB1000100000000000000B1 /* TextScannerPlugin.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

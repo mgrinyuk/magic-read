@@ -7849,3 +7849,16 @@ body.fc-focus #fcBrowsePanel {
   .sp-zh { font-size: clamp(25.5px, 6.8vw, 32.3px); }
 }
 .rd-setup-start-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Scan a page (iOS shell only): sits left of the character count. */
+.rd-setup-under { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.rd-setup-under .rd-setup-charcount { margin-top: 0; margin-left: auto; }
+.rd-setup-scan-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 38px; padding: 0 14px; border-radius: 12px; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 14px; font-weight: 700;
+}
+.rd-setup-scan-btn svg { color: var(--primary); }
+.rd-setup-scan-btn:disabled { opacity: .6; cursor: default; }
+.rd-setup-scan-btn[hidden] { display: none; }
