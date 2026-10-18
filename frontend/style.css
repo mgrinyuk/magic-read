@@ -7862,3 +7862,28 @@ body.fc-focus #fcBrowsePanel {
 .rd-setup-scan-btn svg { color: var(--primary); }
 .rd-setup-scan-btn:disabled { opacity: .6; cursor: default; }
 .rd-setup-scan-btn[hidden] { display: none; }
+
+/* Deck picker in the reader's word sheet, under the definition. */
+.rd-word-deck { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.rd-word-deck[hidden] { display: none; }
+.rd-word-deck-select {
+  flex: 1; min-width: 0; height: 40px; padding: 0 12px; border-radius: 12px;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 15px; font-weight: 600;
+}
+/* With the heading gone, the paste/library switch starts the setup screen. */
+#screen-read-setup .rd-setup-seg { margin-top: 4px; }
+
+/* The reader has its own sticky bar (back, title, Pinyin / Translate / Voice).
+   Both it and the app header stuck at top: 0, so on scroll the app header sat
+   on top of it and hid those controls. While a text is open, drop the app
+   header and let the reader bar clear the status bar itself. */
+body.reader-active .app-header { display: none; }
+body.reader-active .rd-appbar { padding-top: calc(clamp(14px, 3vw, 18px) + env(safe-area-inset-top)); }
+body.reader-active .rd-toolbar { top: calc(64px + env(safe-area-inset-top)); }
+@media (max-width: 640px) {
+  body.reader-active .rd-toolbar { top: calc(58px + env(safe-area-inset-top)); }
+}
+/* Keep the looked-up word on one line; the spacer beside it was squeezing
+   longer words onto two. */
+.rd-word-hz { white-space: nowrap; }

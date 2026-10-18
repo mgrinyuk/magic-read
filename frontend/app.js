@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.6";
+import { UI_TEXT } from "./ui-text.js?v=20261018.7";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -2492,6 +2492,7 @@ function showScreen(screen) {
   document.body.classList.toggle("product-active", screen.id !== "screen-onboarding");
   document.body.classList.toggle("dashboard-active", screen.id === "screen-home");
   document.body.classList.toggle("video-active", screen.id === "screen-video");
+  document.body.classList.toggle("reader-active", screen.id === "screen-read-reader");
 
   const appTabBar = document.getElementById("appTabBar");
   if (appTabBar) {
@@ -5560,19 +5561,6 @@ async function rdRenderPassage() {
       const sentEl = el.closest(".rd-sent");
       const sentText = sentEl ? R.sentences.find(s => String(s.gi) === sentEl.dataset.i)?.text || "" : "";
 
-      el.addEventListener("mouseenter", () => {
-        if (el._popupTimer) clearTimeout(el._popupTimer);
-        el._popupTimer = setTimeout(() => {
-          showWordPopup(el, word, sentText, "", false).catch(console.error);
-        }, 250);
-      });
-
-      el.addEventListener("mouseleave", () => {
-        if (el._popupTimer) {
-          clearTimeout(el._popupTimer);
-          el._popupTimer = null;
-        }
-      });
     }
 
     el.addEventListener("click", (e) => {
@@ -6629,9 +6617,12 @@ async function rdShowWordSheet(word, pinyin, sentence) {
   if (py && lookedPinyin) py.textContent = lookedPinyin;
   if (en) en.textContent = translation || "—";
 
-  // Save button → real flashcard save.
+  // Save button → real flashcard save, into the deck picked under it.
   rdRenderWordSaveBtn(word, false);
+  rdRenderWordDeckSelect();
   document.getElementById("rdWordSaveBtn").onclick = async () => {
+    const deckId = document.getElementById("rdWordDeckSelect")?.value;
+    if (deckId && flashcardDecks.some(d => String(d.id) === deckId)) currentDeckId = deckId;
     const saved = await addFlashcard({
       word,
       pinyin: lookedPinyin || "",
@@ -6641,7 +6632,28 @@ async function rdShowWordSheet(word, pinyin, sentence) {
       lang: R.lang
     });
     rdRenderWordSaveBtn(word, true);
-    showToast(saved ? "Saved to cards." : "Already saved.", "success");
+    const deckName = getCurrentDeck()?.name;
+    showToast(saved ? (deckName ? `Saved to ${deckName}.` : "Saved to cards.") : "Already saved.", "success");
+  };
+}
+
+// Deck picker in the word sheet. Defaults to the deck in use; the last
+// option creates a new deck and selects it.
+function rdRenderWordDeckSelect() {
+  const row = document.getElementById("rdWordDeckRow");
+  const select = document.getElementById("rdWordDeckSelect");
+  if (!row || !select) return;
+  row.hidden = !flashcardDecks.length;
+  if (!flashcardDecks.length) return;
+  select.innerHTML = flashcardDecks.map(deck =>
+    `<option value="${escapeHtml(String(deck.id))}"${deck.id === currentDeckId ? " selected" : ""}>${escapeHtml(deck.name)}</option>`
+  ).join("") + `<option value="__new">${escapeHtml(getT().newDeckOption || "+ New deck…")}</option>`;
+  select.onchange = async () => {
+    if (select.value !== "__new") return;
+    const before = flashcardDecks.length;
+    await createDeck();
+    rdRenderWordDeckSelect(); // selects the new deck, or the old one if cancelled
+    if (flashcardDecks.length === before) select.value = String(currentDeckId);
   };
 }
 

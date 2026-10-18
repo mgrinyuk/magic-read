@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261018.6" />
+  <link rel="stylesheet" href="style.css?v=20261018.7" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -729,8 +729,6 @@
       <!-- ===================== READER · SETUP ===================== -->
       <section id="screen-read-setup" class="app-screen">
         <div class="rd-setup-scroll">
-          <div class="rd-setup-eyebrow">Magic Read</div>
-          <div class="rd-setup-h1" data-i18n="rdSetupTitle">What would you like<br>to read today?</div>
 
           <div class="rd-setup-seg" id="rdSetupSeg">
             <button class="rd-setup-seg-btn" data-tab="paste" type="button" data-i18n="pasteTextTab">Paste text</button>
@@ -866,6 +864,10 @@
           <div class="rd-word-divider"></div>
           <span class="rd-word-pos" id="rdWordPos"></span>
           <div class="rd-word-en" id="rdWordEn"></div>
+          <label class="rd-word-deck" id="rdWordDeckRow" hidden>
+            <span data-i18n="saveToDeck">Save to deck</span>
+            <select id="rdWordDeckSelect" class="rd-word-deck-select"></select>
+          </label>
         </div>
       </section>
 
@@ -1548,7 +1550,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20261018.6"></script>
+  <script type="module" src="app.js?v=20261018.7"></script>
 
   <footer class="footer">
     <div>
