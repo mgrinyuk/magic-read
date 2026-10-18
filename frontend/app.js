@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.13";
+import { UI_TEXT } from "./ui-text.js?v=20261018.14";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -6768,7 +6768,7 @@ async function rdShowWordSheet(word, pinyin, sentence) {
     });
     const dict = await dictRes.json();
     if (dictRes.ok && dict.entries && dict.entries.length) {
-      translation = dict.entries[0].definitions.slice(0, 3).join("; ");
+      translation = cleanDictDefinitions(dict.entries[0].definitions);
       lookedPinyin = dict.entries[0].pinyin || lookedPinyin;
     } else {
       const trRes = await fetchWithAuth(`${API_BASE}/api/translate`, {
@@ -9108,6 +9108,24 @@ function renderDeckSelector() {
   `).join("");
 
   selectEl.value = currentDeckId || "";
+}
+
+// CC-CEDICT senses carry notation meant for dictionaries, not learners:
+// "CL:筆|笔[bi3]" lists measure words, "X|Y[pin1]" pairs traditional and
+// simplified forms. Keep the meanings (first three), simplified only.
+function cleanDictDefinitions(definitions = []) {
+  const senses = [];
+  for (const raw of definitions) {
+    const sense = String(raw)
+      .replace(/\bCL:.*$/, "")
+      .replace(/[\u3400-\u9fff]+\|([\u3400-\u9fff]+)/g, "$1")
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/\s+/g, " ")
+      .replace(/^[\s,;]+|[\s,;]+$/g, "");
+    if (sense && !senses.includes(sense)) senses.push(sense);
+    if (senses.length === 3) break;
+  }
+  return senses.join("; ");
 }
 
 function cleanTranslation(str = "") {
