@@ -906,8 +906,22 @@ function localDayString(d = new Date()) {
 }
 
 // Fire-and-forget stats ping. Never throws — a stats failure must not block the user.
+// PostHog lives only on the website (posthog-init.js skips the native shells),
+// so every call is optional. Users are linked by their internal account id —
+// never email or name — which is what makes "came back the next day" measurable.
+function analyticsIdentify(userId) {
+  if (userId) window.posthog?.identify?.(userId);
+}
+function analyticsReset() {
+  window.posthog?.reset?.();
+}
+function analyticsActivity(kind) {
+  window.posthog?.capture?.("activity", { kind });
+}
+
 function recordActivity(type, count) {
   if (!document.body.classList.contains("is-logged-in")) return;
+  analyticsActivity(type);
   const day = localDayString();
   noteActivityLocally(day);
   fetchWithAuth(`${API_BASE}/api/record-activity`, {
@@ -1496,6 +1510,7 @@ async function checkAuth() {
   const { data } = await supabase.auth.getSession();
 
   if (data.session) {
+    analyticsIdentify(data.session.user?.id);
     document.body.classList.add("is-logged-in");
     document.body.classList.remove("is-logged-out");
     document.body.classList.remove("auth-active");
@@ -1961,6 +1976,7 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
 
 logoutBtn?.addEventListener("click", async () => {
   await supabase.auth.signOut();
+  analyticsReset();
   if (profileDropdown) profileDropdown.hidden = true;
   await checkAuth();
   showLandingPage();
@@ -3597,6 +3613,7 @@ document.getElementById("acctDeleteAccountBtn")?.addEventListener("click", async
     if (!res.ok) throw new Error(body.error || "Could not delete account.");
 
     await supabase.auth.signOut();
+    analyticsReset();
     await checkAuth();
     showLandingPage();
     showToast(t.deleteAccountDone || "Your account has been deleted.", "success");
@@ -3608,6 +3625,7 @@ document.getElementById("acctDeleteAccountBtn")?.addEventListener("click", async
 
 document.getElementById("acctLogoutBtn")?.addEventListener("click", async () => {
   await supabase.auth.signOut();
+  analyticsReset();
   await checkAuth();
   showLandingPage();
 });
