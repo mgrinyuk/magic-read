@@ -2523,6 +2523,97 @@ app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
   }
 });
 
+/* -----------------------------
+   IN-APP MESSAGES
+   Written from the admin dashboard (backend/18-announcements.sql). Signed-in
+   users get the live ones for their platform, UI language and app version;
+   the client shows each once per device.
+----------------------------- */
+const ANNOUNCEMENT_FIELDS = "id, title, body, cta_label, cta_action, platform, ui_lang, below_version, active, starts_at, ends_at, created_at";
+
+// "1.0.4" < "1.0.10": compare numerically, part by part.
+function versionLessThan(a, b) {
+  const pa = String(a).split(".").map(Number);
+  const pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x < y;
+  }
+  return false;
+}
+
+app.get("/api/announcements", extractUser, requireUser, async (req, res) => {
+  const platform = ["ios", "android", "web"].includes(req.query.platform) ? req.query.platform : "web";
+  const lang = /^[a-z]{2}$/.test(String(req.query.lang || "")) ? req.query.lang : "en";
+  const version = /^\d+(\.\d+){0,3}$/.test(String(req.query.version || "")) ? req.query.version : null;
+  const platforms = ["all", platform, ...(platform === "web" ? [] : ["app"])];
+  const nowIso = new Date().toISOString();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("announcements")
+      .select("id, title, body, cta_label, cta_action, below_version")
+      .eq("active", true)
+      .lte("starts_at", nowIso)
+      .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
+      .in("platform", platforms)
+      .or(`ui_lang.is.null,ui_lang.eq.${lang}`)
+      .order("starts_at", { ascending: false })
+      .limit(10);
+    if (error) throw error;
+    const messages = (data || [])
+      // An update prompt only makes sense in an app whose version we know.
+      .filter((m) => !m.below_version || (platform !== "web" && version && versionLessThan(version, m.below_version)))
+      .map(({ below_version, ...m }) => m);
+    res.json({ messages });
+  } catch (error) {
+    console.error("[announcements]", error.message || error);
+    res.json({ messages: [] }); // never block the app over a message
+  }
+});
+
+app.get("/api/admin/announcements", requireAdmin, async (_req, res) => {
+  const { data, error } = await supabaseAdmin
+    .from("announcements")
+    .select(ANNOUNCEMENT_FIELDS)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ messages: data || [] });
+});
+
+app.post("/api/admin/announcements", requireAdmin, async (req, res) => {
+  const b = req.body || {};
+  const clean = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const row = {
+    title: clean(b.title),
+    body: clean(b.body) || "",
+    cta_label: clean(b.cta_label),
+    cta_action: clean(b.cta_action),
+    platform: clean(b.platform) || "all",
+    ui_lang: clean(b.ui_lang),
+    below_version: clean(b.below_version),
+    ends_at: clean(b.ends_at),
+  };
+  if (!row.title) return res.status(400).json({ error: "A title is required." });
+  if (row.cta_action && !row.cta_label) return res.status(400).json({ error: "A button needs a label." });
+  // The database checks the rest (allowed values, lengths, version format).
+  const { data, error } = await supabaseAdmin.from("announcements").insert(row).select(ANNOUNCEMENT_FIELDS).single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: data });
+});
+
+app.patch("/api/admin/announcements/:id", requireAdmin, async (req, res) => {
+  if (typeof req.body?.active !== "boolean") return res.status(400).json({ error: "Send { active: true|false }." });
+  const { data, error } = await supabaseAdmin
+    .from("announcements")
+    .update({ active: req.body.active })
+    .eq("id", req.params.id)
+    .select(ANNOUNCEMENT_FIELDS)
+    .single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: data });
+});
+
 app.post("/api/admin/reload-grammar", requireAdmin, async (req, res) => {
   try {
     grammarCache.zh = {

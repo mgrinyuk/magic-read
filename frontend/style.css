@@ -7895,3 +7895,6 @@ body.reader-active .rd-toolbar { top: calc(64px + env(safe-area-inset-top)); }
   flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
   background: rgba(229,38,126,.10); color: var(--primary);
 }
+
+/* In-app message card (admin-written): keep the author's line breaks. */
+.app-message-body { white-space: pre-line; }

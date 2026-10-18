@@ -152,6 +152,25 @@
     .error { color: #d03b3b; font-size: 13.5px; margin-bottom: 10px; }
     footer { color: var(--ink-3); font-size: 12.5px; margin-top: 32px; text-align: center; }
     [hidden] { display: none !important; }
+
+    .msg-form { display: grid; gap: 12px; }
+    .msg-form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; }
+    .msg-form label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+    .msg-form input, .msg-form select, .msg-form textarea {
+      font: inherit; font-size: 14px; font-weight: 400; color: var(--ink); background: var(--bg);
+      border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; width: 100%;
+    }
+    .msg-form textarea { min-height: 84px; resize: vertical; }
+    .msg-form .hint { font-weight: 400; color: var(--ink-3); font-size: 12px; }
+    .msg-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .msg-status { font-size: 13px; color: var(--ink-2); }
+    .msg-list { display: grid; gap: 10px; margin-top: 4px; }
+    .msg-item { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 10px; }
+    .msg-item b { display: block; }
+    .msg-item .meta { color: var(--ink-3); font-size: 12.5px; margin-top: 2px; }
+    .msg-item .body { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; white-space: pre-line; }
+    .msg-item.off { opacity: .55; }
+    .msg-item button { flex: none; }
   </style>
 </head>
 <body>
@@ -177,6 +196,64 @@
       </header>
       <div id="message" class="message" hidden></div>
       <div id="dash"></div>
+
+      <div class="section-title">Messages to users</div>
+      <div class="grid2">
+        <div class="card">
+          <h2>New message</h2>
+          <p class="sub">Shown once per device as a card, after the person logs in or opens the app. Only app versions that include messages (1.0.5 on iPhone, 1.0.21 on Android, and the website) can show it.</p>
+          <form id="msgForm" class="msg-form">
+            <label>Title <input id="msgTitle" maxlength="120" required placeholder="A new version is out" /></label>
+            <label>Message <textarea id="msgBody" maxlength="600" placeholder="Update to scan pages with your camera."></textarea></label>
+            <div class="row">
+              <label>Button
+                <select id="msgAction">
+                  <option value="">No button</option>
+                  <option value="update">Update the app (store page)</option>
+                  <option value="read">Open Read &amp; Speak</option>
+                  <option value="cards">Open Cards</option>
+                  <option value="video">Open Video</option>
+                  <option value="home">Open Home</option>
+                  <option value="link">Open a link…</option>
+                </select>
+              </label>
+              <label id="msgLabelWrap" hidden>Button text <input id="msgLabel" maxlength="40" placeholder="Update" /></label>
+            </div>
+            <label id="msgUrlWrap" hidden>Link <input id="msgUrl" type="url" placeholder="https://magicread.app/blog/…" /></label>
+            <div class="row">
+              <label>Who sees it
+                <select id="msgPlatform">
+                  <option value="all">Everyone</option>
+                  <option value="app">Both apps</option>
+                  <option value="ios">iPhone app</option>
+                  <option value="android">Android app</option>
+                  <option value="web">Website</option>
+                </select>
+              </label>
+              <label>App language
+                <select id="msgLang"><option value="">All languages</option></select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Only app versions older than <span class="hint">e.g. 1.0.6 for "please update"; empty = everyone</span>
+                <input id="msgBelow" pattern="\d+(\.\d+){0,3}" placeholder="optional" />
+              </label>
+              <label>Stop showing after <span class="hint">optional</span>
+                <input id="msgEnds" type="date" />
+              </label>
+            </div>
+            <div class="msg-actions">
+              <button class="primary" type="submit">Send message</button>
+              <span id="msgStatus" class="msg-status" role="status"></span>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Sent messages</h2>
+          <p class="sub">Newest first. Turning one off hides it from people who haven't seen it yet.</p>
+          <div id="msgList" class="msg-list"></div>
+        </div>
+      </div>
       <footer>Counts only — no names, emails or user ids are sent to this page.</footer>
     </section>
   </div>
@@ -238,6 +315,7 @@
         const data = await res.json();
         showMessage("");
         render(data);
+        loadMessages();
       } catch (error) {
         showMessage(`Couldn't load the numbers (${error.message}). The server may be waking up — try Refresh in a few seconds.`);
       }
@@ -472,6 +550,94 @@
       columnChart($("chartSpeech"), { days: d.days, unit: "checks", series: speechSeries });
       tableToggle($("speechTable"), d.days, speechSeries);
     }
+
+    // ---------- messages ----------
+
+    const AUDIENCE = { all: "Everyone", app: "Both apps", ios: "iPhone app", android: "Android app", web: "Website" };
+    const ACTIONS = { update: "Update the app", read: "Open Read & Speak", cards: "Open Cards", video: "Open Video", home: "Open Home" };
+
+    function adminFetch(path, options = {}) {
+      const key = memoryKey || readKey();
+      return fetch(`${API}${path}`, {
+        ...options,
+        headers: { "x-admin-secret": key, "Content-Type": "application/json", ...(options.headers || {}) },
+        cache: "no-store"
+      });
+    }
+
+    async function loadMessages() {
+      const list = $("msgList");
+      try {
+        const res = await adminFetch("/api/admin/announcements");
+        if (res.status === 404) { list.innerHTML = `<p class="muted-note">Not live yet — wait for Render to deploy.</p>`; return; }
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+        const { messages } = await res.json();
+        if (!messages.length) { list.innerHTML = `<p class="muted-note">No messages yet.</p>`; return; }
+        list.innerHTML = messages.map((m) => {
+          const who = [AUDIENCE[m.platform] || m.platform, m.ui_lang ? langName(m.ui_lang) : "all languages", m.below_version ? `versions below ${m.below_version}` : ""].filter(Boolean).join(" · ");
+          const button = m.cta_action ? ` · button “${m.cta_label}” → ${ACTIONS[m.cta_action] || m.cta_action}` : "";
+          const ends = m.ends_at ? ` · until ${new Date(m.ends_at).toLocaleDateString()}` : "";
+          return `<div class="msg-item${m.active ? "" : " off"}">
+            <div><b>${esc(m.title)}</b>${m.body ? `<div class="body">${esc(m.body)}</div>` : ""}
+              <div class="meta">${esc(who + button + ends)} · sent ${esc(new Date(m.created_at).toLocaleDateString())}</div></div>
+            <button type="button" data-id="${esc(m.id)}" data-active="${m.active ? "1" : ""}">${m.active ? "Turn off" : "Turn on"}</button>
+          </div>`;
+        }).join("");
+      } catch (error) {
+        list.innerHTML = `<p class="error">Couldn't load messages (${esc(error.message)}).</p>`;
+      }
+    }
+
+    $("msgLang").insertAdjacentHTML("beforeend", Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join(""));
+    $("msgAction").addEventListener("change", () => {
+      const action = $("msgAction").value;
+      $("msgLabelWrap").hidden = !action;
+      $("msgUrlWrap").hidden = action !== "link";
+      if (action === "update" && !$("msgLabel").value) $("msgLabel").value = "Update";
+    });
+    $("msgForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const action = $("msgAction").value;
+      const url = $("msgUrl").value.trim();
+      if (action === "link" && !/^https:\/\//.test(url)) { $("msgStatus").textContent = "The link must start with https://"; return; }
+      if (action && !$("msgLabel").value.trim()) { $("msgStatus").textContent = "Add the button text."; return; }
+      const ends = $("msgEnds").value;
+      const body = {
+        title: $("msgTitle").value,
+        body: $("msgBody").value,
+        cta_action: action === "link" ? url : action,
+        cta_label: action ? $("msgLabel").value : "",
+        platform: $("msgPlatform").value,
+        ui_lang: $("msgLang").value,
+        below_version: $("msgBelow").value,
+        ends_at: ends ? new Date(`${ends}T23:59:59`).toISOString() : ""
+      };
+      $("msgStatus").textContent = "Sending…";
+      try {
+        const res = await adminFetch("/api/admin/announcements", { method: "POST", body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        $("msgStatus").textContent = "Sent. People will see it the next time they open the app.";
+        $("msgForm").reset();
+        $("msgLabelWrap").hidden = true;
+        $("msgUrlWrap").hidden = true;
+        loadMessages();
+      } catch (error) {
+        $("msgStatus").textContent = `Not sent: ${error.message}`;
+      }
+    });
+    $("msgList").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-id]");
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        const res = await adminFetch(`/api/admin/announcements/${encodeURIComponent(btn.dataset.id)}`, {
+          method: "PATCH", body: JSON.stringify({ active: !btn.dataset.active })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch {}
+      loadMessages();
+    });
 
     $("loginForm").addEventListener("submit", (e) => {
       e.preventDefault();

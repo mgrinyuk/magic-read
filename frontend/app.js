@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.8";
+import { UI_TEXT } from "./ui-text.js?v=20261018.9";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -893,6 +893,7 @@ async function fetchMyPlan() {
     renderPlanUI();
     maybeShowFreePlanNotice();
     maybeShowWhatsNew();
+    maybeShowMessage();
   } catch {
     // Keep last-known plan on a network hiccup.
   }
@@ -1263,6 +1264,93 @@ function maybeShowWhatsNew() {
     rdSetupState.tab = "paste";
     openReadSetup();
   });
+}
+
+// In-app messages written from the admin dashboard (/api/announcements).
+// The newest one this device hasn't seen is shown once as a card; one per
+// login, so several messages don't stack up.
+const MESSAGES_SEEN_KEY = "magicread_messages_seen";
+const STORE_URLS = {
+  ios: "https://apps.apple.com/app/magic-read/id6794641650",
+  android: "https://play.google.com/store/apps/details?id=com.magicread.app",
+};
+
+function messagePlatform() {
+  if (isIOSCapacitorShell()) return "ios";
+  if (isAndroidCapacitorShell()) return "android";
+  return "web";
+}
+
+async function maybeShowMessage() {
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem(MESSAGES_SEEN_KEY) || "[]"); } catch { return; }
+  const platform = messagePlatform();
+  let version = "";
+  if (platform !== "web") {
+    try { version = (await window.Capacitor?.Plugins?.App?.getInfo?.())?.version || ""; } catch {}
+  }
+  const lang = localStorage.getItem("magicread_ui_lang") || "en";
+  let messages = [];
+  try {
+    const params = new URLSearchParams({ platform, lang, version });
+    const res = await fetchWithAuth(`${API_BASE}/api/announcements?${params}`);
+    if (!res.ok) return;
+    messages = (await res.json()).messages || [];
+  } catch {
+    return;
+  }
+  const message = messages.find(m => !seen.includes(m.id));
+  if (!message) return;
+  // Not on top of another dialog, onboarding or the tour; try again next login.
+  if (document.querySelector(".modal-overlay")) return;
+  const active = document.querySelector(".app-screen.active")?.id || "";
+  if (active === "screen-onboarding" || active === "screen-tour") return;
+  try { localStorage.setItem(MESSAGES_SEEN_KEY, JSON.stringify([message.id, ...seen].slice(0, 100))); } catch {}
+
+  const t = getT();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay app-message";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="appMessageTitle">
+      <h3 id="appMessageTitle" class="report-title">${escapeHtml(message.title)}</h3>
+      ${message.body ? `<p class="report-sub app-message-body">${escapeHtml(message.body)}</p>` : ""}
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(message.cta_action ? t.maybeLater || "Later" : t.planChangeOk)}</button>
+        ${message.cta_action ? `<button class="modal-confirm primary-btn" type="button">${escapeHtml(message.cta_label || t.whatsNewCta)}</button>` : ""}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  analyticsEvent("message_shown", { id: message.id });
+  overlay.querySelector(".modal-cancel").addEventListener("click", () => overlay.remove());
+  overlay.querySelector(".modal-confirm")?.addEventListener("click", () => {
+    overlay.remove();
+    analyticsEvent("message_clicked", { id: message.id });
+    runMessageAction(message.cta_action);
+  });
+}
+
+function runMessageAction(action) {
+  const platform = messagePlatform();
+  // Native shells hand non-app URLs to the system, which opens the store or
+  // browser; the website opens a new tab.
+  const openUrl = (url) => (platform === "web" ? window.open(url, "_blank", "noopener") : (window.location.href = url));
+  if (action === "update") {
+    openUrl(STORE_URLS[platform] || "https://magicread.app/apps");
+  } else if (action === "read") {
+    appMode = "reading";
+    openReadSetup();
+  } else if (action === "cards") {
+    showScreen(screenFlashcards);
+    renderDeckSelector();
+    renderFlashcards();
+  } else if (action === "video") {
+    openVideoSurface();
+  } else if (action === "home") {
+    renderHomeScreen();
+    showScreen(screenHome);
+  } else if (/^https:\/\//.test(action || "")) {
+    openUrl(action);
+  }
 }
 
 function trialDaysLeft() {
