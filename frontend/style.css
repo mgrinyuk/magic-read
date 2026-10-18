@@ -7898,3 +7898,66 @@ body.reader-active .rd-toolbar { top: calc(64px + env(safe-area-inset-top)); }
 
 /* In-app message card (admin-written): keep the author's line breaks. */
 .app-message-body { white-space: pre-line; }
+
+/* ================================================================
+   REVIEW (spaced repetition)
+   ================================================================ */
+.fc-review-banner {
+  display: flex; align-items: center; gap: 14px; justify-content: space-between;
+  margin: 0 0 16px; padding: 14px 16px; border-radius: 16px;
+  background: rgba(229,38,126,.07); border: 1px solid rgba(229,38,126,.22);
+}
+.fc-review-banner[hidden] { display: none; }
+.fc-review-banner.is-done { background: var(--surface-2); border-color: transparent; }
+.fc-review-text { display: grid; gap: 2px; min-width: 0; }
+.fc-review-text b { font-size: 15.5px; color: var(--text); }
+.fc-review-text span { font-size: 13px; color: var(--text-soft); }
+.fc-review-banner.is-done b { font-size: 14px; font-weight: 600; color: var(--text-soft); }
+.fc-review-start { flex: none; padding: 10px 18px; }
+
+.hd-review-badge { cursor: pointer; color: var(--primary); background: rgba(229,38,126,.10); top: 50%; transform: translateY(-50%); }
+
+#screen-review .rv-body {
+  max-width: 560px; margin: 0 auto;
+  padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
+}
+.rv-top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.rv-progress { flex: 1; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.rv-progress i { display: block; height: 100%; width: 0; background: linear-gradient(95deg, var(--primary), var(--primary-soft)); border-radius: 99px; transition: width .25s ease; }
+.rv-count { font-size: 13px; font-weight: 700; color: var(--text-dim); min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.rv-card {
+  position: relative; text-align: center;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 22px;
+  padding: 26px 20px 28px; min-height: 260px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+}
+.rv-deck { position: absolute; top: 14px; left: 16px; font-size: 12px; font-weight: 700; color: var(--text-dim); max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-play { position: absolute; top: 10px; right: 10px; }
+.rv-word { font-size: clamp(34px, 10vw, 48px); font-weight: 700; line-height: 1.2; color: var(--text); overflow-wrap: anywhere; }
+.rv-answer { display: grid; gap: 8px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--surface-2); width: 100%; }
+.rv-pinyin { font-size: 17px; font-weight: 600; color: var(--text-soft); }
+.rv-translation { font-size: 19px; font-weight: 700; color: var(--text); }
+.rv-sentence { font-size: 15px; color: var(--text-soft); line-height: 1.6; }
+
+.rv-show { width: 100%; margin-top: 16px; height: 54px; }
+.rv-grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.rv-grade {
+  display: grid; gap: 3px; justify-items: center; padding: 12px 6px; border-radius: 14px; cursor: pointer;
+  font-family: inherit; border: 1.5px solid var(--border); background: var(--surface); color: var(--text);
+}
+.rv-grade b { font-size: 16px; }
+.rv-grade span { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+.rv-again { border-color: rgba(225,29,72,.35); }
+.rv-again b { color: var(--retry, #e11d48); }
+.rv-good { border-color: rgba(22,163,74,.35); }
+.rv-good b { color: var(--good, #16a34a); }
+.rv-easy b { color: var(--cyan-ink, #0a7f99); }
+
+.rv-done { text-align: center; padding: 30px 8px; }
+.rv-done-mark { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(95deg, var(--primary), var(--primary-soft)); }
+.rv-done h3 { margin: 0 0 6px; font-size: 24px; }
+.rv-done p { margin: 0 0 4px; color: var(--text-soft); }
+.rv-done-next { font-size: 14px; }
+.rv-done-actions { display: grid; gap: 10px; margin-top: 22px; }
+.rv-done-actions button { height: 52px; }

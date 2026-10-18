@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.9";
+import { UI_TEXT } from "./ui-text.js?v=20261018.10";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -503,6 +503,7 @@ const targetLangSelect = document.getElementById("targetLang");
 const screenHome = document.getElementById("screen-home");
 const screenMain = document.getElementById("screen-main");
 const screenFlashcards = document.getElementById("screen-flashcards");
+const screenReview = document.getElementById("screen-review");
 const screenWriting = document.getElementById("screen-writing");
 const screenOnboarding = document.getElementById("screen-onboarding");
 const screenAccount = document.getElementById("screen-account");
@@ -776,6 +777,10 @@ function openVoicePicker() {
 const FLASHCARD_STORAGE_KEY = "magicread_flashcard_decks";
 let flashcardDecks = [];
 let currentDeckId = null;
+// Spaced-repetition review session (see "Review" further down). Up here so
+// renderFlashcards, which runs early, never meets them in the dead zone.
+const REVIEW_BATCH = 20;
+let rv = null;
 // Which user's decks are in memory — lets checkAuth() reload them after a
 // fresh in-app login (decks used to load only once at startup, so logging in
 // on a new device showed an empty flashcards screen until an app restart).
@@ -891,6 +896,7 @@ async function fetchMyPlan() {
     const data = await res.json();
     userPlan = { ...userPlan, ...data, planLoaded: true, limits: { ...userPlan.limits, ...(data.limits || {}) } };
     renderPlanUI();
+    renderReviewEntryPoints();
     maybeShowFreePlanNotice();
     maybeShowWhatsNew();
     maybeShowMessage();
@@ -985,11 +991,20 @@ async function scheduleDailyReminder(hour, minute) {
     if (perm.display !== "granted") perm = await LN.requestPermissions();
     if (perm.display !== "granted") return "denied";
     await LN.cancel({ notifications: [{ id: REMINDER_ID }] });
+    // Cards due by the day the reminder next fires turn it into a review
+    // nudge that opens the review; otherwise it's the reading reminder.
+    // The body is fixed once scheduled, so every launch and every finished
+    // review reschedules it with a fresh count.
+    const fire = new Date();
+    fire.setHours(hour, minute, 0, 0);
+    if (fire <= new Date()) fire.setDate(fire.getDate() + 1);
+    const due = isOnFreePlan() ? 0 : dueReviewCards(localDayString(fire)).length;
     await LN.schedule({
       notifications: [{
         id: REMINDER_ID,
         title: "Magic Read",
-        body: getT().reminderBody,
+        body: due ? getT().reminderReviewBody.replace("{n}", formatDueCount(due)) : getT().reminderBody,
+        extra: due ? { open: "review" } : {},
         schedule: { on: { hour, minute }, allowWhileIdle: true },
         // A practice nudge doesn't need to-the-minute timing, and exact alarms
         // would send Android 12+ users to the "Alarms & reminders" settings.
@@ -1683,6 +1698,7 @@ async function checkAuth() {
     loadFlashcardsFromStorage().then(() => {
       renderDeckSelector();
       renderFlashcards();
+      refreshDailyReminder(); // its text depends on how many cards are due
     });
 
     // If the user landed on the onboarding screen (because session wasn't known yet),
@@ -2548,6 +2564,7 @@ updatePasswordBtn?.addEventListener("click", async () => {
 const TAB_BY_SCREEN = {
   "screen-home":            "home",
   "screen-flashcards":      "cards",
+  "screen-review":          "cards",
   "screen-video":           "video",
   "screen-speak-practice":  "read",
   "screen-speak-complete":  "read",
@@ -2633,6 +2650,7 @@ function showScreen(screen) {
     loadFlashcardsFromStorage().then(() => {
       renderDeckSelector();
       renderFlashcards();
+      refreshDailyReminder(); // its text depends on how many cards are due
     });
   }
   sessionStorage.setItem("activeScreenId", screen.id);
@@ -8932,8 +8950,14 @@ async function loadFlashcardsFromStorage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
+  const SRS_FIELDS = "srs_due, srs_interval, srs_ease, srs_reps, srs_lapses";
   let { data: decks, error: deckError } =
-    await loadDecks(`${CARD_FIELDS}, image_url, image_alt, image_credit`);
+    await loadDecks(`${CARD_FIELDS}, image_url, image_alt, image_credit, ${SRS_FIELDS}`);
+
+  if (deckError) {
+    console.warn("Load decks with review schedule failed, retrying without:", deckError.message);
+    ({ data: decks, error: deckError } = await loadDecks(`${CARD_FIELDS}, image_url, image_alt, image_credit`));
+  }
 
   if (deckError) {
     console.warn("Load decks with pictures failed, retrying without:", deckError.message);
@@ -8960,7 +8984,12 @@ async function loadFlashcardsFromStorage() {
       lang: card.lang,
       imageUrl: card.image_url || "",
       imageAlt: card.image_alt || "",
-      imageCredit: card.image_credit || ""
+      imageCredit: card.image_credit || "",
+      srsDue: card.srs_due || null,
+      srsInterval: card.srs_interval || 0,
+      srsEase: card.srs_ease || 2.5,
+      srsReps: card.srs_reps || 0,
+      srsLapses: card.srs_lapses || 0
     }))
   }));
 
@@ -9248,6 +9277,8 @@ async function renderFlashcards() {
   const translationEl = document.getElementById("flashcardTranslation");
 
   if (!emptyEl || !deckEl || !cardEl) return;
+
+  renderReviewEntryPoints();
 
   if (!cards.length) {
     emptyEl.hidden = false;
@@ -10170,6 +10201,210 @@ document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("c
   }
   setFcMode(mode);
 }));
+
+/* ── Review: spaced repetition across every deck ──
+   Each card carries a schedule (backend/03-srs-setup.sql): srs_due is the
+   local day it's next due (null = never reviewed = due now). Again brings a
+   card back today; Good and Easy push it out 1 → 3 → 7 days and then by the
+   card's ease. Sessions take REVIEW_BATCH cards, overdue ones first. */
+function addDaysToDay(day, n) {
+  const [y, m, d] = day.split("-").map(Number);
+  return localDayString(new Date(y, m - 1, d + n));
+}
+
+function dueReviewCards(day = localDayString()) {
+  const cards = flashcardDecks.flatMap(deck => deck.cards.map(card => ({ card, deck })));
+  const due = cards.filter(({ card }) => !card.srsDue || card.srsDue <= day);
+  // Cards already in rotation (oldest due first) before never-reviewed ones.
+  return due.sort((a, b) => (a.card.srsDue ? 0 : 1) - (b.card.srsDue ? 0 : 1)
+    || String(a.card.srsDue || "").localeCompare(String(b.card.srsDue || "")));
+}
+
+function formatDueCount(n) {
+  return n > REVIEW_BATCH ? `${REVIEW_BATCH}+` : String(n);
+}
+
+function srsNext(card, grade) {
+  let interval = card.srsInterval || 0, ease = card.srsEase || 2.5;
+  let reps = card.srsReps || 0, lapses = card.srsLapses || 0;
+  if (grade === "again") {
+    reps = 0; lapses += 1; interval = 0; ease = Math.max(1.3, ease - 0.2);
+  } else if (grade === "good") {
+    interval = reps === 0 ? 1 : reps === 1 ? 3 : Math.max(interval + 1, Math.round(interval * ease));
+    reps += 1;
+  } else {
+    interval = reps === 0 ? 3 : reps === 1 ? 7 : Math.max(interval + 2, Math.round(interval * ease * 1.3));
+    ease = Math.min(3.5, ease + 0.15); reps += 1;
+  }
+  return { interval, ease: Math.round(ease * 100) / 100, reps, lapses, due: addDaysToDay(localDayString(), interval) };
+}
+
+// "tomorrow", "in 3 days", "in 2 weeks" in the app's language.
+function formatReviewGap(days) {
+  const lang = localStorage.getItem("magicread_ui_lang") || "en";
+  try {
+    const rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
+    if (days < 14) return rtf.format(days, "day");
+    if (days < 60) return rtf.format(Math.round(days / 7), "week");
+    return rtf.format(Math.round(days / 30), "month");
+  } catch {
+    return `${days}d`;
+  }
+}
+
+// Cards banner + Home badge: how many words are waiting today.
+function renderReviewEntryPoints() {
+  const t = getT();
+  const due = dueReviewCards().length;
+  const badge = document.getElementById("hdReviewBadge");
+  if (badge) {
+    badge.hidden = !due;
+    badge.textContent = due ? t.reviewBadge.replace("{n}", formatDueCount(due)) : "";
+  }
+  const banner = document.getElementById("fcReviewBanner");
+  if (!banner) return;
+  const total = flashcardDecks.reduce((sum, deck) => sum + deck.cards.length, 0);
+  banner.hidden = !total;
+  if (!total) return;
+  if (!due) {
+    banner.className = "fc-review-banner is-done";
+    banner.innerHTML = `<span class="fc-review-text"><b>${escapeHtml(t.reviewAllDone)}</b></span>`;
+    return;
+  }
+  banner.className = "fc-review-banner";
+  banner.innerHTML = `
+    <span class="fc-review-text"><b>${escapeHtml(t.reviewDueTitle.replace("{n}", formatDueCount(due)))}</b><span>${escapeHtml(t.reviewDueSub)}</span></span>
+    <button class="primary-btn fc-review-start" type="button">${escapeHtml(t.reviewStart)}</button>`;
+  banner.querySelector(".fc-review-start").addEventListener("click", startReview);
+}
+
+async function startReview() {
+  // Learn and Check are Pro, and so is review.
+  if (isOnFreePlan()) { showUpgradePrompt("CARD_REVIEW_PRO"); return; }
+  const queue = dueReviewCards().slice(0, REVIEW_BATCH);
+  if (!queue.length) { showToast(getT().reviewAllDone, "info"); return; }
+  rv = { queue, idx: 0, revealed: false, reviewed: 0, total: queue.length };
+  analyticsEvent("review_started", { cards: queue.length });
+  showScreen(screenReview);
+  renderReview();
+}
+
+function renderReview() {
+  const stage = document.getElementById("rvStage");
+  if (!stage || !rv) return;
+  const t = getT();
+  const done = rv.idx >= rv.queue.length;
+  const progress = document.getElementById("rvProgress");
+  if (progress) progress.style.width = `${Math.round((Math.min(rv.reviewed, rv.total) / rv.total) * 100)}%`;
+  const count = document.getElementById("rvCount");
+  if (count) count.textContent = done ? "" : `${Math.min(rv.reviewed + 1, rv.total)} / ${rv.total}`;
+
+  if (done) {
+    const more = dueReviewCards().length;
+    const tomorrow = dueReviewCards(addDaysToDay(localDayString(), 1)).length;
+    stage.innerHTML = `
+      <div class="rv-done">
+        <div class="rv-done-mark"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg></div>
+        <h3>${escapeHtml(t.reviewDoneTitle)}</h3>
+        <p>${escapeHtml(t.reviewDoneSub.replace("{n}", rv.total))}</p>
+        ${!more && tomorrow ? `<p class="rv-done-next">${escapeHtml(t.reviewTomorrow.replace("{n}", tomorrow))}</p>` : ""}
+        <div class="rv-done-actions">
+          ${more ? `<button class="primary-btn" id="rvMoreBtn" type="button">${escapeHtml(t.reviewMore.replace("{n}", formatDueCount(more)))}</button>` : ""}
+          <button class="${more ? "ghost-btn" : "primary-btn"}" id="rvFinishBtn" type="button">${escapeHtml(t.reviewBackToCards)}</button>
+        </div>
+      </div>`;
+    document.getElementById("rvMoreBtn")?.addEventListener("click", startReview);
+    document.getElementById("rvFinishBtn")?.addEventListener("click", leaveReview);
+    return;
+  }
+
+  const { card, deck } = rv.queue[rv.idx];
+  const hints = ["again", "good", "easy"].map(g => {
+    const next = srsNext(card, g);
+    return { g, label: t[`review${g[0].toUpperCase()}${g.slice(1)}`], when: g === "again" ? t.reviewAgainHint : formatReviewGap(next.interval) };
+  });
+  stage.innerHTML = `
+    <div class="rv-card${rv.revealed ? " revealed" : ""}">
+      <div class="rv-deck">${escapeHtml(deck.name)}</div>
+      <div class="rv-word zh">${escapeHtml(card.word || "")}</div>
+      <button class="rd-iconbtn rv-play" id="rvPlayBtn" type="button" aria-label="Listen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-vol"/></svg>
+      </button>
+      ${rv.revealed ? `
+        <div class="rv-answer">
+          ${card.pinyin ? `<div class="rv-pinyin">${escapeHtml(card.pinyin)}</div>` : ""}
+          <div class="rv-translation">${escapeHtml(cleanTranslation(card.translation || "") || "—")}</div>
+          ${card.sentence ? `<div class="rv-sentence zh">${escapeHtml(card.sentence)}</div>` : ""}
+        </div>` : ""}
+    </div>
+    ${rv.revealed
+      ? `<div class="rv-grades">${hints.map(h => `
+          <button class="rv-grade rv-${h.g}" data-grade="${h.g}" type="button"><b>${escapeHtml(h.label)}</b><span>${escapeHtml(h.when)}</span></button>`).join("")}
+        </div>`
+      : `<button class="primary-btn rv-show" id="rvShowBtn" type="button">${escapeHtml(t.reviewShowAnswer)}</button>`}`;
+
+  document.getElementById("rvPlayBtn")?.addEventListener("click", () => {
+    unlockAudioForMobile();
+    playGoogleTTS(card.word, card.lang || null, null, null).catch(console.error);
+  });
+  document.getElementById("rvShowBtn")?.addEventListener("click", () => { rv.revealed = true; renderReview(); });
+  stage.querySelectorAll(".rv-grade").forEach(btn => btn.addEventListener("click", () => gradeReviewCard(btn.dataset.grade)));
+}
+
+async function gradeReviewCard(grade) {
+  const item = rv?.queue[rv.idx];
+  if (!item) return;
+  const session = rv;
+  const { card } = item;
+  const next = srsNext(card, grade);
+  Object.assign(card, { srsInterval: next.interval, srsEase: next.ease, srsReps: next.reps, srsLapses: next.lapses, srsDue: next.due });
+  if (grade === "again") {
+    session.queue.push(item); // see it again before the session ends
+  } else {
+    session.reviewed += 1;
+    recordActivity("words_practiced", 1);
+  }
+  session.idx += 1;
+  session.revealed = false;
+  renderReview();
+
+  const { error } = await supabase.from("flashcards").update({
+    srs_interval: next.interval,
+    srs_ease: next.ease,
+    srs_reps: next.reps,
+    srs_lapses: next.lapses,
+    srs_due: next.due,
+    srs_last_reviewed: new Date().toISOString()
+  }).eq("id", card.id);
+  if (error) console.error("Save review error:", error);
+  if (session.idx >= session.queue.length) {
+    analyticsEvent("review_finished", { cards: session.total });
+    refreshDailyReminder(); // tomorrow's count changed
+  }
+}
+
+function leaveReview() {
+  rv = null;
+  showScreen(screenFlashcards);
+  renderDeckSelector();
+  renderFlashcards();
+}
+
+document.getElementById("rvBackBtn")?.addEventListener("click", leaveReview);
+document.getElementById("hdReviewBadge")?.addEventListener("click", (e) => {
+  e.stopPropagation(); // the badge sits on the Cards tile; open review, not Cards
+  startReview();
+});
+
+// Tapping a review reminder opens the review once the account and decks are in.
+localNotifications()?.addListener?.("localNotificationActionPerformed", async (event) => {
+  if (event?.notification?.extra?.open !== "review") return;
+  await initialAuthCheck;
+  if (!document.body.classList.contains("is-logged-in")) return;
+  await loadFlashcardsFromStorage();
+  if (!userPlan.planLoaded) await fetchMyPlan();
+  startReview();
+});
 
 /* ── Learn: multiple choice, alternating direction ── */
 

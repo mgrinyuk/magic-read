@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261018.9" />
+  <link rel="stylesheet" href="style.css?v=20261018.10" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -461,6 +461,7 @@
             <button class="hd-action" type="button" data-hd-target="cards">
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-cards"/></svg></div>
               <div class="hd-action-nm" data-i18n="cardsTitle">Cards</div>
+              <span class="hd-action-badge hd-review-badge" id="hdReviewBadge" hidden></span>
             </button>
             <button class="hd-action hd-web-only" type="button" data-hd-target="write">
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-pencil"/></svg></div>
@@ -913,6 +914,9 @@
             </div>
           </div>
 
+          <!-- Spaced-repetition review across every deck: due count + start. -->
+          <div id="fcReviewBanner" class="fc-review-banner" hidden></div>
+
           <div id="flashcardEmptyState" class="flashcard-empty">
             <strong data-i18n="noWords">No words yet</strong>
             <p data-i18n="clickToSave">Click any word in a text to save it.</p>
@@ -1014,6 +1018,20 @@
             <button id="fcPicRemoveBtn" class="flashcard-delete-btn fc-pic-remove" type="button" hidden data-i18n="removePicture">Remove picture</button>
           </div>
         </section>
+      </section>
+
+      <!-- Spaced-repetition review: one card at a time, all decks. -->
+      <section id="screen-review" class="app-screen">
+        <div class="rv-body">
+          <div class="rv-top">
+            <button class="rd-iconbtn" id="rvBackBtn" type="button" aria-label="Back">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-left"/></svg>
+            </button>
+            <div class="rv-progress"><i id="rvProgress"></i></div>
+            <span class="rv-count" id="rvCount"></span>
+          </div>
+          <div id="rvStage" class="rv-stage"></div>
+        </div>
       </section>
 
       <section id="screen-tour" class="app-screen">
@@ -1550,7 +1568,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20261018.9"></script>
+  <script type="module" src="app.js?v=20261018.10"></script>
 
   <footer class="footer">
     <div>
