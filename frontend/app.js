@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.14";
+import { UI_TEXT } from "./ui-text.js?v=20261018.16";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -898,7 +898,8 @@ async function fetchMyPlan() {
     renderPlanUI();
     renderReviewEntryPoints();
     maybeShowFreePlanNotice();
-    maybeShowWhatsNew();
+    maybeShowWhatsNew(); // one-time notices first; the review prompt waits a login
+    maybeShowReviewPrompt();
     maybeShowMessage();
   } catch {
     // Keep last-known plan on a network hiccup.
@@ -1699,6 +1700,8 @@ async function checkAuth() {
       renderDeckSelector();
       renderFlashcards();
       refreshDailyReminder(); // its text depends on how many cards are due
+      renderReviewEntryPoints();
+      maybeShowReviewPrompt();
     });
 
     // If the user landed on the onboarding screen (because session wasn't known yet),
@@ -2651,6 +2654,8 @@ function showScreen(screen) {
       renderDeckSelector();
       renderFlashcards();
       refreshDailyReminder(); // its text depends on how many cards are due
+      renderReviewEntryPoints();
+      maybeShowReviewPrompt();
     });
   }
   sessionStorage.setItem("activeScreenId", screen.id);
@@ -9105,7 +9110,7 @@ function renderDeckSelector() {
     <option value="${deck.id}">
       ${escapeHtml(deck.name)} (${deck.cards.length})
     </option>
-  `).join("");
+  `).join("") + `<option value="__new">${escapeHtml(getT().newDeckOption || "+ New deck…")}</option>`;
 
   selectEl.value = currentDeckId || "";
 }
@@ -9328,17 +9333,18 @@ async function renderFlashcards() {
   const focusBar = document.getElementById("fcFocusBar");
   const focusTitle = document.getElementById("fcFocusTitle");
   if (focusBar) focusBar.hidden = !fcFocus;
-  if (focusTitle) {
-    const modeLabel = fcMode === "learn" ? (t.fcLearnTab || "Learn")
-      : fcMode === "check" ? (t.fcCheckTab || "Check")
-      : (t.fcBrowse || "Browse");
-    focusTitle.textContent = `${deck?.name || t.deck} · ${modeLabel}`;
-  }
+  if (focusTitle) focusTitle.textContent = deck?.name || t.deck;
 
   const browsePanel = document.getElementById("fcBrowsePanel");
   const learnPanel = document.getElementById("fcLearnPanel");
   const checkPanel = document.getElementById("fcCheckPanel");
-  if (browsePanel) browsePanel.hidden = fcMode !== "browse";
+  if (browsePanel) browsePanel.hidden = fcMode !== "browse" && fcMode !== "speak";
+  const speakDir = document.getElementById("fcSpeakDir");
+  if (speakDir) {
+    speakDir.hidden = fcMode !== "speak";
+    speakDir.querySelectorAll(".fc-speak-dir-btn").forEach(b =>
+      b.classList.toggle("on", b.dataset.dir === flashcardSpeakingMode));
+  }
   if (learnPanel) learnPanel.hidden = fcMode !== "learn";
   if (checkPanel) checkPanel.hidden = fcMode !== "check";
   if (fcMode === "learn") { renderFcLearn(); return; }
@@ -9350,7 +9356,7 @@ async function renderFlashcards() {
 
   const card = cards[currentFlashcardIndex];
 
-  counterEl.textContent = `${deck?.name || t.deck} · ${t.card} ${currentFlashcardIndex + 1} ${t.of} ${cards.length}`;
+  counterEl.textContent = `${currentFlashcardIndex + 1} / ${cards.length}`;
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
   if (wordBackEl) wordBackEl.textContent = card.word || "";
@@ -9373,7 +9379,7 @@ async function renderFlashcards() {
   if (flashcardSpeakingMode) {
     if (speakEasyBtn) speakEasyBtn.hidden = true;
     if (speakHardBtn) speakHardBtn.hidden = true;
-    if (speakExitBtn) speakExitBtn.hidden = false;
+    if (speakExitBtn) speakExitBtn.hidden = true;
     if (nextBtn) nextBtn.disabled = !flashcardSpeakingUnlocked;
 
     if (flashcardSpeakingMode === "easy") {
@@ -10084,11 +10090,19 @@ async function showSharedDeckPreview(token) {
 document.getElementById("flashcardImportBtn")?.addEventListener("click", importWords);
 document.getElementById("flashcardExportBtn")?.addEventListener("click", exportCurrentDeck);
 
-document.getElementById("flashcardDeckSelect")?.addEventListener("change", (e) => {
+document.getElementById("flashcardDeckSelect")?.addEventListener("change", async (e) => {
+  // The last option creates a deck (the separate + button is gone).
+  if (e.target.value === "__new") {
+    e.target.value = currentDeckId || "";
+    await createDeck();
+    renderDeckSelector();
+    return;
+  }
   currentDeckId = e.target.value;
   currentFlashcardIndex = 0;
-  flashcardSpeakingMode = null;
-  flashcardSpeakingUnlocked = true;
+  // On the Speak tab a new deck starts a new speaking round.
+  flashcardSpeakingMode = fcMode === "speak" ? fcSpeakDirection : null;
+  flashcardSpeakingUnlocked = fcMode !== "speak";
   stopFlashcardRecognition();
   renderFlashcards();
 });
@@ -10183,7 +10197,6 @@ function exitFcFocus() {
   fcFocus = false;
   document.body.classList.remove("fc-focus");
   // Leaving a session mid-way shouldn't leave speech recognition running.
-  flashcardSpeakingMode = null;
   stopFlashcardRecognition();
   renderFlashcards();
 }
@@ -10198,8 +10211,22 @@ function setFcMode(mode) {
   if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
   if (mode === "learn") fcStartLearn();
   if (mode === "check") fcStartCheck();
+  if (mode === "speak") {
+    flashcardSpeakingMode = fcSpeakDirection;
+    flashcardSpeakingUnlocked = false;
+  }
   renderFlashcards();
 }
+
+// Speak tab: the word as shown ("easy") or from its translation ("hard").
+let fcSpeakDirection = "easy";
+document.querySelectorAll(".fc-speak-dir-btn").forEach(btn => btn.addEventListener("click", () => {
+  fcSpeakDirection = btn.dataset.dir;
+  setFcMode("speak");
+}));
+
+// Card tools (fullscreen, ⋯) sit on the card: a tap there mustn't flip it.
+document.querySelector(".fc-card-tools")?.addEventListener("click", (e) => e.stopPropagation());
 
 document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("click", () => {
   const mode = btn.dataset.fcMode;
@@ -10212,6 +10239,10 @@ document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("c
   if (mode === "learn" && (getCurrentDeck()?.cards.length || 0) < FC_LEARN_MIN_CARDS) {
     showToast(getT().learnLocked, "info");
     return;
+  }
+  if (mode === "speak") {
+    if (isOnFreePlan()) { showUpgradePrompt("QUOTA_EXCEEDED"); return; }
+    if (!getCurrentCards().length) { showToast(getT().noCardsInDeck, "error"); return; }
   }
   if (mode === "check" && !(getCurrentDeck()?.cards.length)) {
     showToast(getT().noCardsInDeck, "error");
@@ -10287,7 +10318,7 @@ function formatReviewGap(days) {
   }
 }
 
-// Cards banner + Home badge: how many words are waiting today.
+// Home badge: how many words are waiting today.
 function renderReviewEntryPoints() {
   const t = getT();
   const due = dueReviewCards().length;
@@ -10296,21 +10327,43 @@ function renderReviewEntryPoints() {
     badge.hidden = !due;
     badge.textContent = due ? t.reviewBadge.replace("{n}", formatDueCount(due)) : "";
   }
-  const banner = document.getElementById("fcReviewBanner");
-  if (!banner) return;
-  const total = flashcardDecks.reduce((sum, deck) => sum + deck.cards.length, 0);
-  banner.hidden = !total;
-  if (!total) return;
-  if (!due) {
-    banner.className = "fc-review-banner is-done";
-    banner.innerHTML = `<span class="fc-review-text"><b>${escapeHtml(t.reviewAllDone)}</b></span>`;
-    return;
-  }
-  banner.className = "fc-review-banner";
-  banner.innerHTML = `
-    <span class="fc-review-text"><b>${escapeHtml(countText("reviewDueTitle", due, formatDueCount(due)))}</b><span>${escapeHtml(t.reviewDueSub)}</span></span>
-    <button class="primary-btn fc-review-start" type="button">${escapeHtml(t.reviewStart)}</button>`;
-  banner.querySelector(".fc-review-start").addEventListener("click", startReview);
+}
+
+// Once a day, when words are due, a pop-up offers the review: "Review now"
+// or "Later" (hidden until tomorrow). Needs the decks and the plan, so it's
+// tried when either arrives; review is Pro, so free accounts don't get it.
+const REVIEW_PROMPT_KEY = "magicread_review_prompt_day";
+function maybeShowReviewPrompt() {
+  if (!document.body.classList.contains("is-logged-in")) return;
+  if (!flashcardsLoadedForUserId || !userPlan.planLoaded || isOnFreePlan()) return;
+  const today = localDayString();
+  try { if (localStorage.getItem(REVIEW_PROMPT_KEY) === today) return; } catch { return; }
+  const due = dueReviewCards().length;
+  if (!due) return;
+  if (document.querySelector(".modal-overlay")) return;
+  const active = document.querySelector(".app-screen.active")?.id || "";
+  if (["screen-onboarding", "screen-tour", "screen-review"].includes(active)) return;
+  try { localStorage.setItem(REVIEW_PROMPT_KEY, today); } catch {}
+
+  const t = getT();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay review-prompt";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="reviewPromptTitle">
+      <h3 id="reviewPromptTitle" class="report-title">${escapeHtml(countText("reviewDueTitle", due, formatDueCount(due)))}</h3>
+      <p class="report-sub">${escapeHtml(t.reviewDueSub)}</p>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(t.reviewLater)}</button>
+        <button class="modal-confirm primary-btn" type="button">${escapeHtml(t.reviewStart)}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  analyticsEvent("review_prompt_shown", { due });
+  overlay.querySelector(".modal-cancel").addEventListener("click", () => overlay.remove());
+  overlay.querySelector(".modal-confirm").addEventListener("click", () => {
+    overlay.remove();
+    startReview();
+  });
 }
 
 async function startReview() {
@@ -10376,13 +10429,20 @@ function renderReview() {
       ? `<div class="rv-grades">${hints.map(h => `
           <button class="rv-grade rv-${h.g}" data-grade="${h.g}" type="button"><b>${escapeHtml(h.label)}</b><span>${escapeHtml(h.when)}</span></button>`).join("")}
         </div>`
-      : `<button class="primary-btn rv-show" id="rvShowBtn" type="button">${escapeHtml(t.reviewShowAnswer)}</button>`}`;
+      : `<button class="primary-btn rv-show" id="rvShowBtn" type="button">${escapeHtml(t.reviewShowAnswer)}</button>`}
+    <button class="rv-later" id="rvLaterBtn" type="button">${escapeHtml(t.reviewLater)}</button>`;
 
   document.getElementById("rvPlayBtn")?.addEventListener("click", () => {
     unlockAudioForMobile();
     playGoogleTTS(card.word, card.lang || null, null, null).catch(console.error);
   });
   document.getElementById("rvShowBtn")?.addEventListener("click", () => { rv.revealed = true; renderReview(); });
+  // Later: stop here. Graded words are already saved; the rest stay due.
+  document.getElementById("rvLaterBtn")?.addEventListener("click", () => {
+    analyticsEvent("review_later", { reviewed: rv.reviewed, total: rv.total });
+    if (rv.reviewed) refreshDailyReminder();
+    leaveReview();
+  });
   stage.querySelectorAll(".rv-grade").forEach(btn => btn.addEventListener("click", () => gradeReviewCard(btn.dataset.grade)));
 }
 
