@@ -39,6 +39,11 @@ dependencies {
     implementation "androidx.credentials:credentials-play-services-auth:$androidxCredentialsVersion"
     implementation "com.google.android.libraries.identity.googleid:googleid:$googleIdVersion"
     implementation "com.android.billingclient:billing:$playBillingVersion"
+    // On-device text recognition for "Scan a page". The Play-services builds keep
+    // the models out of the APK; the manifest asks Play to fetch them at install.
+    implementation "com.google.android.gms:play-services-mlkit-text-recognition:$mlkitTextVersion"
+    implementation "com.google.android.gms:play-services-mlkit-text-recognition-chinese:$mlkitTextCjkVersion"
+    implementation "com.google.android.gms:play-services-mlkit-text-recognition-japanese:$mlkitTextCjkVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

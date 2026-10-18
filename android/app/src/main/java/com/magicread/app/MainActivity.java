@@ -15,6 +15,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(PlayBillingPlugin.class);
         registerPlugin(GoogleAuthPlugin.class);
+        registerPlugin(TextScannerPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Android 15+ (targetSdk 35+) forces edge-to-edge, so the WebView draws

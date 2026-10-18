@@ -16,4 +16,6 @@ ext {
     playBillingVersion = '8.0.0'
     androidxCredentialsVersion = '1.5.0'
     googleIdVersion = '1.1.1'
+    mlkitTextVersion = '19.0.1'
+    mlkitTextCjkVersion = '16.0.1'
 }

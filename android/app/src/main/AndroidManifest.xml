@@ -44,6 +44,12 @@
 
         </activity>
 
+        <!-- Download the ML Kit text models (Scan a page) when the app is
+             installed, so the first scan doesn't wait for them. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr,ocr_chinese,ocr_japanese" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -54,6 +60,14 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
     </application>
+
+    <!-- Android 11+ hides other apps unless declared: lets Scan a page find
+         the camera app. No CAMERA permission, so the camera app needs none. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <!-- Permissions -->
 

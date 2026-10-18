@@ -7,7 +7,7 @@ import Vision
 /// Reads the text off a page: the user takes a photo or picks one, and Apple's
 /// on-device Vision recognizer returns it. Nothing leaves the phone.
 ///
-/// scan({ languages: ["zh"] }) shows a "Take photo / Choose photo" sheet and
+/// scan({ languages: ["zh"], labels }) shows a "Take photo / Choose photo" sheet and
 /// resolves { text } — one recognized line per row, top to bottom. The web
 /// layer joins the lines back into sentences. Cancelling resolves { text: "" }.
 ///
@@ -36,6 +36,10 @@ public class TextScannerPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         pendingCall = call
         languages = Self.visionLanguages(for: call.getArray("languages", String.self) ?? [])
+        let labels = call.getObject("labels") ?? [:]
+        let takeLabel = labels["takePhoto"] as? String ?? "Take photo"
+        let chooseLabel = labels["choosePhoto"] as? String ?? "Choose photo"
+        let cancelLabel = labels["cancel"] as? String ?? "Cancel"
 
         DispatchQueue.main.async {
             guard let presenter = self.bridge?.viewController else {
@@ -44,14 +48,14 @@ public class TextScannerPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                sheet.addAction(UIAlertAction(title: "Take photo", style: .default) { _ in
+                sheet.addAction(UIAlertAction(title: takeLabel, style: .default) { _ in
                     self.presentCamera(from: presenter)
                 })
             }
-            sheet.addAction(UIAlertAction(title: "Choose photo", style: .default) { _ in
+            sheet.addAction(UIAlertAction(title: chooseLabel, style: .default) { _ in
                 self.presentLibrary(from: presenter)
             })
-            sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            sheet.addAction(UIAlertAction(title: cancelLabel, style: .cancel) { _ in
                 self.finish(text: "")
             })
             // iPad shows action sheets as popovers, which need an anchor.

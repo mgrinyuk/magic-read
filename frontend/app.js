@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.5";
+import { UI_TEXT } from "./ui-text.js?v=20261018.6";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -6273,8 +6273,8 @@ function rdSetupInit() {
   document.getElementById("rdSetupStartBtn")?.addEventListener("click", () => rdSetupStart("reading"));
   document.getElementById("rdSetupSpeakBtn")?.addEventListener("click", () => rdSetupStart("pronunciation"));
 
-  // Scan a page: the iOS shell's TextScanner plugin photographs a page and
-  // reads it on-device. No plugin on the web or Android, so no button there.
+  // Scan a page: the native TextScanner plugin (iOS Vision, Android ML Kit)
+  // photographs a page and reads it on-device. No plugin on the web, so no button.
   const scanBtn = document.getElementById("rdSetupScanBtn");
   const scanner = window.Capacitor?.Plugins?.TextScanner;
   if (scanBtn && scanner) {
@@ -6290,7 +6290,11 @@ async function rdSetupScan() {
   const scanBtn = document.getElementById("rdSetupScanBtn");
   if (scanBtn) scanBtn.disabled = true;
   try {
-    const { text = "" } = await scanner.scan({ languages: [sourceLangSelect?.value || "zh"] });
+    const t = getT();
+    const { text = "" } = await scanner.scan({
+      languages: [sourceLangSelect?.value || "zh"],
+      labels: { takePhoto: t.scanTakePhoto, choosePhoto: t.scanChoosePhoto, cancel: t.scanCancel },
+    });
     if (!text.trim()) return; // cancelled
     // Recognized text comes one printed line per row, like a PDF copy; the
     // same clean-up joins the lines back into sentences, in any script.
@@ -6300,7 +6304,9 @@ async function rdSetupScan() {
     analyticsEvent("page_scanned", { chars: cleaned.length });
   } catch (err) {
     console.error("Scan failed:", err);
-    showToast("Could not read text from that photo.", "error");
+    // Android's ML Kit can't read Cyrillic.
+    if (err?.code === "UNSUPPORTED_LANGUAGE") showToast(getT().scanNoRussianAndroid, "error");
+    else showToast("Could not read text from that photo.", "error");
   } finally {
     if (scanBtn) scanBtn.disabled = false;
   }

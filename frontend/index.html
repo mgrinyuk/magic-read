@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261018.5" />
+  <link rel="stylesheet" href="style.css?v=20261018.6" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -452,7 +452,7 @@
           <div class="hd-actions">
             <button class="hd-action" type="button" data-hd-target="read">
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg></div>
-              <div class="hd-action-nm" data-i18n="navRead">Read</div>
+              <div class="hd-action-nm" data-i18n="navReadSpeak">Read &amp; Speak</div>
             </button>
             <button class="hd-action" type="button" data-hd-target="video">
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-video"/></svg></div>
@@ -1252,7 +1252,7 @@
   </main>
   <nav id="appTabBar" class="sonic-tabbar" hidden>
     <button class="sonic-tab" data-tab="home"  type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-home"/></svg><span data-i18n="navHome">Home</span></button>
-    <button class="sonic-tab" data-tab="read"  type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-book"/></svg><span data-i18n="navRead">Read</span></button>
+    <button class="sonic-tab" data-tab="read"  type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-book"/></svg><span data-i18n="navReadSpeak">Read &amp; Speak</span></button>
     <button class="sonic-tab" data-tab="video" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-video"/></svg><span data-i18n="navVideo">Video</span></button>
     <button class="sonic-tab" data-tab="cards" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-cards"/></svg><span data-i18n="cardsTitle">Cards</span></button>
   </nav>
@@ -1548,7 +1548,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20261018.5"></script>
+  <script type="module" src="app.js?v=20261018.6"></script>
 
   <footer class="footer">
     <div>
