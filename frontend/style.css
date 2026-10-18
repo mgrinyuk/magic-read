@@ -7887,3 +7887,11 @@ body.reader-active .rd-toolbar { top: calc(64px + env(safe-area-inset-top)); }
 /* Keep the looked-up word on one line; the spacer beside it was squeezing
    longer words onto two. */
 .rd-word-hz { white-space: nowrap; }
+
+/* "What's new" card: same dialog as the free-plan notice, icon per item. */
+.whats-new-list { display: grid; gap: 14px; margin: 6px 0 8px; padding: 0; list-style: none; }
+.whats-new-list li { display: flex; align-items: flex-start; gap: 12px; font-size: 14.5px; line-height: 1.45; color: var(--text); }
+.whats-new-ico {
+  flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: rgba(229,38,126,.10); color: var(--primary);
+}

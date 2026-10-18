@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.7";
+import { UI_TEXT } from "./ui-text.js?v=20261018.8";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -892,6 +892,7 @@ async function fetchMyPlan() {
     userPlan = { ...userPlan, ...data, planLoaded: true, limits: { ...userPlan.limits, ...(data.limits || {}) } };
     renderPlanUI();
     maybeShowFreePlanNotice();
+    maybeShowWhatsNew();
   } catch {
     // Keep last-known plan on a network hiccup.
   }
@@ -1203,6 +1204,64 @@ function maybeShowFreePlanNotice() {
   overlay.querySelector(".modal-confirm").addEventListener("click", () => {
     overlay.remove();
     showUpgradePrompt("PRO_FEATURE");
+  });
+}
+
+// "What's new", once per device per release, for accounts that existed
+// before the release (new users get the tour instead). Bump WHATS_NEW_ID and
+// the whatsNew* texts for the next announcement.
+const WHATS_NEW_ID = "2026-10-scan";
+function maybeShowWhatsNew() {
+  const created = userPlan.accountCreatedAt ? new Date(userPlan.accountCreatedAt) : null;
+  if (!created || !(created < new Date("2026-10-18T00:00:00Z"))) return;
+  const seenKey = `magicread_whats_new_${WHATS_NEW_ID}`;
+  try {
+    if (localStorage.getItem(seenKey)) return;
+  } catch {
+    return;
+  }
+  // Not on top of another dialog, onboarding or the tour; try again next login.
+  if (document.querySelector(".modal-overlay")) return;
+  const active = document.querySelector(".app-screen.active")?.id || "";
+  if (active === "screen-onboarding" || active === "screen-tour") return;
+  try { localStorage.setItem(seenKey, "1"); } catch {}
+
+  const t = getT();
+  // Scanning needs the native plugin; the website has no button for it.
+  const canScan = !!window.Capacitor?.Plugins?.TextScanner;
+  const items = [
+    canScan && ["sonic-i-camera", t.whatsNewScan],
+    ["sonic-i-mic", t.whatsNewReadSpeak],
+    ["sonic-i-cards", t.whatsNewDeck],
+    ["sonic-i-check", t.whatsNewPdf],
+  ].filter(Boolean);
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay whats-new";
+  overlay.innerHTML = `
+    <div class="modal-box report-box" role="dialog" aria-modal="true" aria-labelledby="whatsNewTitle">
+      <h3 id="whatsNewTitle" class="report-title">${escapeHtml(t.whatsNewTitle)}</h3>
+      <ul class="whats-new-list">
+        ${items.map(([icon, text]) => `
+          <li>
+            <span class="whats-new-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#${icon}"/></svg></span>
+            <span>${escapeHtml(text)}</span>
+          </li>`).join("")}
+      </ul>
+      <div class="modal-actions">
+        <button class="modal-cancel ghost-btn" type="button">${escapeHtml(t.planChangeOk)}</button>
+        <button class="modal-confirm primary-btn" type="button">${escapeHtml(t.whatsNewCta)}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  analyticsEvent("whats_new_shown", { id: WHATS_NEW_ID });
+  overlay.querySelector(".modal-cancel").addEventListener("click", () => overlay.remove());
+  overlay.querySelector(".modal-confirm").addEventListener("click", () => {
+    overlay.remove();
+    analyticsEvent("whats_new_tried", { id: WHATS_NEW_ID });
+    appMode = "reading";
+    rdSetupState.tab = "paste";
+    openReadSetup();
   });
 }
 
