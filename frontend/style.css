@@ -7807,8 +7807,7 @@ body.fc-focus #fcBrowsePanel {
    Appended last so it wins over the mobile blocks above.
    ================================================================ */
 @media (max-width: 640px) {
-  body.field-focus .rd-setup-footer,
-  body.field-focus .sp-setup-footer {
+  body.field-focus .rd-setup-footer {
     position: static;
     transform: none;
     width: auto;
@@ -7821,3 +7820,32 @@ body.fc-focus #fcBrowsePanel {
     padding-bottom: 16px !important;
   }
 }
+
+/* ================================================================
+   READ + SPEAK IN ONE SETUP SCREEN
+   Speaking no longer has its own tab: the read setup footer carries a
+   second button that opens the chosen text straight in speaking practice.
+   ================================================================ */
+.rd-setup-footer { display: flex; gap: 10px; }
+.rd-setup-start-btn { flex: 1; min-width: 0; }
+.rd-setup-speak-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  flex: 0 0 auto; height: 58px; padding: 0 20px;
+  border: 1.5px solid var(--border); border-radius: 16px; cursor: pointer;
+  background: var(--surface); color: var(--text);
+  font-family: inherit; font-weight: 700; font-size: 17px;
+}
+.rd-setup-speak-btn svg { color: var(--primary); }
+.rd-setup-speak-btn:hover { border-color: var(--primary); }
+.rd-setup-speak-btn:disabled { opacity: .7; cursor: default; }
+
+/* Practice text 15% smaller than before (reader 28px, sentence 30–42px). */
+.rd-han { font-size: 23.8px; }
+.sp-zh { font-size: clamp(25.5px, 5.95vw, 35.7px); }
+
+@media (max-width: 640px) {
+  .rd-setup-speak-btn { height: 54px; border-radius: 15px; padding: 0 16px; }
+  .rd-han { font-size: clamp(20.4px, 5.95vw, 24.65px); }
+  .sp-zh { font-size: clamp(25.5px, 6.8vw, 32.3px); }
+}
+.rd-setup-start-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

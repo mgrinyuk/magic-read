@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261018.3" />
+  <link rel="stylesheet" href="style.css?v=20261018.4" />
   <!-- Native shell: cover the landing with the intro splash from the first
        paint. The Capacitor bridge script is injected before page scripts,
        so window.Capacitor is already defined inside the native apps. -->
@@ -453,12 +453,6 @@
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg></div>
               <div class="hd-action-nm" data-i18n="navRead">Read</div>
             </button>
-            <button class="hd-action" type="button" data-hd-target="speak">
-              <div class="hd-action-ico">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
-              </div>
-              <div class="hd-action-nm" data-i18n="navSpeak">Speak</div>
-            </button>
             <button class="hd-action" type="button" data-hd-target="video">
               <div class="hd-action-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-video"/></svg></div>
               <div class="hd-action-nm" data-i18n="navVideo">Video</div>
@@ -631,38 +625,6 @@
         <section id="wordOrderExercise" class="workspace-card word-order-exercise" hidden></section>
       </section>
 
-      <!-- ===================== SPEAK · SETUP ===================== -->
-      <section id="screen-speak-setup" class="app-screen">
-        <div class="sp-setup-body">
-          <div class="sp-eyebrow">Magic Read</div>
-          <div class="sp-h1">Practice pronunciation<br>with your own texts</div>
-          <div class="sp-sub">Paste homework, a dialogue or an exam text. We split it into sentences and coach you one at a time.</div>
-
-          <div class="rd-setup-seg sp-setup-seg" id="spSetupSeg">
-            <button class="rd-setup-seg-btn on" data-tab="paste" type="button" data-i18n="pasteTextTab">Paste text</button>
-            <button class="rd-setup-seg-btn" data-tab="library" type="button" data-i18n="libraryTab">Library</button>
-            <button class="rd-setup-seg-btn" data-tab="saved" type="button" data-i18n="savedTab">Saved</button>
-          </div>
-
-          <div id="spSetupPasteTab" class="rd-setup-tab">
-            <textarea id="spSetupInput" class="sp-setup-textarea" placeholder="Paste a text to start…"></textarea>
-            <div class="rd-setup-charcount"><span id="spSetupCharCount">0</span> / 2000 characters</div>
-          </div>
-
-          <div id="spSetupLibraryTab" class="rd-setup-savedlist rd-setup-tab" hidden></div>
-          <div id="spSetupSavedTab" class="rd-setup-savedlist rd-setup-tab" hidden></div>
-
-          <div class="sp-setup-hint" id="spSetupHint"></div>
-        </div>
-
-        <div class="sp-setup-footer">
-          <button class="sp-btn sp-btn-primary sp-setup-start" id="spSetupStartBtn" type="button">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
-            <span id="spSetupStartLabel">Start speaking</span>
-          </button>
-        </div>
-      </section>
-
       <!-- ===================== SPEAK · SPOTLIGHT (practice) ===================== -->
       <section id="screen-speak-practice" class="app-screen">
         <div class="sp-body">
@@ -789,6 +751,10 @@
           <button class="rd-setup-start-btn" id="rdSetupStartBtn" type="button">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-book"/></svg>
             <span id="rdSetupStartLabel">Start reading</span>
+          </button>
+          <button class="rd-setup-speak-btn" id="rdSetupSpeakBtn" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-mic"/></svg>
+            <span data-i18n="navSpeak">Speak</span>
           </button>
         </div>
       </section>
@@ -1280,7 +1246,6 @@
   <nav id="appTabBar" class="sonic-tabbar" hidden>
     <button class="sonic-tab" data-tab="home"  type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-home"/></svg><span data-i18n="navHome">Home</span></button>
     <button class="sonic-tab" data-tab="read"  type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-book"/></svg><span data-i18n="navRead">Read</span></button>
-    <button class="sonic-tab" data-tab="speak" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-mic"/></svg><span data-i18n="navSpeak">Speak</span></button>
     <button class="sonic-tab" data-tab="video" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-video"/></svg><span data-i18n="navVideo">Video</span></button>
     <button class="sonic-tab" data-tab="cards" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#sonic-i-cards"/></svg><span data-i18n="cardsTitle">Cards</span></button>
   </nav>
@@ -1576,7 +1541,7 @@
     <div id="voicePickerList" class="voice-picker-list"></div>
   </div>
 
-  <script type="module" src="app.js?v=20261018.3"></script>
+  <script type="module" src="app.js?v=20261018.4"></script>
 
   <footer class="footer">
     <div>

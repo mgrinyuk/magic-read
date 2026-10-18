@@ -512,7 +512,6 @@ const screenSpeakComplete = document.getElementById("screen-speak-complete");
 const screenReadReader = document.getElementById("screen-read-reader");
 const screenReadExercise = document.getElementById("screen-read-exercise");
 const screenReadSetup = document.getElementById("screen-read-setup");
-const screenSpeakSetup = document.getElementById("screen-speak-setup");
 
 const createBtn = document.getElementById("createCardsBtn");
 const inputText = document.getElementById("inputText");
@@ -2403,9 +2402,8 @@ const TAB_BY_SCREEN = {
   "screen-home":            "home",
   "screen-flashcards":      "cards",
   "screen-video":           "video",
-  "screen-speak-setup":     "speak",
-  "screen-speak-practice":  "speak",
-  "screen-speak-complete":  "speak",
+  "screen-speak-practice":  "read",
+  "screen-speak-complete":  "read",
   "screen-read-setup":      "read",
   "screen-read-reader":     "read",
   "screen-read-exercise":   "read",
@@ -2499,7 +2497,7 @@ function showScreen(screen) {
   if (appTabBar) {
     appTabBar.hidden = screen.id === "screen-onboarding";
     const activeTab = screen.id === "screen-main"
-      ? (appMode === "reading" ? "read" : "speak")
+      ? "read"
       : (TAB_BY_SCREEN[screen.id] ?? null);
     appTabBar.querySelectorAll(".sonic-tab").forEach(t =>
       t.classList.toggle("active", t.dataset.tab === activeTab)
@@ -3685,9 +3683,6 @@ document.querySelectorAll("[data-hd-target]").forEach(btn => {
     if (target === "read") {
       appMode = "reading";
       openReadSetup();
-    } else if (target === "speak") {
-      appMode = "pronunciation";
-      showScreen(screenSpeakSetup);
     } else if (target === "cards") {
       showScreen(screenFlashcards);
       renderDeckSelector();
@@ -3768,9 +3763,6 @@ document.querySelectorAll(".sonic-tab").forEach(tab => {
     } else if (t === "read") {
       appMode = "reading";
       openReadSetup();
-    } else if (t === "speak") {
-      appMode = "pronunciation";
-      showScreen(screenSpeakSetup);
     } else if (t === "cards") {
       showScreen(screenFlashcards);
       renderDeckSelector();
@@ -3903,15 +3895,8 @@ function restoreActiveScreen() {
     return;
   }
 
-  // Speak screens hold no persisted text after a reload — back to speak setup.
-  if (savedId === "screen-speak-setup" || savedId === "screen-speak-practice" || savedId === "screen-speak-complete") {
-    appMode = "pronunciation";
-    showScreen(screenSpeakSetup);
-    return;
-  }
-
-  // Reader screens likewise hold no persisted passage after a reload.
-  if (savedId === "screen-read-setup" || savedId === "screen-read-reader" || savedId === "screen-read-exercise") {
+  // Reader and speak screens hold no persisted text after a reload.
+  if (savedId.startsWith("screen-read-") || savedId.startsWith("screen-speak-")) {
     appMode = "reading";
     openReadSetup();
     return;
@@ -4189,7 +4174,7 @@ function normalizeCjkText(raw) {
 }
 
 // Clean CJK text as it's pasted, so the box shows exactly what will be read.
-for (const id of ["rdSetupInput", "spSetupInput"]) {
+for (const id of ["rdSetupInput"]) {
   const box = document.getElementById(id);
   box?.addEventListener("paste", (e) => {
     const pasted = e.clipboardData?.getData("text/plain");
@@ -4208,7 +4193,7 @@ for (const id of ["rdSetupInput", "spSetupInput"]) {
 // and if the bar jumped back to its fixed spot straight away the tap would land
 // on whatever moved into its place.
 let fieldFocusTimer = null;
-const SETUP_TEXT_BOXES = ".rd-setup-textarea, .sp-setup-textarea";
+const SETUP_TEXT_BOXES = ".rd-setup-textarea";
 document.addEventListener("focusin", (e) => {
   if (!e.target.matches?.(SETUP_TEXT_BOXES)) return;
   clearTimeout(fieldFocusTimer);
@@ -4979,7 +4964,8 @@ function spInitOnce() {
     if (spState.session) { spState.session.cancel(); }
     spResetMic();
     // Opened from the reader's "Say it out loud" → return to that text.
-    showScreen(spState.fromReader ? screenReadReader : screenSpeakSetup);
+    if (spState.fromReader) showScreen(screenReadReader);
+    else openReadSetup();
   });
   document.getElementById("spMic")?.addEventListener("click", spOnMicTap);
   document.getElementById("spListenBtn")?.addEventListener("click", spOnListen);
@@ -5359,10 +5345,12 @@ function spNewText() {
   stopAllTTS(); stopRecognition();
   spState.phase = "idle";
   spState.fromComplete = false;
-  const inp = document.getElementById("spSetupInput");
+  const inp = document.getElementById("rdSetupInput");
   if (inp) inp.value = "";
-  spSetupSetTab("paste");
-  showScreen(screenSpeakSetup);
+  const count = document.getElementById("rdSetupCharCount");
+  if (count) count.textContent = "0";
+  rdSetupState.tab = "paste";
+  openReadSetup();
 }
 
 function spRenderComplete() {
@@ -6282,7 +6270,8 @@ function rdSetupInit() {
     const c = document.getElementById("rdSetupCharCount");
     if (c) c.textContent = e.target.value.length;
   });
-  document.getElementById("rdSetupStartBtn")?.addEventListener("click", rdSetupStart);
+  document.getElementById("rdSetupStartBtn")?.addEventListener("click", () => rdSetupStart("reading"));
+  document.getElementById("rdSetupSpeakBtn")?.addEventListener("click", () => rdSetupStart("pronunciation"));
 }
 rdSetupInit();
 
@@ -6486,10 +6475,12 @@ function rdSetupRenderSaved(items) {
   });
 }
 
-async function rdSetupStart() {
-  const startBtn = document.getElementById("rdSetupStartBtn");
-  if (startBtn) startBtn.disabled = true;
-  appMode = "reading";
+// One setup screen for both: "reading" opens the reader, "pronunciation"
+// goes straight to saying the text sentence by sentence.
+async function rdSetupStart(mode) {
+  const buttons = ["rdSetupStartBtn", "rdSetupSpeakBtn"].map(id => document.getElementById(id));
+  buttons.forEach(b => { if (b) b.disabled = true; });
+  appMode = mode;
   try {
     if (rdSetupState.tab === "paste") {
       const text = document.getElementById("rdSetupInput")?.value || "";
@@ -6514,7 +6505,8 @@ async function rdSetupStart() {
       await startReadingFromText(rdSetupState.sel.text);
     }
   } finally {
-    if (startBtn) startBtn.disabled = false;
+    hideMagicLoadingOverlay();
+    buttons.forEach(b => { if (b) b.disabled = false; });
   }
 }
 
@@ -6621,186 +6613,6 @@ function rdRenderWordSaveBtn(word, saved) {
   btn.className = "rd-word-save-btn" + (saved ? " saved" : "");
   btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#${saved ? "sonic-i-check" : "sonic-i-plus"}"/></svg> ${saved ? "Saved to cards" : "Save to cards"}`;
 }
-
-/* ============================================================
-   SPEAK SETUP
-   ============================================================ */
-const spSetupState = {
-  tab: "paste",
-  sel: { kind: "paste", id: null, title: "" },
-  _libText: null,
-};
-
-function spSetupInit() {
-  if (spSetupInit._done) return;
-  spSetupInit._done = true;
-  document.getElementById("spSetupSeg")?.querySelectorAll(".rd-setup-seg-btn").forEach(btn => {
-    btn.addEventListener("click", () => spSetupSetTab(btn.dataset.tab));
-  });
-  document.getElementById("spSetupInput")?.addEventListener("input", e => {
-    const c = document.getElementById("spSetupCharCount");
-    if (c) c.textContent = e.target.value.length;
-  });
-  document.getElementById("spSetupStartBtn")?.addEventListener("click", spSetupStart);
-}
-
-function spSetupSetTab(tab) {
-  spSetupState.tab = tab || "paste";
-  document.getElementById("spSetupSeg")?.querySelectorAll(".rd-setup-seg-btn")
-    .forEach(b => b.classList.toggle("on", b.dataset.tab === spSetupState.tab));
-  const paste = document.getElementById("spSetupPasteTab");
-  const lib = document.getElementById("spSetupLibraryTab");
-  const saved = document.getElementById("spSetupSavedTab");
-  if (paste) paste.hidden = spSetupState.tab !== "paste";
-  if (lib) lib.hidden = spSetupState.tab !== "library";
-  if (saved) saved.hidden = spSetupState.tab !== "saved";
-  if (spSetupState.tab === "library") spSetupLoadLibrary();
-  if (spSetupState.tab === "saved") spSetupLoadSaved();
-  spSetupUpdateStartLabel();
-}
-
-function spSetupUpdateStartLabel() {
-  const label = document.getElementById("spSetupStartLabel");
-  if (!label) return;
-  if (spSetupState.tab === "paste") {
-    label.textContent = "Start speaking";
-    return;
-  }
-  const title = spSetupState.sel.title;
-  label.textContent = title ? `Start speaking · ${title}` : "Start speaking";
-}
-
-async function spSetupLoadLibrary() {
-  const grid = document.getElementById("spSetupLibraryTab");
-  if (!grid) return;
-  const lang = sourceLangSelect?.value || "zh";
-  if (libraryCache[lang]) {
-    spSetupRenderLibrary(libraryCache[lang]);
-    return;
-  }
-  grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">Loading…</p>';
-  try {
-    const res = await fetchWithAuth(`${API_BASE}/api/game-texts?lang=${lang}`);
-    const data = await res.json();
-    const texts = res.ok ? (data.texts || []) : [];
-    libraryCache[lang] = texts;
-    spSetupRenderLibrary(texts);
-  } catch {
-    grid.innerHTML = '<p class="rd-loading" style="padding:12px 0">Could not load library.</p>';
-  }
-}
-
-function spSetupRenderLibrary(texts) {
-  renderSetupLibrary("spSetupLibraryTab", texts, spSetupState, spSetupUpdateStartLabel);
-}
-
-async function spSetupLoadSaved() {
-  const list = document.getElementById("spSetupSavedTab");
-  if (!list) return;
-  list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Loading…</p>';
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Log in to see saved texts.</p>';
-    return;
-  }
-  try {
-    const { data, error } = await supabase
-      .from("saved_texts")
-      .select("id, title, text, source_lang, target_lang, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    spSetupRenderSaved(data || []);
-  } catch {
-    list.innerHTML = '<p class="rd-loading" style="padding:12px 0">Could not load saved texts.</p>';
-  }
-}
-
-function spSetupRenderSaved(items) {
-  const list = document.getElementById("spSetupSavedTab");
-  if (!list) return;
-  if (!items.length) {
-    list.innerHTML = '<p class="rd-loading" style="padding:12px 0">No saved texts yet.</p>';
-    return;
-  }
-  list.innerHTML = items.map(t => {
-    const glyph = (t.title || "文")[0];
-    const sel = spSetupState.sel.kind === "saved" && String(spSetupState.sel.id) === String(t.id);
-    return `<div class="rd-savedrow${sel ? " sel" : ""}" data-saved-id="${escapeHtml(t.id)}">
-      <button class="rd-savedrow-main" data-saved-id="${escapeHtml(t.id)}" type="button">
-        <div class="rd-savedrow-thumb" style="background:linear-gradient(135deg,var(--primary),var(--primary-soft))"><span class="rd-savedrow-thumb-glyph">${escapeHtml(glyph)}</span></div>
-        <div class="rd-savedrow-body">
-          <div class="rd-savedrow-title">${escapeHtml(t.title || "Untitled")}</div>
-          <div class="rd-savedrow-sub">${escapeHtml((t.source_lang || "") + (t.target_lang ? " → " + t.target_lang : ""))}</div>
-        </div>
-      </button>
-      <button class="rd-savedrow-del" data-del-id="${escapeHtml(t.id)}" type="button" aria-label="Delete saved text">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-trash"/></svg>
-      </button>
-    </div>`;
-  }).join("");
-  list.querySelectorAll(".rd-savedrow-main").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.savedId;
-      const t = items.find(x => String(x.id) === String(id));
-      if (!t) return;
-      spSetupState.sel = { kind: "saved", id, title: t.title || "", text: t.text || "", source_lang: t.source_lang, target_lang: t.target_lang };
-      list.querySelectorAll(".rd-savedrow").forEach(r => r.classList.toggle("sel", r.dataset.savedId === id));
-      spSetupUpdateStartLabel();
-    });
-  });
-  list.querySelectorAll(".rd-savedrow-del").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.delId;
-      const confirmed = await showConfirm("Delete this saved text?");
-      if (!confirmed) return;
-      const { error } = await supabase.from("saved_texts").delete().eq("id", id);
-      if (error) {
-        console.error("Delete saved text error:", error);
-        showToast("Could not delete saved text.", "error");
-        return;
-      }
-      savedTextsCache = null;
-      if (String(spSetupState.sel.id) === String(id)) spSetupState.sel = { kind: "paste", id: null, title: "" };
-      showToast("Saved text deleted.", "success");
-      spSetupLoadSaved();
-      spSetupUpdateStartLabel();
-    });
-  });
-}
-
-async function spSetupStart() {
-  const startBtn = document.getElementById("spSetupStartBtn");
-  if (startBtn) startBtn.disabled = true;
-  appMode = "pronunciation";
-  try {
-    if (spSetupState.tab === "paste") {
-      const text = document.getElementById("spSetupInput")?.value || "";
-      if (!text.trim()) { showToast("Paste a text first.", "error"); return; }
-      currentTextId = null;
-      currentTextTitle = "";
-      await startReadingFromText(text);
-    } else if (spSetupState.tab === "library") {
-      if (!spSetupState.sel.id) { showToast("Pick a text first.", "error"); return; }
-      showMagicLoadingOverlay();
-      await loadLibraryText(spSetupState.sel.id);
-    } else if (spSetupState.tab === "saved") {
-      if (!spSetupState.sel.id || !spSetupState.sel.text) { showToast("Pick a text first.", "error"); return; }
-      if (spSetupState.sel.source_lang) sourceLangSelect.value = spSetupState.sel.source_lang;
-      if (spSetupState.sel.target_lang) targetLangSelect.value = spSetupState.sel.target_lang;
-      updateLanguageBasedUI();
-      currentTextId = spSetupState.sel.id;
-      currentTextTitle = spSetupState.sel.title;
-      await startReadingFromText(spSetupState.sel.text);
-    }
-  } finally {
-    hideMagicLoadingOverlay();
-    if (startBtn) startBtn.disabled = false;
-  }
-}
-
-spSetupInit();
 
 createBtn?.addEventListener("click", async () => {
   // The day's free text is claimed inside startReadingFromText.
