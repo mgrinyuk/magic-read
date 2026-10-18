@@ -49,6 +49,7 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
       fetchWithAuth
     });
     if (renderTo) renderTo.innerHTML = renderAssessment(result, lang);
+    analyticsEvent("speech_scored", { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), where: "practice" });
     fetchMyPlan(); // refresh today's pronunciation count / plan state
     return { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), result };
   } catch (err) {
@@ -915,8 +916,13 @@ function analyticsIdentify(userId) {
 function analyticsReset() {
   window.posthog?.reset?.();
 }
+// Named steps on the way from a first text to a purchase, so a funnel can show
+// where people stop. Properties are counts and codes only — never the text.
+function analyticsEvent(name, properties) {
+  window.posthog?.capture?.(name, properties || {});
+}
 function analyticsActivity(kind) {
-  window.posthog?.capture?.("activity", { kind });
+  analyticsEvent("activity", { kind });
 }
 
 function recordActivity(type, count) {
@@ -1420,6 +1426,7 @@ function getUpgradeMessage(code) {
 // Show a dismissible upgrade modal at hard limits. The inline usage meter
 // (renderSpeakMeter) stays visible independently — this modal is additive.
 function showUpgradePrompt(code) {
+  analyticsEvent("paywall_shown", { reason: code || "unknown" });
   document.querySelectorAll(".upgrade-modal-overlay, .upgrade-inline").forEach(el => el.remove());
   const msg = getUpgradeMessage(code);
   const t = getT();
@@ -1992,6 +1999,7 @@ document.getElementById("upgradeBtn")?.addEventListener("click", (e) => {
 // Start Stripe Checkout for a specific plan: ask the backend for a session URL,
 // then redirect. Disables all options and shows "Redirecting…" while in flight.
 async function startPlanCheckout(priceType, clickedBtn) {
+  analyticsEvent("upgrade_clicked", { plan: priceType });
   if (isAndroidCapacitorShell()) {
     await startGooglePlayCheckout(priceType, clickedBtn);
     return;
@@ -2257,12 +2265,26 @@ startNativeIntroSplash();
 
 const initialAuthCheck = checkAuth();
 initialAuthCheck.then(() => {
-  const paymentStatus = new URLSearchParams(window.location.search).get("tbank");
-  if (paymentStatus === "success") {
+  const params = new URLSearchParams(window.location.search);
+  const paymentStatus = params.get("tbank");
+  // Stripe returns to /?checkout=success or /?checkout=cancel, which nothing
+  // read: a website buyer got no confirmation, and a walked-away checkout left
+  // no trace. Pro itself is granted by the webhook, not here.
+  const checkoutStatus = params.get("checkout");
+  if (paymentStatus === "success" || checkoutStatus === "success") {
+    analyticsEvent("purchase_completed", { provider: paymentStatus ? "tbank" : "stripe" });
     showToast(getT().tbankPaymentPending || "Payment received. Pro access will appear shortly.", "success");
     setTimeout(fetchMyPlan, 2000);
-  } else if (paymentStatus === "failed") {
-    showToast(getT().tbankPaymentFailed || "Payment was not completed.", "error");
+  } else if (paymentStatus === "failed" || checkoutStatus === "cancel") {
+    analyticsEvent("checkout_cancelled", { provider: paymentStatus ? "tbank" : "stripe" });
+    if (paymentStatus) showToast(getT().tbankPaymentFailed || "Payment was not completed.", "error");
+  }
+  // Drop the markers so a reload doesn't confirm, or count, the payment twice.
+  if (paymentStatus || checkoutStatus) {
+    params.delete("tbank");
+    params.delete("checkout");
+    const query = params.toString();
+    window.history.replaceState({}, document.title, `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
   }
 });
 
@@ -4726,6 +4748,7 @@ async function startReadingFromText(text) {
     hideMagicLoadingOverlay();
     return false;
   }
+  analyticsEvent("text_opened", { mode: appMode });
 
   showMagicLoadingOverlay();
 
@@ -5180,6 +5203,7 @@ function spResetMic() {
 
 /* INTEGRATION #2 — feed a normalised result in. */
 function spApplyScore(result) {
+  analyticsEvent("speech_scored", { score: result.score, where: "speak" });
   spState.recording = false;
   spState.session = null;
   spStopMicMeter();
