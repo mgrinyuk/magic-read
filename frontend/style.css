@@ -7797,3 +7797,27 @@ body.fc-focus #fcBrowsePanel {
   flex: 1;
   min-height: 0;
 }
+
+/* ================================================================
+   SETUP SCREENS WHILE TYPING
+   The Start bar is fixed above the tab bar's slot. With the keyboard open
+   the page shrinks to the space above it, and the bar lands on top of the
+   text box — users couldn't see what they had pasted. While a setup text box
+   has focus on a phone, let the bar sit in the page flow under the box.
+   Appended last so it wins over the mobile blocks above.
+   ================================================================ */
+@media (max-width: 640px) {
+  body.field-focus .rd-setup-footer,
+  body.field-focus .sp-setup-footer {
+    position: static;
+    transform: none;
+    width: auto;
+    max-width: none;
+    border-top: 0;
+    background: transparent;
+    padding: 12px 0 16px;
+  }
+  body.field-focus .rd-setup-scroll {
+    padding-bottom: 16px !important;
+  }
+}

@@ -4131,6 +4131,95 @@ document.getElementById("googleAuthBtn")?.addEventListener("click", async () => 
 // magicread:// URL and finish the session in the app.
 // While the keyboard is open the viewport is small — hide the bottom tab bar
 // (otherwise it rides up above the keyboard and covers half the visible app).
+/* -----------------------------
+   CLEANING PASTED CHINESE / JAPANESE
+   Text copied out of a PDF arrives with a space between every character,
+   ASCII commas, and a line break wherever the PDF wrapped. Chinese and
+   Japanese put no spaces between words, so those spaces carry nothing, and the
+   breaks split sentences mid-way. Only text that is mostly CJK is touched, and
+   the spaces next to a Latin word or a number are left as they were.
+----------------------------- */
+
+// Han ideographs and kana: the scripts written without spaces.
+const CJK_CHARS = "\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\u3040-\\u30ff";
+// Their punctuation: CJK symbols (、。「」), full-width forms (，！？), curly
+// quotes and the ellipsis.
+const CJK_PUNCT = "\\u3000-\\u303f\\uff00-\\uffef\\u2018-\\u201f\\u2026";
+const CJK_RE = new RegExp(`[${CJK_CHARS}]`, "u");
+const CJK_TIGHT_RE = new RegExp(`[${CJK_CHARS}${CJK_PUNCT}]`, "u");
+const CJK_GAP_RE = new RegExp(`([${CJK_CHARS}${CJK_PUNCT}]) +(?=[${CJK_CHARS}${CJK_PUNCT}])`, "gu");
+const CJK_ASCII_PUNCT_RE = new RegExp(`([${CJK_CHARS}]) *([,!?:;])`, "gu");
+const FULL_WIDTH = { ",": "，", "!": "！", "?": "？", ":": "：", ";": "；" };
+const SENTENCE_END_RE = /[。！？…」』”）.!?]$/u;
+
+function looksLikeCjk(text) {
+  const letters = String(text).replace(/[\s\d\p{P}\p{S}]/gu, "");
+  if (!letters.length) return false;
+  let cjk = 0;
+  for (const ch of letters) if (CJK_RE.test(ch)) cjk++;
+  return cjk / [...letters].length >= 0.3;
+}
+
+function normalizeCjkText(raw) {
+  const text = String(raw)
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ 　\t]/g, " ")
+    .replace(CJK_ASCII_PUNCT_RE, (_, ch, mark) => ch + FULL_WIDTH[mark])
+    .replace(CJK_GAP_RE, "$1");
+
+  return text
+    .split(/\n[ ]*\n+/)
+    .map((paragraph) => {
+      let out = "";
+      for (const line of paragraph.split("\n").map((l) => l.trim()).filter(Boolean)) {
+        if (!out) {
+          out = line;
+        } else if (SENTENCE_END_RE.test(out)) {
+          out += "\n" + line; // a sentence ended here: keep the break
+        } else if (CJK_TIGHT_RE.test(out.slice(-1)) || CJK_TIGHT_RE.test(line[0])) {
+          out += line; // the PDF wrapped mid-sentence
+        } else {
+          out += " " + line; // wrapped Latin text
+        }
+      }
+      return out;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+// Clean CJK text as it's pasted, so the box shows exactly what will be read.
+for (const id of ["rdSetupInput", "spSetupInput"]) {
+  const box = document.getElementById(id);
+  box?.addEventListener("paste", (e) => {
+    const pasted = e.clipboardData?.getData("text/plain");
+    if (!pasted || !looksLikeCjk(pasted)) return;
+    const cleaned = normalizeCjkText(pasted);
+    if (cleaned === pasted) return;
+    e.preventDefault();
+    box.setRangeText(cleaned, box.selectionStart, box.selectionEnd, "end");
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+// On phones the setup text boxes and their fixed Start bar compete for the
+// little space left above the keyboard (see body.field-focus in style.css).
+// The class comes off a moment after blur: tapping Start blurs the box first,
+// and if the bar jumped back to its fixed spot straight away the tap would land
+// on whatever moved into its place.
+let fieldFocusTimer = null;
+const SETUP_TEXT_BOXES = ".rd-setup-textarea, .sp-setup-textarea";
+document.addEventListener("focusin", (e) => {
+  if (!e.target.matches?.(SETUP_TEXT_BOXES)) return;
+  clearTimeout(fieldFocusTimer);
+  document.body.classList.add("field-focus");
+});
+document.addEventListener("focusout", (e) => {
+  if (!e.target.matches?.(SETUP_TEXT_BOXES)) return;
+  clearTimeout(fieldFocusTimer);
+  fieldFocusTimer = setTimeout(() => document.body.classList.remove("field-focus"), 250);
+});
+
 window.Capacitor?.Plugins?.Keyboard?.addListener?.("keyboardWillShow", () => {
   document.body.classList.add("kb-open");
 });
