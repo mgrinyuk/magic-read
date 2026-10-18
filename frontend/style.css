@@ -7961,3 +7961,32 @@ body.reader-active .rd-toolbar { top: calc(64px + env(safe-area-inset-top)); }
 .rv-done-next { font-size: 14px; }
 .rv-done-actions { display: grid; gap: 10px; margin-top: 22px; }
 .rv-done-actions button { height: 52px; }
+
+/* ================================================================
+   SIDE SAFE AREAS (iPhone Duo, iPhones in landscape)
+   iPhone Duo puts the status bar and camera on a side edge, and a
+   landscape iPhone has its notch there; WKWebView reports them as
+   env(safe-area-inset-left/right). Everything above only handled top and
+   bottom, so content and the pinned bars could run under them. Pad the
+   page, and narrow and re-centre the bars pinned to the screen. These are
+   0 on the web, Android and portrait iPhones, so nothing moves there.
+   ================================================================ */
+:root {
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+}
+body {
+  padding-left: var(--safe-l);
+  padding-right: var(--safe-r);
+}
+.sonic-tabbar,
+.rd-setup-footer,
+.rd-dock {
+  width: calc(100% - var(--safe-l) - var(--safe-r));
+  left: calc(50% + (var(--safe-l) - var(--safe-r)) / 2);
+}
+.rd-sheet {
+  left: var(--safe-l);
+  right: var(--safe-r);
+  width: auto;
+}
