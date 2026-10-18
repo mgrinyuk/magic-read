@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.10";
+import { UI_TEXT } from "./ui-text.js?v=20261018.11";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -1003,7 +1003,7 @@ async function scheduleDailyReminder(hour, minute) {
       notifications: [{
         id: REMINDER_ID,
         title: "Magic Read",
-        body: due ? getT().reminderReviewBody.replace("{n}", formatDueCount(due)) : getT().reminderBody,
+        body: due ? reviewReminderText(due) : getT().reminderBody,
         extra: due ? { open: "review" } : {},
         schedule: { on: { hour, minute }, allowWhileIdle: true },
         // A practice nudge doesn't need to-the-minute timing, and exact alarms
@@ -10220,6 +10220,23 @@ function dueReviewCards(day = localDayString()) {
     || String(a.card.srsDue || "").localeCompare(String(b.card.srsDue || "")));
 }
 
+// Review reminder: one of three encouraging lines, picked afresh each time
+// it's rescheduled so the nudge doesn't read the same every day.
+function reviewReminderText(due) {
+  const keys = ["reminderReviewBody", "reminderReviewBody2", "reminderReviewBody3"].filter(k => getT()[k]);
+  return countText(keys[Math.floor(Math.random() * keys.length)], due, formatDueCount(due));
+}
+
+// A text with a count in it, in the right grammatical form: "1 word" / "2
+// words", and Russian's слово / слова / слов. Looks for key_one, key_few, …
+// (Intl plural categories) and falls back to the plain key.
+function countText(key, n, shown = String(n)) {
+  const t = getT();
+  let category = "other";
+  try { category = new Intl.PluralRules(localStorage.getItem("magicread_ui_lang") || "en").select(n); } catch {}
+  return (t[`${key}_${category}`] || t[key] || "").replace("{n}", shown);
+}
+
 function formatDueCount(n) {
   return n > REVIEW_BATCH ? `${REVIEW_BATCH}+` : String(n);
 }
@@ -10273,7 +10290,7 @@ function renderReviewEntryPoints() {
   }
   banner.className = "fc-review-banner";
   banner.innerHTML = `
-    <span class="fc-review-text"><b>${escapeHtml(t.reviewDueTitle.replace("{n}", formatDueCount(due)))}</b><span>${escapeHtml(t.reviewDueSub)}</span></span>
+    <span class="fc-review-text"><b>${escapeHtml(countText("reviewDueTitle", due, formatDueCount(due)))}</b><span>${escapeHtml(t.reviewDueSub)}</span></span>
     <button class="primary-btn fc-review-start" type="button">${escapeHtml(t.reviewStart)}</button>`;
   banner.querySelector(".fc-review-start").addEventListener("click", startReview);
 }
@@ -10306,8 +10323,8 @@ function renderReview() {
       <div class="rv-done">
         <div class="rv-done-mark"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg></div>
         <h3>${escapeHtml(t.reviewDoneTitle)}</h3>
-        <p>${escapeHtml(t.reviewDoneSub.replace("{n}", rv.total))}</p>
-        ${!more && tomorrow ? `<p class="rv-done-next">${escapeHtml(t.reviewTomorrow.replace("{n}", tomorrow))}</p>` : ""}
+        <p>${escapeHtml(countText("reviewDoneSub", rv.total))}</p>
+        ${!more && tomorrow ? `<p class="rv-done-next">${escapeHtml(countText("reviewTomorrow", tomorrow))}</p>` : ""}
         <div class="rv-done-actions">
           ${more ? `<button class="primary-btn" id="rvMoreBtn" type="button">${escapeHtml(t.reviewMore.replace("{n}", formatDueCount(more)))}</button>` : ""}
           <button class="${more ? "ghost-btn" : "primary-btn"}" id="rvFinishBtn" type="button">${escapeHtml(t.reviewBackToCards)}</button>
