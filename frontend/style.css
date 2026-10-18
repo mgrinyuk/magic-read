@@ -7990,3 +7990,7 @@ body {
   right: var(--safe-r);
   width: auto;
 }
+
+/* The header was 92% opaque with no blur, so text scrolling under it showed
+   through behind the logo. Solid, in the shell colour, like the reader bar. */
+.app-header { background: var(--shell, #f4f5f9); }
