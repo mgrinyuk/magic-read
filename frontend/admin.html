@@ -538,6 +538,8 @@
           </div>
         </div>
 
+        ${websiteSection(d.website)}
+
         <div class="section-title">Teachers</div>
         <div class="tiles">
           ${tile("Assignments", fmt.format(d.teachers.assignments), `${fmt.format(d.teachers.open)} still open`)}
@@ -549,6 +551,32 @@
       const speechSeries = SERIES.map((s) => ({ name: s.name, color: s.color, values: d.speech.byDay.map((day) => day[s.key] || 0) }));
       columnChart($("chartSpeech"), { days: d.days, unit: "checks", series: speechSeries });
       tableToggle($("speechTable"), d.days, speechSeries);
+      if (d.website && !d.website.error) {
+        const w = d.website;
+        columnChart($("chartWebsite"), { days: d.days, unit: w.currency.toUpperCase(), series: [{ name: "Revenue", color: "var(--primary)", values: w.revenueByDay.map((c) => c / 100) }] });
+      }
+    }
+
+    // Website (Stripe) sales, last 30 days. Amounts arrive in cents.
+    function money(cents, currency) {
+      try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase() }).format(cents / 100); }
+      catch { return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`; }
+    }
+    function websiteSection(w) {
+      if (!w) return "";
+      if (w.error) return `<div class="section-title">Website sales (Stripe)</div><div class="card"><p class="muted-note">${esc(w.error)}</p></div>`;
+      const totals = Object.entries(w.revenue);
+      const main = totals.length ? totals.map(([c, v]) => money(v, c)).join(" + ") : money(0, w.currency);
+      const c = w.checkouts, sub = w.subscriptions;
+      return `
+        <div class="section-title">Website sales (Stripe) · last 30 days</div>
+        <div class="tiles">
+          ${tile("Revenue", main, `${fmt.format(w.payments)} payment${w.payments === 1 ? "" : "s"}${w.refunds ? ` · ${fmt.format(w.refunds)} refunded` : ""}`)}
+          ${tile("Checkouts finished", `${fmt.format(c.completed)} of ${fmt.format(c.started)}`, `${fmt.format(c.abandoned)} abandoned${c.open ? ` · ${fmt.format(c.open)} still open` : ""}`)}
+          ${tile("Active subscriptions", fmt.format(sub.active), sub.cancelling ? `${fmt.format(sub.cancelling)} set to cancel` : "none set to cancel")}
+          ${tile("Cancelled", fmt.format(sub.cancelled30), sub.pastDue ? `${fmt.format(sub.pastDue)} payment failing` : "no failed payments")}
+        </div>
+        <div class="card" style="margin-top:12px"><h2>Revenue per day</h2><p class="sub">${esc(w.currency.toUpperCase())}, after refunds. App Store and Google Play sales aren't included.</p><div class="chart" id="chartWebsite"></div></div>`;
     }
 
     // ---------- messages ----------

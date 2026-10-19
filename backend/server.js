@@ -2429,6 +2429,54 @@ function tally(rows, keyOf) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1]);
 }
 
+// Website (Stripe) sales for the admin dashboard, last 30 days. Totals only:
+// no customer names, emails or ids leave this function. Refunds are netted
+// out. Null when Stripe isn't configured; the dashboard hides the card then.
+async function stripeSummary(days) {
+  if (!stripe) return null;
+  const DAY = 864e5;
+  const gte = Math.floor((Date.now() - 30 * DAY) / 1000);
+  const dayKey = (sec) => new Date(sec * 1000).toISOString().slice(0, 10);
+  const [charges, sessions, subscriptions] = await Promise.all([
+    stripe.charges.list({ created: { gte }, limit: 100 }).autoPagingToArray({ limit: 5000 }),
+    stripe.checkout.sessions.list({ created: { gte }, limit: 100 }).autoPagingToArray({ limit: 5000 }),
+    stripe.subscriptions.list({ status: "all", limit: 100 }).autoPagingToArray({ limit: 5000 })
+  ]);
+
+  const paid = charges.filter((c) => c.paid && c.status === "succeeded");
+  const revenue = {};
+  for (const c of paid) {
+    revenue[c.currency] = (revenue[c.currency] || 0) + (c.amount - (c.amount_refunded || 0));
+  }
+  // The chart follows the currency that brought in the most.
+  const currency = Object.entries(revenue).sort((a, b) => b[1] - a[1])[0]?.[0] || "usd";
+  const byDayMap = Object.fromEntries(days.map((d) => [d, 0]));
+  for (const c of paid) {
+    const d = dayKey(c.created);
+    if (c.currency === currency && d in byDayMap) byDayMap[d] += c.amount - (c.amount_refunded || 0);
+  }
+
+  return {
+    currency,
+    revenue, // minor units (cents) per currency
+    revenueByDay: days.map((d) => byDayMap[d]),
+    payments: paid.length,
+    refunds: paid.filter((c) => (c.amount_refunded || 0) > 0).length,
+    checkouts: {
+      started: sessions.length,
+      completed: sessions.filter((x) => x.status === "complete").length,
+      abandoned: sessions.filter((x) => x.status === "expired").length,
+      open: sessions.filter((x) => x.status === "open").length
+    },
+    subscriptions: {
+      active: subscriptions.filter((x) => x.status === "active" || x.status === "trialing").length,
+      cancelling: subscriptions.filter((x) => x.status === "active" && x.cancel_at_period_end).length,
+      cancelled30: subscriptions.filter((x) => x.canceled_at && x.canceled_at >= gte).length,
+      pastDue: subscriptions.filter((x) => x.status === "past_due" || x.status === "unpaid").length
+    }
+  };
+}
+
 app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
   try {
     const DAY = 864e5;
@@ -2475,6 +2523,11 @@ app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
 
     const used = stats.filter((s) => (s.words_read || 0) > 0).length;
 
+    // Stripe is optional: a failure there shouldn't take the dashboard down.
+    const website = await stripeSummary(days).catch((error) => {
+      console.error("[Admin] stripe summary:", error.message);
+      return { error: "Stripe numbers unavailable." };
+    });
     res.json({
       generatedAt: new Date(now).toISOString(),
       days,
@@ -2495,6 +2548,7 @@ app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
         streak7: stats.filter((s) => (s.longest_streak || 0) >= 7).length
       },
       plans: { ...plans, paying: paidCount, byProvider: paying },
+      website,
       languages: {
         reading: tally(texts, (t) => t.source_lang),
         pairs: tally(texts, (t) => t.source_lang && t.target_lang && `${t.source_lang} → ${t.target_lang}`).slice(0, 8),
