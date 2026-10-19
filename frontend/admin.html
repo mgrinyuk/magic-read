@@ -538,6 +538,7 @@
           </div>
         </div>
 
+        ${storesSection(d.stores)}
         ${websiteSection(d.website)}
 
         <div class="section-title">Teachers</div>
@@ -555,6 +556,23 @@
         const w = d.website;
         columnChart($("chartWebsite"), { days: d.days, unit: w.currency.toUpperCase(), series: [{ name: "Revenue", color: "var(--primary)", values: w.revenueByDay.map((c) => c / 100) }] });
       }
+    }
+
+    // App Store (and Google Play) subscriptions, from the purchases the app verified.
+    const COUNTRIES = { USA: "United States", TUR: "Türkiye", RUS: "Russia", DEU: "Germany", GBR: "United Kingdom", FRA: "France", ESP: "Spain", CHN: "China", JPN: "Japan", CAN: "Canada", AUS: "Australia", KAZ: "Kazakhstan" };
+    function storesSection(st) {
+      if (!st) return "";
+      const a = st.apple, p = st.play;
+      const billed = Object.entries(a.billed30 || {});
+      return `
+        <div class="section-title">Store subscriptions</div>
+        <div class="tiles">
+          ${tile("App Store, active", fmt.format(a.active), `${fmt.format(a.monthly)} monthly · ${fmt.format(a.annual)} annual`)}
+          ${tile("App Store, billed (30 days)", billed.length ? billed.map(([c, v]) => money(v, c)).join(" + ") : money(0, "usd"), "before Apple's commission")}
+          ${tile("New / lapsed (30 days)", `${fmt.format(a.new30)} / ${fmt.format(a.lapsed30)}`, a.dueIn7 ? `${fmt.format(a.dueIn7)} renewing within 7 days` : "none renewing this week")}
+          ${tile("Google Play, active", fmt.format(p.active), p.total ? `${fmt.format(p.total)} ever` : "no purchases yet")}
+        </div>
+        ${a.countries?.length ? `<div class="card" style="margin-top:12px"><h2>App Store buyers by country</h2><p class="sub">Every subscription since launch</p>${hbarList(a.countries, (k) => COUNTRIES[k] || k)}<p class="muted-note">Official revenue after Apple's commission is in App Store Connect → Sales and Trends. Cancellations show here only once the subscription runs out.</p></div>` : ""}`;
     }
 
     // Website (Stripe) sales, last 30 days. Amounts arrive in cents.

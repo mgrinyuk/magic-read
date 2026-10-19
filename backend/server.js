@@ -2429,6 +2429,42 @@ function tally(rows, keyOf) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1]);
 }
 
+// App Store subscriptions for the admin dashboard, from what verify-purchase
+// stored. Apple's renewal flag isn't kept (no App Store Server Notifications
+// yet), so "renewing" is shown as when each active one is next billed.
+// Price is Apple's milliunits, before Apple's commission; the row holds the
+// latest transaction, so "billed" counts the purchases and renewals the app
+// has seen in the window.
+function storeSummary(applePurchases, playPurchases) {
+  const now = Date.now();
+  const DAY = 864e5;
+  const since30 = now - 30 * DAY;
+  const live = applePurchases.filter((r) => r.environment !== "sandbox");
+  const active = live.filter((r) => r.expires_at && Date.parse(r.expires_at) > now);
+  const billed = {};
+  for (const r of live) {
+    if (r.purchased && Number(r.purchased) >= since30 && r.price && r.currency) {
+      billed[r.currency] = (billed[r.currency] || 0) + Number(r.price) / 10; // milliunits → cents
+    }
+  }
+  return {
+    apple: {
+      active: active.length,
+      monthly: active.filter((r) => r.tier === "monthly").length,
+      annual: active.filter((r) => r.tier === "annual").length,
+      new30: live.filter((r) => Date.parse(r.created_at) >= since30).length,
+      lapsed30: live.filter((r) => r.expires_at && Date.parse(r.expires_at) <= now && Date.parse(r.expires_at) >= since30).length,
+      dueIn7: active.filter((r) => Date.parse(r.expires_at) <= now + 7 * DAY).length,
+      billed30: billed, // cents per currency, gross
+      countries: tally(live, (r) => r.storefront)
+    },
+    play: {
+      active: playPurchases.filter((r) => r.expires_at && Date.parse(r.expires_at) > now).length,
+      total: playPurchases.length
+    }
+  };
+}
+
 // Website (Stripe) sales for the admin dashboard, last 30 days. Totals only:
 // no customer names, emails or ids leave this function. Refunds are netted
 // out. Null when Stripe isn't configured; the dashboard hides the card then.
@@ -2489,7 +2525,7 @@ app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
       console.error("[Admin] stats:", error.message);
       return [];
     });
-    const [profiles, stats, activity, texts, cards, speech, assignments, students] = await Promise.all([
+    const [profiles, stats, activity, texts, cards, speech, assignments, students, applePurchases, playPurchases] = await Promise.all([
       fetchAllRows("profiles", "id, created_at, plan, plan_provider, plan_ends_at, trial_ends_at, last_platform"),
       fetchAllRows("user_stats", "words_read, words_spoken, longest_streak"),
       fetchAllRows("activity_days", "user_id, day", (q) => q.gte("day", days[0])),
@@ -2497,7 +2533,11 @@ app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
       fetchAllRows("flashcards", "lang, created_at"),
       fetchAllRows("pronunciation_usage", "user_id, day, count", (q) => q.gte("day", days[0])),
       optional(fetchAllRows("assignments", "closed_at")),
-      optional(fetchAllRows("assignment_students", "joined_at"))
+      optional(fetchAllRows("assignment_students", "joined_at")),
+      // Selected fields from Apple's signed transaction: no ids leave here.
+      optional(fetchAllRows("apple_purchases",
+        "tier, environment, expires_at, created_at, price:raw->info->price, currency:raw->info->currency, storefront:raw->info->storefront, purchased:raw->info->purchaseDate")),
+      optional(fetchAllRows("google_play_purchases", "tier, subscription_state, expires_at, created_at"))
     ]);
 
     const byId = new Map(profiles.map((p) => [p.id, p]));
@@ -2549,6 +2589,7 @@ app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
       },
       plans: { ...plans, paying: paidCount, byProvider: paying },
       website,
+      stores: storeSummary(applePurchases, playPurchases),
       languages: {
         reading: tally(texts, (t) => t.source_lang),
         pairs: tally(texts, (t) => t.source_lang && t.target_lang && `${t.source_lang} → ${t.target_lang}`).slice(0, 8),
