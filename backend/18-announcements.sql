@@ -36,3 +36,6 @@ create index if not exists announcements_live_idx
 
 alter table public.announcements enable row level security;
 revoke all on public.announcements from anon, authenticated;
+-- From 2026-10-30 Supabase no longer grants new public tables to the API
+-- roles automatically, so say it explicitly: only the backend reaches this.
+grant select, insert, update, delete on public.announcements to service_role;
