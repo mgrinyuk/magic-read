@@ -419,12 +419,6 @@ const app = express();
 // startup). Trust exactly those two hops: trusting more would let a client
 // prepend a fake address to dodge the limits.
 app.set("trust proxy", 2);
-
-// TEMPORARY: confirms which address the app now sees. Returns only the
-// caller's own address. Remove once checked.
-app.get("/api/ip-check", (req, res) => {
-  res.json({ ip: req.ip, forwardedFor: req.headers["x-forwarded-for"] || null });
-});
 let googleCredentials;
 try {
   if (process.env.GOOGLE_TTS_KEY_JSON) {
