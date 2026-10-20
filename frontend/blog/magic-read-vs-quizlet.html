@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Google Ads tag — website only. These pages are bundled into the native
+       apps too, and the account screen links to them, so an ungated tag would
+       mean tracking inside the app (which requires ATT). -->
+  <script>
+    if (!window.Capacitor) {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-18335701336');
+      var gtagScript = document.createElement('script');
+      gtagScript.async = true;
+      gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18335701336';
+      document.head.appendChild(gtagScript);
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic Read vs Quizlet for Learning Chinese (2026) | Magic Read Blog</title>
+  <meta name="description" content="Quizlet is great for quick vocab lists. For Chinese you also need pinyin, real reading, speaking practice and reviews timed to your memory. An honest comparison." />
+  <link rel="canonical" href="https://magicread.app/blog/magic-read-vs-quizlet.html" />
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link rel="stylesheet" href="blog.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* Comparison table: scrolls sideways on narrow phones instead of squeezing. */
+    .compare-wrap { overflow-x: auto; margin: 24px 0; -webkit-overflow-scrolling: touch; }
+    .compare { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 15px; }
+    .compare th, .compare td { text-align: left; padding: 12px 14px; border-bottom: 1px solid #e6e3ee; vertical-align: top; }
+    .compare thead th { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #6b6480; }
+    .compare tbody th { font-weight: 600; width: 34%; }
+    .compare td.yes::before { content: "✓ "; color: #16a34a; font-weight: 700; }
+    .compare td.part::before { content: "~ "; color: #b98300; font-weight: 700; }
+    .compare td.no::before { content: "✗ "; color: #a1a1aa; font-weight: 700; }
+    .note { font-size: 14px; color: #6b6480; }
+    /* Phones: stack each row (feature, then both apps) so neither column is
+       hidden off to the side. */
+    @media (max-width: 600px) {
+      .compare { min-width: 0; }
+      .compare thead { display: none; }
+      .compare, .compare tbody, .compare tr, .compare th, .compare td { display: block; width: auto; }
+      .compare tr { padding: 14px 0; border-bottom: 1px solid #e6e3ee; }
+      .compare th, .compare td { border: 0; padding: 3px 0; }
+      .compare tbody th { width: auto; padding-bottom: 6px; }
+      .compare td.yes:nth-of-type(1)::before { content: "✓ Magic Read: "; }
+      .compare td.part:nth-of-type(1)::before { content: "~ Magic Read: "; }
+      .compare td.no:nth-of-type(1)::before { content: "✗ Magic Read: "; }
+      .compare td.yes:nth-of-type(2)::before { content: "✓ Quizlet: "; }
+      .compare td.part:nth-of-type(2)::before { content: "~ Quizlet: "; }
+      .compare td.no:nth-of-type(2)::before { content: "✗ Quizlet: "; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="../" class="nav-logo">Magic <span>Read</span></a>
+    <ul class="nav-links">
+      <li><a href="../">App</a></li>
+      <li><a href="./index.html">Blog</a></li>
+      <li><a href="../" class="nav-cta">Try free →</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="article-wrap">
+  <a href="./index.html" class="back-link">
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    All articles
+  </a>
+
+  <header class="article-header">
+    <span class="tag">Comparison</span>
+    <h1>Magic Read vs Quizlet for learning Chinese</h1>
+    <p class="article-meta">5 min read &nbsp;·&nbsp; Magic Read Team &nbsp;·&nbsp; Updated October 2026</p>
+  </header>
+
+  <div class="article-body">
+
+    <p>Quizlet is one of the most popular flashcard apps in the world, and for good reason: it's quick, simple, and there's a ready-made set for almost any textbook. If you need to memorize twenty words for Friday's quiz, it does the job.</p>
+
+    <p>Learning Chinese asks for more than that, though. You need to <strong>read characters with pinyin</strong>, <strong>hear and say the tones</strong>, see words in real sentences, and keep thousands of words in memory for months, not days. That's the gap Magic Read was built for.</p>
+
+    <p>Here's an honest look at where each one fits.</p>
+
+    <h2>At a glance</h2>
+
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr><th></th><th>Magic Read</th><th>Quizlet</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Flashcards</th><td class="yes">Yes, with audio, pinyin and the sentence you found the word in</td><td class="yes">Yes, a huge library of shared sets</td></tr>
+          <tr><th>Spaced repetition (reviews timed to your memory)</th><td class="yes">Yes, every word has its own schedule, with a daily reminder</td><td class="part">Learn mode repeats words in a session; its long-term spaced repetition feature was retired in 2020</td></tr>
+          <tr><th>Read real Chinese texts</th><td class="yes">Paste any text, scan a page, or pick a story from A1 to B2</td><td class="no">Not the focus: built around term-and-definition cards</td></tr>
+          <tr><th>Pinyin over every character</th><td class="yes">One tap</td><td class="part">Only if the set's author typed it in</td></tr>
+          <tr><th>Tap any word for its meaning</th><td class="yes">Yes, and save it to a deck in one tap</td><td class="no">No</td></tr>
+          <tr><th>Speaking practice with a score</th><td class="yes">Say each sentence and get a score for every word</td><td class="no">No</td></tr>
+          <tr><th>Scan a page with your camera</th><td class="yes">Yes, in the iPhone and Android apps</td><td class="part">Image upload for creating sets</td></tr>
+          <tr><th>Learn from YouTube videos</th><td class="yes">Interactive subtitles</td><td class="no">No</td></tr>
+          <tr><th>Subjects beyond languages</th><td class="no">Languages only</td><td class="yes">Every school subject</td></tr>
+          <tr><th>Classroom games</th><td class="part">Teachers can share texts and decks by link</td><td class="yes">Quizlet Live and more</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Based on each product's public features as of October 2026. Features change, so check the current version of each app.</p>
+
+    <h2>The big difference: where your words come from</h2>
+
+    <p>On Quizlet, you usually study a list: someone else's set, or one you typed up. The word arrives without a story. Research on vocabulary keeps finding the same thing: words met in context (a sentence, a story, a conversation) are remembered better and used more easily than words learned from lists.</p>
+
+    <p>In Magic Read, you save words <em>while reading</em>. You tap 奖学金 in a dialogue about university life, and the card keeps that sentence, the pinyin and the audio. When it comes back for review, you remember the moment you met it.</p>
+
+    <h2>Reviews timed to your memory</h2>
+
+    <p>Memory fades on a predictable curve, and reviewing a word just before you'd forget it makes it last much longer. That's spaced repetition, and it's the most reliable way to keep a large vocabulary.</p>
+
+    <p>Magic Read schedules every saved word on its own: get it right and it comes back after a day, then three, then a week, and further apart each time; miss it and you see it again today. A short daily reminder tells you how many words are waiting. Quizlet's Learn mode is good for cramming a set before a test, but it doesn't keep that long-term schedule for each word.</p>
+
+    <h2>Tones need your voice, not just your eyes</h2>
+
+    <p>You can recognize 校园 perfectly on a card and still say it with the wrong tones. Magic Read lets you listen to natural audio (slowed down if you like), then say the sentence yourself and see a score for every word, so you know which syllable to fix. That loop of reading, listening and speaking the same text is hard to build out of flashcards alone.</p>
+
+    <h2>When Quizlet is the better choice</h2>
+
+    <ul>
+      <li>You're studying several school subjects and want one app for all of them.</li>
+      <li>Your teacher already shares Quizlet sets or runs Quizlet Live in class.</li>
+      <li>You only need to memorize a short list for a test this week.</li>
+    </ul>
+
+    <h2>When Magic Read is the better choice</h2>
+
+    <ul>
+      <li>You're learning Chinese (or another language) and want to actually read and speak it.</li>
+      <li>You want words to stick for months, not just until the quiz.</li>
+      <li>You want pinyin, audio and meanings on any text you bring, including a page from your textbook.</li>
+      <li>You want feedback on your pronunciation, tone by tone.</li>
+    </ul>
+
+    <h2>Can you use both?</h2>
+
+    <p>Of course. Plenty of learners keep a school set on Quizlet and do their reading, speaking and long-term review in Magic Read. If you already have word lists, Magic Read's Cards screen can import them, so you can start reviewing them on a proper schedule.</p>
+
+    <div class="callout">
+      <p>Read any Chinese text with pinyin and audio, save words with their sentence, and review them right before you'd forget. Every new account starts with a 3-day trial of everything.</p>
+      <a href="https://magicread.app/">Try Magic Read free →</a>
+    </div>
+
+    <p class="note">Quizlet is a trademark of Quizlet, Inc. Magic Read is not affiliated with or endorsed by Quizlet.</p>
+
+  </div>
+</div>
+
+<footer class="site-footer">
+  <p>© 2026 Magic Read &nbsp;·&nbsp; <a href="../privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="../terms.html">Terms</a></p>
+</footer>
+
+</body>
+</html>
