@@ -412,6 +412,18 @@ function loadCedict() {
 
 const GRAMMAR_SHEET_ID = process.env.GRAMMAR_SHEET_ID;
 const app = express();
+// Render's proxy sits in front of the app and passes the visitor's address in
+// X-Forwarded-For. Without this, req.ip was the proxy's own address, so the
+// rate limiters below counted every visitor as one ("ERR_ERL_UNEXPECTED_X_
+// FORWARDED_FOR" at startup). Trust exactly one hop: trusting all of them
+// would let a client spoof the header to dodge the limits.
+app.set("trust proxy", 1);
+
+// TEMPORARY: confirms which address the app now sees. Returns only the
+// caller's own address. Remove once checked.
+app.get("/api/ip-check", (req, res) => {
+  res.json({ ip: req.ip, forwardedFor: req.headers["x-forwarded-for"] || null });
+});
 let googleCredentials;
 try {
   if (process.env.GOOGLE_TTS_KEY_JSON) {
