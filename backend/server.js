@@ -412,12 +412,13 @@ function loadCedict() {
 
 const GRAMMAR_SHEET_ID = process.env.GRAMMAR_SHEET_ID;
 const app = express();
-// Render's proxy sits in front of the app and passes the visitor's address in
-// X-Forwarded-For. Without this, req.ip was the proxy's own address, so the
-// rate limiters below counted every visitor as one ("ERR_ERL_UNEXPECTED_X_
-// FORWARDED_FOR" at startup). Trust exactly one hop: trusting all of them
-// would let a client spoof the header to dodge the limits.
-app.set("trust proxy", 1);
+// Requests reach the app through Cloudflare and then Render's proxy, which
+// pass the visitor's address in X-Forwarded-For ("visitor, cloudflare").
+// Without this, req.ip was a proxy's address, so the rate limiters below
+// counted every visitor as one ("ERR_ERL_UNEXPECTED_X_FORWARDED_FOR" at
+// startup). Trust exactly those two hops: trusting more would let a client
+// prepend a fake address to dodge the limits.
+app.set("trust proxy", 2);
 
 // TEMPORARY: confirms which address the app now sees. Returns only the
 // caller's own address. Remove once checked.
