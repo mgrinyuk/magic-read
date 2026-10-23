@@ -8111,3 +8111,14 @@ body.fc-focus #fcFullscreenBtn { visibility: hidden; }
   max-width: 560px; margin: 0 auto;
   padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
 }
+
+/* Tone Gym pitch chart: your pitch line against each syllable's target. */
+.tg-pitch { width: 100%; max-width: 360px; margin-top: 4px; }
+.tg-pitch svg { width: 100%; height: auto; display: block; background: var(--surface-2); border-radius: 14px; }
+.tg-pitch-labels { display: grid; gap: 4px; margin-top: 6px; font-size: 12.5px; font-weight: 700; text-align: center; color: var(--text-dim); }
+.tg-pitch-labels .good { color: #16A34A; }
+.tg-pitch-labels .bad { color: #DC2626; }
+.tg-pitch-legend { display: flex; justify-content: center; gap: 14px; margin-top: 6px; font-size: 12px; color: var(--text-soft); }
+.tg-pitch-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tg-pitch-legend i { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--primary); }
+.tg-pitch-legend i.target { border-top: 2.5px dashed var(--text-dim); }

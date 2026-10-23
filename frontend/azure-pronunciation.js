@@ -85,7 +85,11 @@ function extractSyllables(w) {
       char: chars.length === phonemes.length ? chars[i] : "",
       pinyin: pinyin.toLowerCase().replace(/v/g, "ü"),
       tone: Number(tone),
-      accuracy: p.PronunciationAssessment?.AccuracyScore ?? p.AccuracyScore ?? null
+      accuracy: p.PronunciationAssessment?.AccuracyScore ?? p.AccuracyScore ?? null,
+      // Timing within Azure's own audio stream, in seconds (ticks are 100 ns);
+      // the Tone Gym lines its pitch track up on these.
+      offset: Number.isFinite(p.Offset) ? p.Offset / 1e7 : null,
+      duration: Number.isFinite(p.Duration) ? p.Duration / 1e7 : null
     };
   });
 }

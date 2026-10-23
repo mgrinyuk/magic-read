@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261023.2";
+import { UI_TEXT } from "./ui-text.js?v=20261023.3";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -7,7 +7,8 @@ import {
   renderAssessment,
   collectFailedChunks,
   GREEN_THRESHOLD
-} from "./azure-pronunciation.js?v=20261023.2";
+} from "./azure-pronunciation.js?v=20261023.3";
+import { detectPitch, analyseWord, toneVerdict, toneTemplate } from "./tone-pitch.js?v=20261023.3";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
@@ -10379,6 +10380,67 @@ const TG_STARTER = [
   ["谢谢", "xiè xie", "thanks"], ["爸爸", "bà ba", "dad"], ["弟弟", "dì di", "younger brother"]
 ];
 
+/* Pitch capture for the Tone Gym: records the same speech Azure is scoring,
+   on the device, so tone-pitch.js can tell which tone was actually said.
+   Nothing is uploaded. Runs beside Azure's own mic stream (as the
+   spotlight's level meter already does). */
+const PITCH_MAX_SECONDS = 8;
+async function startPitchCapture() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx || !navigator.mediaDevices?.getUserMedia) return null;
+  const ctx = new Ctx(); // created inside the tap, so iOS lets it run
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
+    await ctx.resume();
+    const src = ctx.createMediaStreamSource(stream);
+    const node = ctx.createScriptProcessor(4096, 1, 1);
+    const chunks = [];
+    let length = 0;
+    const max = ctx.sampleRate * PITCH_MAX_SECONDS;
+    node.onaudioprocess = (e) => {
+      if (length >= max) return;
+      const data = new Float32Array(e.inputBuffer.getChannelData(0));
+      chunks.push(data);
+      length += data.length;
+    };
+    src.connect(node);
+    node.connect(ctx.destination); // ScriptProcessor only runs when connected
+    return {
+      stop() {
+        try { src.disconnect(); node.disconnect(); } catch { /* ignore */ }
+        stream.getTracks().forEach((t) => t.stop());
+        ctx.close().catch(() => {});
+        const samples = new Float32Array(length);
+        let at = 0;
+        for (const c of chunks) { samples.set(c, at); at += c.length; }
+        return { samples, sampleRate: ctx.sampleRate };
+      }
+    };
+  } catch {
+    ctx.close().catch(() => {});
+    return null;
+  }
+}
+
+// The speaker's usual pitch, remembered on this device: the median of the
+// last utterances' medians. Tones are judged as high/low against it, and
+// only once there are a few utterances to go on.
+const PITCH_BASE_KEY = "magicread_pitch_medians";
+const PITCH_MIN_HISTORY = 3;
+function pitchHistory() {
+  try { return JSON.parse(localStorage.getItem(PITCH_BASE_KEY) || "[]").filter(Number.isFinite); } catch { return []; }
+}
+function rememberPitch(track) {
+  const voiced = track.filter((p) => p.f0 > 0).map((p) => p.f0).sort((a, b) => a - b);
+  if (voiced.length < 10) return;
+  const hist = [...pitchHistory(), voiced[voiced.length >> 1]].slice(-30);
+  try { localStorage.setItem(PITCH_BASE_KEY, JSON.stringify(hist)); } catch { /* fine */ }
+}
+function pitchBaseline() {
+  const h = [...pitchHistory()].sort((a, b) => a - b);
+  return h.length >= PITCH_MIN_HISTORY ? h[h.length >> 1] : null;
+}
+
 let tg = null;        // running session
 let tgStats = null;   // { say: {key: {attempts, avg}}, ear: {...} }
 let tgMapSkill = "say";
@@ -10642,7 +10704,8 @@ function tgRenderItem() {
       <div class="tg-meaning">${escapeHtml(item.meaning)}</div>
       ${shown ? `<div class="sp-syl-list tg-syl">${shown.map((s, i) => `
         <span class="sp-syl-chip ${sylClass(s.accuracy)}"><b class="zh">${escapeHtml(item.syllables[i].char)}</b><span class="sp-syl-py">${escapeHtml(pinyinWithTone(item.syllables[i].pinyin, item.syllables[i].tone))}</span><span class="sp-syl-score">${s.accuracy == null ? "–" : Math.round(s.accuracy)}</span></span>`).join("")}
-      </div>${weakest && weakest.accuracy < SYL_WEAK ? `<p class="sp-syl-hint">${escapeHtml(t[`toneHint${item.syllables[shown.indexOf(weakest)].tone}`] || "")}</p>` : ""}` : ""}
+      </div>${weakest && weakest.accuracy < SYL_WEAK ? `<p class="sp-syl-hint">${escapeHtml(t[`toneHint${item.syllables[shown.indexOf(weakest)].tone}`] || "")}</p>` : ""}
+      ${tgPitchChart(tg.pitch)}` : ""}
       ${res?.error ? `<p class="tg-err">${escapeHtml(res.error)}</p>` : ""}
       <div class="tg-say-row">
         <button class="ghost-btn tg-listen" type="button" id="tgListen">🔊 ${escapeHtml(t.gymListen)}</button>
@@ -10670,9 +10733,11 @@ async function tgSayAttempt() {
   const item = tg.items[tg.idx];
   unlockAudioForMobile();
   stopAllTTS();
-  tg.busy = true; tg.result = null;
+  tg.busy = true; tg.result = null; tg.pitch = null;
+  const capture = startPitchCapture(); // begins inside the tap
   tgRenderItem();
   const { result, error } = await assessChunk(item.word, mapToSpeechLang("zh"));
+  const recorded = (await capture)?.stop();
   tg.busy = false;
   if (error) {
     if (error.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); tgRenderItem(); return; }
@@ -10681,9 +10746,62 @@ async function tgSayAttempt() {
   } else {
     tg.result = result;
     tgRecord(tgSayRows(result.words));
+    tg.pitch = tgAnalysePitch(recorded, result);
     analyticsEvent("speech_scored", { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), where: "tonegym" });
   }
   tgRenderItem();
+}
+
+// Pitch track + Azure's syllable timing → per-syllable heard tone and verdict.
+function tgAnalysePitch(recorded, result) {
+  if (!recorded?.samples?.length) return null;
+  try {
+    const track = detectPitch(recorded.samples, recorded.sampleRate);
+    const syl = (result.words || []).flatMap((w) => w.syllables || []);
+    const baseline = pitchBaseline();
+    const a = analyseWord(track, syl, { baseline: baseline || undefined });
+    rememberPitch(track);
+    if (!a) return null;
+    a.syllables = a.syllables.map((s, i) => ({
+      ...s,
+      // No verdicts until the device knows this voice's usual level.
+      verdict: baseline ? toneVerdict(s.tone, s.heard, a.syllables[i + 1]?.tone, s.char, s.accuracy) : null
+    }));
+    return a;
+  } catch (e) {
+    console.warn("[ToneGym] pitch:", e.message);
+    return null;
+  }
+}
+
+// Your pitch (pink) against each syllable's target shape (dashed), in
+// semitones around your usual level, one column per syllable.
+function tgPitchChart(analysis) {
+  const syl = analysis?.syllables || [];
+  if (!syl.length || syl.every((s) => !s.contour.length)) return "";
+  const t = getT();
+  const W = 300, H = 110, pad = 8, colW = (W - pad * 2) / syl.length;
+  const y = (st) => H / 2 - Math.max(-9, Math.min(9, st)) * ((H / 2 - 10) / 9);
+  const cols = syl.map((s, i) => {
+    const x0 = pad + i * colW + 6, w = colW - 12;
+    const target = toneTemplate(s.tone).map(([x, st]) => `${(x0 + x * w).toFixed(1)},${y(st).toFixed(1)}`).join(" ");
+    const mine = s.contour.map((p) => `${(x0 + p.x * w).toFixed(1)},${y(p.st).toFixed(1)}`).join(" ");
+    return `
+      <polyline points="${target}" fill="none" stroke="var(--text-dim)" stroke-width="2.5" stroke-dasharray="5 5" stroke-linecap="round"/>
+      ${s.contour.length > 1 ? `<polyline points="${mine}" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
+      ${i ? `<line x1="${pad + i * colW}" x2="${pad + i * colW}" y1="6" y2="${H - 6}" stroke="var(--surface-2)" stroke-width="1"/>` : ""}`;
+  }).join("");
+  const labels = syl.map((s) => {
+    const label = s.verdict === "wrong" ? t.gymHeardAs.replace("{n}", s.heard)
+      : s.verdict === "ok" ? `✓ ${t.gymToneN.replace("{n}", s.tone)}` : "";
+    return `<span class="${s.verdict === "wrong" ? "bad" : s.verdict === "ok" ? "good" : ""}">${escapeHtml(label)}</span>`;
+  }).join("");
+  return `
+    <div class="tg-pitch">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHtml(t.gymPitchTitle)}">${cols}</svg>
+      <div class="tg-pitch-labels" style="grid-template-columns: repeat(${syl.length}, 1fr)">${labels}</div>
+      <div class="tg-pitch-legend"><span><i class="you"></i>${escapeHtml(t.gymPitchYou)}</span><span><i class="target"></i>${escapeHtml(t.gymPitchTarget)}</span></div>
+    </div>`;
 }
 
 function tgRenderDone() {
