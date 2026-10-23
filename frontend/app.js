@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261023.1";
+import { UI_TEXT } from "./ui-text.js?v=20261023.2";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -7,7 +7,7 @@ import {
   renderAssessment,
   collectFailedChunks,
   GREEN_THRESHOLD
-} from "./azure-pronunciation.js?v=20261023.1";
+} from "./azure-pronunciation.js?v=20261023.2";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
@@ -504,6 +504,7 @@ const screenHome = document.getElementById("screen-home");
 const screenMain = document.getElementById("screen-main");
 const screenFlashcards = document.getElementById("screen-flashcards");
 const screenReview = document.getElementById("screen-review");
+const screenToneGym = document.getElementById("screen-tonegym");
 const screenWriting = document.getElementById("screen-writing");
 const screenOnboarding = document.getElementById("screen-onboarding");
 const screenAccount = document.getElementById("screen-account");
@@ -2568,6 +2569,7 @@ const TAB_BY_SCREEN = {
   "screen-home":            "home",
   "screen-flashcards":      "cards",
   "screen-review":          "cards",
+  "screen-tonegym":         "home",
   "screen-video":           "video",
   "screen-speak-practice":  "read",
   "screen-speak-complete":  "read",
@@ -2962,6 +2964,7 @@ function renderHomeScreen() {
     const badgeEl  = document.getElementById("homePlanBadge");
 
     if (nameEl)   nameEl.textContent   = `${getT().helloName}, ${name}`;
+    updateToneGymTile();
     if (avatarEl) avatarEl.textContent = initial;
 
     if (badgeEl) {
@@ -3862,6 +3865,8 @@ document.querySelectorAll("[data-hd-target]").forEach(btn => {
       showScreen(screenWriting);
     } else if (target === "video") {
       openVideoSurface();
+    } else if (target === "tonegym") {
+      tgOpen();
     } else if (target === "tour") {
       showTourScreen(() => showScreen(screenHome));
     }
@@ -4073,6 +4078,7 @@ function restoreActiveScreen() {
     return;
   }
 
+  if (savedId === "screen-tonegym") { tgOpen(); return; }
   if (savedId === "screen-home") renderHomeScreen();
   if (savedId === "screen-main") {
     updateModeCopy();
@@ -4930,6 +4936,7 @@ homeTargetLang?.addEventListener("change", () => {
 // Keep the dashboard control + storage in step when language changes elsewhere
 // (composer, onboarding, resume).
 sourceLangSelect?.addEventListener("change", () => {
+  updateToneGymTile();
   localStorage.setItem("magicread_source_lang", sourceLangSelect.value);
   syncHomeLangControls();
 });
@@ -5535,6 +5542,7 @@ function spResetMic() {
 /* INTEGRATION #2 — feed a normalised result in. */
 function spApplyScore(result) {
   analyticsEvent("speech_scored", { score: result.score, where: "speak" });
+  if (spState.lang === "zh") tgRecord(tgSayRows(result.words)); // feeds the Tone Gym map
   spState.recording = false;
   spState.session = null;
   spStopMicMeter();
@@ -10335,6 +10343,377 @@ document.querySelectorAll(".fc-mode-tab").forEach(btn => btn.addEventListener("c
   }
   setFcMode(mode);
 }));
+
+/* ── Tone Gym (Chinese) ──
+   Find what you get wrong, drill exactly that, re-measure:
+   - Ear training (free): hear a word, pick each syllable's tone.
+   - Say it (Pro, Azure-scored): say a word, see every syllable scored.
+   - Tone map: average score per tone pair (3-1, 4-4…) for speaking and for
+     listening, from tone_stats (backend/19-tone-stats.sql). Speaking in the
+     Read & Speak spotlight feeds it too. Sessions lean on the weakest pairs.
+   Words come from the learner's own saved Chinese cards (tone-marked
+   pinyin), topped up from a starter list covering all 20 pairs. */
+const TG_SESSION = 10;
+const TG_TONE_GLYPH = ["", "ˉ", "ˊ", "ˇ", "ˋ", "·"];
+// Two-syllable starters, a few per tone pair: [hanzi, pinyin, meaning].
+const TG_STARTER = [
+  ["飞机", "fēi jī", "plane"], ["今天", "jīn tiān", "today"], ["咖啡", "kā fēi", "coffee"],
+  ["中国", "zhōng guó", "China"], ["欢迎", "huān yíng", "welcome"], ["今年", "jīn nián", "this year"],
+  ["黑板", "hēi bǎn", "blackboard"], ["铅笔", "qiān bǐ", "pencil"], ["开始", "kāi shǐ", "to begin"],
+  ["商店", "shāng diàn", "shop"], ["音乐", "yīn yuè", "music"], ["医院", "yī yuàn", "hospital"],
+  ["东西", "dōng xi", "thing"], ["他们", "tā men", "they"], ["妈妈", "mā ma", "mum"],
+  ["明天", "míng tiān", "tomorrow"], ["昨天", "zuó tiān", "yesterday"], ["房间", "fáng jiān", "room"],
+  ["学习", "xué xí", "to study"], ["银行", "yín háng", "bank"], ["同学", "tóng xué", "classmate"],
+  ["苹果", "píng guǒ", "apple"], ["没有", "méi yǒu", "not have"], ["词典", "cí diǎn", "dictionary"],
+  ["学校", "xué xiào", "school"], ["迟到", "chí dào", "to be late"], ["国外", "guó wài", "abroad"],
+  ["名字", "míng zi", "name"], ["朋友", "péng you", "friend"], ["时候", "shí hou", "time; moment"],
+  ["老师", "lǎo shī", "teacher"], ["北京", "běi jīng", "Beijing"], ["每天", "měi tiān", "every day"],
+  ["女儿", "nǚ ér", "daughter"], ["旅游", "lǚ yóu", "to travel"], ["有名", "yǒu míng", "famous"],
+  ["你好", "nǐ hǎo", "hello"], ["可以", "kě yǐ", "can; may"], ["水果", "shuǐ guǒ", "fruit"],
+  ["考试", "kǎo shì", "exam"], ["晚饭", "wǎn fàn", "dinner"], ["米饭", "mǐ fàn", "rice"],
+  ["姐姐", "jiě jie", "older sister"], ["喜欢", "xǐ huan", "to like"], ["椅子", "yǐ zi", "chair"],
+  ["面包", "miàn bāo", "bread"], ["汽车", "qì chē", "car"], ["大家", "dà jiā", "everyone"],
+  ["问题", "wèn tí", "question"], ["太阳", "tài yáng", "sun"], ["练习", "liàn xí", "to practise"],
+  ["电脑", "diàn nǎo", "computer"], ["汉语", "hàn yǔ", "Chinese"], ["跳舞", "tiào wǔ", "to dance"],
+  ["再见", "zài jiàn", "goodbye"], ["电视", "diàn shì", "TV"], ["现在", "xiàn zài", "now"],
+  ["谢谢", "xiè xie", "thanks"], ["爸爸", "bà ba", "dad"], ["弟弟", "dì di", "younger brother"]
+];
+
+let tg = null;        // running session
+let tgStats = null;   // { say: {key: {attempts, avg}}, ear: {...} }
+let tgMapSkill = "say";
+
+// "jiǎng" or "jiang3" → { base: "jiang", tone: 3 }; no mark/number → neutral (5).
+function parseToneSyllable(syl) {
+  const numbered = /^([a-zü:v]+)([1-5])$/i.exec(syl);
+  if (numbered) return { base: numbered[1].toLowerCase().replace(/u:|v/g, "ü"), tone: Number(numbered[2]) };
+  const marks = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ";
+  const plain = "aaaaeeeeiiiioooouuuuüüüü";
+  let tone = 5, base = "";
+  for (const ch of syl.toLowerCase()) {
+    const at = marks.indexOf(ch);
+    if (at >= 0) { tone = (at % 4) + 1; base += plain[at]; } else base += ch;
+  }
+  return { base: base.replace(/[^a-zü]/g, ""), tone };
+}
+
+// A gym item from a hanzi word + tone-marked pinyin, or null when they don't
+// line up one syllable per character.
+function tgItem(word, pinyin, meaning) {
+  const chars = [...(word || "")].filter((c) => /[㐀-鿿]/.test(c));
+  const syls = String(pinyin || "").trim().split(/[\s']+/).filter(Boolean);
+  if (!chars.length || chars.length > 4 || chars.length !== syls.length) return null;
+  const parsed = syls.map(parseToneSyllable);
+  if (parsed.some((p) => !p.base)) return null;
+  return {
+    word: chars.join(""),
+    chars,
+    syllables: parsed.map((p, i) => ({ char: chars[i], pinyin: p.base, tone: p.tone })),
+    meaning: cleanTranslation(meaning || "")
+  };
+}
+
+// Tone keys a word exercises: each syllable's tone, and each neighbouring pair.
+function tgKeys(tones) {
+  const keys = tones.map(String);
+  for (let i = 0; i < tones.length - 1; i++) keys.push(`${tones[i]}-${tones[i + 1]}`);
+  return keys;
+}
+
+// Record results for the tone map. Fire-and-forget: a missing table or a
+// network blip must never interrupt practice.
+function tgRecord(rows) {
+  if (!rows.length || !document.body.classList.contains("is-logged-in")) return;
+  supabase.rpc("record_tone_results", { results: rows }).then(({ error }) => {
+    if (error) console.warn("[ToneGym] record:", error.message);
+  });
+  if (tgStats) {
+    for (const r of rows) {
+      const bucket = (tgStats[r.skill] ||= {});
+      const cur = bucket[r.key] || { attempts: 0, sum: 0 };
+      cur.attempts += 1; cur.sum += r.score; cur.avg = cur.sum / cur.attempts;
+      bucket[r.key] = cur;
+    }
+  }
+}
+
+// Speaking results → tone-map rows: each syllable's score under its tone, and
+// each in-word pair under the mean of its two syllables.
+function tgSayRows(words) {
+  const rows = [];
+  for (const w of words || []) {
+    const syl = (w.syllables || []).filter((s) => s.accuracy != null && s.tone >= 1 && s.tone <= 5);
+    syl.forEach((s) => rows.push({ skill: "say", key: String(s.tone), score: Math.round(s.accuracy) }));
+    for (let i = 0; i < syl.length - 1; i++) {
+      rows.push({ skill: "say", key: `${syl[i].tone}-${syl[i + 1].tone}`, score: Math.round((syl[i].accuracy + syl[i + 1].accuracy) / 2) });
+    }
+  }
+  return rows;
+}
+
+async function tgLoadStats() {
+  tgStats = { say: {}, ear: {} };
+  try {
+    const { data, error } = await supabase.from("tone_stats").select("skill, tone_key, attempts, score_sum");
+    if (error) throw error;
+    for (const r of data || []) {
+      tgStats[r.skill][r.tone_key] = { attempts: r.attempts, sum: r.score_sum, avg: r.attempts ? r.score_sum / r.attempts : null };
+    }
+  } catch (e) {
+    console.warn("[ToneGym] stats:", e.message || e);
+  }
+}
+
+function tgPool() {
+  const own = flashcardDecks.flatMap((d) => d.cards)
+    .filter((c) => (c.lang || "zh") === "zh")
+    .map((c) => tgItem(c.word, c.pinyin, c.translation))
+    .filter(Boolean);
+  const seen = new Set(own.map((i) => i.word));
+  const starter = TG_STARTER.map(([w, p, m]) => tgItem(w, p, m)).filter((i) => i && !seen.has(i.word));
+  return [...own.map((i) => ({ ...i, own: true })), ...starter];
+}
+
+// Weakest first: an item's weight is how badly its tone keys have gone in
+// this skill (unpractised keys count as middling), with own words favoured.
+function tgPickSession(skill) {
+  const stats = tgStats?.[skill] || {};
+  const weakness = (key) => { const s = stats[key]; return s?.avg == null ? 50 : 100 - s.avg; };
+  return tgPool()
+    .map((item) => {
+      const keys = tgKeys(item.syllables.map((s) => s.tone));
+      const w = keys.reduce((sum, k) => sum + weakness(k), 0) / keys.length;
+      return { item, rank: w + (item.own ? 15 : 0) + Math.random() * 25 };
+    })
+    .sort((a, b) => b.rank - a.rank)
+    .slice(0, TG_SESSION)
+    .map((x) => x.item);
+}
+
+// The Tone Gym is Chinese-only: its Home tile follows the study language.
+function updateToneGymTile() {
+  const tile = document.getElementById("hdToneGym");
+  if (tile) tile.hidden = (sourceLangSelect?.value || "zh") !== "zh";
+}
+
+async function tgOpen() {
+  if (!document.body.classList.contains("is-logged-in")) return;
+  showScreen(screenToneGym);
+  tg = null;
+  tgRenderHome(true);
+  await Promise.all([loadFlashcardsFromStorage(), tgLoadStats()]);
+  if (!tg) tgRenderHome();
+}
+
+function tgSetTop({ title, count, progress }) {
+  const titleEl = document.getElementById("tgTitle");
+  const wrap = document.getElementById("tgProgressWrap");
+  if (titleEl) { titleEl.hidden = progress != null; titleEl.textContent = title || getT().gymTitle; }
+  if (wrap) wrap.hidden = progress == null;
+  const bar = document.getElementById("tgProgress");
+  if (bar && progress != null) bar.style.width = `${Math.round(progress * 100)}%`;
+  const c = document.getElementById("tgCount");
+  if (c) c.textContent = count || "";
+}
+
+function tgRenderMap() {
+  const t = getT();
+  const stats = tgStats?.[tgMapSkill] || {};
+  const tones = [1, 2, 3, 4];
+  const seconds = [1, 2, 3, 4, 5];
+  const cell = (key) => {
+    const s = stats[key];
+    if (!s?.attempts) return `<td class="tg-cell empty" title="${key}">–</td>`;
+    const avg = Math.round(s.avg);
+    const cls = avg >= 80 ? "good" : avg >= 60 ? "ok" : "bad";
+    return `<td class="tg-cell ${cls}" title="${key}: ${avg} (${s.attempts})">${avg}</td>`;
+  };
+  const practised = Object.entries(stats).filter(([k, s]) => k.includes("-") && s.attempts >= 2);
+  const weakest = practised.sort((a, b) => a[1].avg - b[1].avg)[0];
+  const pairLabel = (k) => k.split("-").map((n) => `${TG_TONE_GLYPH[n]}${n}`).join(" + ");
+  return `
+    <div class="tg-map">
+      <div class="tg-map-head">
+        <b>${escapeHtml(t.gymMapTitle)}</b>
+        <div class="tg-map-tabs">
+          <button type="button" data-skill="say" class="${tgMapSkill === "say" ? "on" : ""}">${escapeHtml(t.gymMapSpeaking)}</button>
+          <button type="button" data-skill="ear" class="${tgMapSkill === "ear" ? "on" : ""}">${escapeHtml(t.gymMapListening)}</button>
+        </div>
+      </div>
+      <table class="tg-grid">
+        <thead><tr><th></th>${seconds.map((n) => `<th>${TG_TONE_GLYPH[n]}${n === 5 ? "" : n}</th>`).join("")}</tr></thead>
+        <tbody>${tones.map((a) => `<tr><th>${TG_TONE_GLYPH[a]}${a}</th>${seconds.map((b) => cell(`${a}-${b}`)).join("")}</tr>`).join("")}</tbody>
+      </table>
+      <p class="tg-map-note">${escapeHtml(weakest ? t.gymWeakest.replace("{pair}", pairLabel(weakest[0])) : t.gymMapEmpty)}</p>
+    </div>`;
+}
+
+function tgRenderHome(loading = false) {
+  const stage = document.getElementById("tgStage");
+  if (!stage) return;
+  const t = getT();
+  tgSetTop({});
+  stage.innerHTML = `
+    <p class="tg-sub">${escapeHtml(t.gymSub)}</p>
+    ${loading && !tgStats ? `<p class="tg-sub">${escapeHtml(t.loading || "Loading…")}</p>` : tgRenderMap()}
+    <div class="tg-modes">
+      <button class="tg-mode" type="button" data-mode="ear">
+        <span class="tg-mode-ico">👂</span><b>${escapeHtml(t.gymEar)}</b><span>${escapeHtml(t.gymEarSub)}</span>
+      </button>
+      <button class="tg-mode" type="button" data-mode="say">
+        <span class="tg-mode-ico">🎙️</span><b>${escapeHtml(t.gymSay)}</b><span>${escapeHtml(t.gymSaySub)}</span>
+      </button>
+    </div>`;
+  stage.querySelectorAll(".tg-map-tabs button").forEach((b) => b.addEventListener("click", () => {
+    tgMapSkill = b.dataset.skill;
+    tgRenderHome();
+  }));
+  stage.querySelectorAll(".tg-mode").forEach((b) => b.addEventListener("click", () => tgStart(b.dataset.mode)));
+}
+
+function tgStart(mode) {
+  // Listening is free; scored speaking uses an Azure check per word, so Pro.
+  if (mode === "say" && isOnFreePlan()) { showUpgradePrompt("QUOTA_EXCEEDED"); return; }
+  const items = tgPickSession(mode);
+  if (!items.length) return;
+  tg = { mode, items, idx: 0, total: items.length, correct: 0, scores: [], retried: new Set(), picks: [], checked: false, result: null, busy: false };
+  analyticsEvent("tonegym_started", { mode, own: items.filter((i) => i.own).length });
+  tgRenderItem();
+}
+
+function tgRenderItem() {
+  const stage = document.getElementById("tgStage");
+  if (!stage || !tg) return;
+  const t = getT();
+  if (tg.idx >= tg.items.length) { tgRenderDone(); return; }
+  const item = tg.items[tg.idx];
+  tgSetTop({ progress: tg.idx / tg.items.length, count: `${Math.min(tg.idx + 1, tg.total)} / ${tg.total}` });
+
+  if (tg.mode === "ear") {
+    stage.innerHTML = `
+      <div class="tg-card">
+        <button class="tg-play" type="button" id="tgPlay" aria-label="${escapeHtml(t.gymListen)}">🔊</button>
+        <p class="tg-ask">${escapeHtml(t.gymPickTones)}</p>
+        <div class="tg-slots">${item.syllables.map((s, i) => `
+          <div class="tg-slot ${tg.checked ? (tg.picks[i] === s.tone ? "right" : "wrong") : ""}">
+            <span class="tg-slot-py">${escapeHtml(tg.checked ? pinyinWithTone(s.pinyin, s.tone) : s.pinyin)}</span>
+            <div class="tg-tones">${[1, 2, 3, 4, 5].map((n) => `
+              <button type="button" class="tg-tone ${tg.picks[i] === n ? "on" : ""} ${tg.checked && n === s.tone ? "answer" : ""}" data-i="${i}" data-n="${n}" ${tg.checked ? "disabled" : ""}>${n === 5 ? "·" : `${TG_TONE_GLYPH[n]}${n}`}</button>`).join("")}
+            </div>
+          </div>`).join("")}
+        </div>
+        ${tg.checked ? `<div class="tg-reveal"><b class="zh">${escapeHtml(item.word)}</b><span>${escapeHtml(item.meaning)}</span></div>` : ""}
+      </div>
+      <button class="primary-btn tg-next" type="button" id="tgNext" ${!tg.checked && tg.picks.filter(Boolean).length < item.syllables.length ? "disabled" : ""}>${escapeHtml(tg.checked ? t.gymNext : t.gymCheck)}</button>`;
+    const play = () => { unlockAudioForMobile(); playGoogleTTS(item.word, "zh", null, null).catch(console.error); };
+    document.getElementById("tgPlay").addEventListener("click", play);
+    if (!tg.checked && !tg.played) { tg.played = true; play(); }
+    stage.querySelectorAll(".tg-tone").forEach((b) => b.addEventListener("click", () => {
+      tg.picks[Number(b.dataset.i)] = Number(b.dataset.n);
+      tgRenderItem();
+    }));
+    document.getElementById("tgNext").addEventListener("click", () => {
+      if (!tg.checked) {
+        tg.checked = true;
+        const tones = item.syllables.map((s) => s.tone);
+        const right = tones.map((n, i) => tg.picks[i] === n);
+        if (right.every(Boolean)) tg.correct += 1;
+        const rows = tones.map((n, i) => ({ skill: "ear", key: String(n), score: right[i] ? 100 : 0 }));
+        for (let i = 0; i < tones.length - 1; i++) rows.push({ skill: "ear", key: `${tones[i]}-${tones[i + 1]}`, score: right[i] && right[i + 1] ? 100 : 0 });
+        tgRecord(rows);
+        playGoogleTTS(item.word, "zh", null, null).catch(() => {});
+      } else {
+        tg.idx += 1; tg.checked = false; tg.picks = []; tg.played = false;
+      }
+      tgRenderItem();
+    });
+    return;
+  }
+
+  // Say it
+  const res = tg.result;
+  const scored = res?.words?.flatMap((w) => w.syllables || []) || [];
+  const shown = scored.length === item.syllables.length ? scored : null;
+  const weakest = shown ? shown.reduce((m, s) => (s.accuracy ?? 100) < (m.accuracy ?? 100) ? s : m) : null;
+  stage.innerHTML = `
+    <div class="tg-card">
+      <b class="tg-word zh">${escapeHtml(item.word)}</b>
+      <div class="tg-py">${item.syllables.map((s) => `<span>${escapeHtml(pinyinWithTone(s.pinyin, s.tone))}</span>`).join("")}</div>
+      <div class="tg-meaning">${escapeHtml(item.meaning)}</div>
+      ${shown ? `<div class="sp-syl-list tg-syl">${shown.map((s, i) => `
+        <span class="sp-syl-chip ${sylClass(s.accuracy)}"><b class="zh">${escapeHtml(item.syllables[i].char)}</b><span class="sp-syl-py">${escapeHtml(pinyinWithTone(item.syllables[i].pinyin, item.syllables[i].tone))}</span><span class="sp-syl-score">${s.accuracy == null ? "–" : Math.round(s.accuracy)}</span></span>`).join("")}
+      </div>${weakest && weakest.accuracy < SYL_WEAK ? `<p class="sp-syl-hint">${escapeHtml(t[`toneHint${item.syllables[shown.indexOf(weakest)].tone}`] || "")}</p>` : ""}` : ""}
+      ${res?.error ? `<p class="tg-err">${escapeHtml(res.error)}</p>` : ""}
+      <div class="tg-say-row">
+        <button class="ghost-btn tg-listen" type="button" id="tgListen">🔊 ${escapeHtml(t.gymListen)}</button>
+        <button class="primary-btn tg-mic ${tg.busy ? "busy" : ""}" type="button" id="tgMic" ${tg.busy ? "disabled" : ""}>🎙️ ${escapeHtml(tg.busy ? t.gymListening : shown ? t.gymTryAgain : t.gymTapMic)}</button>
+      </div>
+    </div>
+    ${shown ? `<button class="primary-btn tg-next" type="button" id="tgNext">${escapeHtml(t.gymNext)}</button>` : ""}`;
+  document.getElementById("tgListen").addEventListener("click", () => { unlockAudioForMobile(); playGoogleTTS(item.word, "zh", null, null).catch(console.error); });
+  document.getElementById("tgMic").addEventListener("click", tgSayAttempt);
+  document.getElementById("tgNext")?.addEventListener("click", () => {
+    const sc = (tg.result?.words || []).flatMap((w) => w.syllables || []);
+    if (sc.length) tg.scores.push(Math.round(sc.reduce((n, s) => n + (s.accuracy ?? 0), 0) / sc.length));
+    // A clearly weak word comes back once at the end of the session.
+    if (sc.some((s) => (s.accuracy ?? 100) < SYL_WEAK) && !tg.retried.has(item.word)) {
+      tg.retried.add(item.word);
+      tg.items.push(item);
+    }
+    tg.idx += 1; tg.result = null;
+    tgRenderItem();
+  });
+}
+
+async function tgSayAttempt() {
+  if (!tg || tg.busy) return;
+  const item = tg.items[tg.idx];
+  unlockAudioForMobile();
+  stopAllTTS();
+  tg.busy = true; tg.result = null;
+  tgRenderItem();
+  const { result, error } = await assessChunk(item.word, mapToSpeechLang("zh"));
+  tg.busy = false;
+  if (error) {
+    if (error.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); tgRenderItem(); return; }
+    const t = getT();
+    tg.result = { error: error.code === "MIC_DENIED" ? micBlockedMessage() : error.code === "NO_SPEECH" ? t.gymNoSpeech : t.gymSayFailed };
+  } else {
+    tg.result = result;
+    tgRecord(tgSayRows(result.words));
+    analyticsEvent("speech_scored", { score: Math.round(result.pronunciation ?? result.accuracy ?? 0), where: "tonegym" });
+  }
+  tgRenderItem();
+}
+
+function tgRenderDone() {
+  const stage = document.getElementById("tgStage");
+  const t = getT();
+  tgSetTop({ progress: 1 });
+  const line = tg.mode === "ear"
+    ? t.gymDoneEar.replace("{n}", tg.correct).replace("{total}", tg.total)
+    : t.gymDoneSay.replace("{n}", tg.scores.length ? Math.round(tg.scores.reduce((a, b) => a + b, 0) / tg.scores.length) : "–");
+  analyticsEvent("tonegym_finished", { mode: tg.mode });
+  stage.innerHTML = `
+    <div class="rv-done">
+      <div class="rv-done-mark"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#sonic-i-check"/></svg></div>
+      <h3>${escapeHtml(t.gymDoneTitle)}</h3>
+      <p>${escapeHtml(line)}</p>
+      <div class="rv-done-actions">
+        <button class="primary-btn" type="button" id="tgAgain">${escapeHtml(t.gymAgain)}</button>
+        <button class="ghost-btn" type="button" id="tgHome">${escapeHtml(t.gymBack)}</button>
+      </div>
+    </div>`;
+  const mode = tg.mode;
+  document.getElementById("tgAgain").addEventListener("click", () => tgStart(mode));
+  document.getElementById("tgHome").addEventListener("click", () => { tg = null; tgMapSkill = mode; tgRenderHome(); });
+}
+
+document.getElementById("tgBackBtn")?.addEventListener("click", () => {
+  if (tg) { tg = null; tgRenderHome(); return; } // session → gym home
+  renderHomeScreen();
+  showScreen(screenHome);
+});
 
 /* ── Review: spaced repetition across every deck ──
    Each card carries a schedule (backend/03-srs-setup.sql): srs_due is the
