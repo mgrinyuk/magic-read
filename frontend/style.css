@@ -8025,3 +8025,28 @@ body.fc-focus #fcFullscreenBtn { visibility: hidden; }
 #screen-flashcards .flashcard-top-actions { grid-template-columns: minmax(0, 1fr) 42px; }
 /* The card's own ⋯ shares .tb-more-btn with the deck menu; keep it card-sized. */
 #screen-flashcards .fc-card-tool { width: 36px; height: 36px; border-radius: 12px; }
+
+/* Sound check (Chinese): syllables of a tapped word, or the weakest ones. */
+.sp-syl { margin: 14px auto 0; max-width: 520px; padding: 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); text-align: left; }
+.sp-syl[hidden] { display: none; }
+.sp-syl-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; color: var(--text-soft); margin-bottom: 10px; }
+.sp-syl-meaning { border: 0; background: none; color: var(--primary); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 4px 0; }
+.sp-syl-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.sp-syl-chip {
+  display: grid; justify-items: center; gap: 2px; min-width: 64px; padding: 8px 10px; border-radius: 12px; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; color: var(--text);
+}
+.sp-syl-chip b { font-size: 22px; line-height: 1.2; }
+.sp-syl-py { font-size: 14px; font-weight: 600; color: var(--text-soft); }
+.sp-syl-score { font-size: 12px; font-weight: 800; }
+.sp-syl-chip.good { border-color: rgba(22,163,74,.35); } .sp-syl-chip.good .sp-syl-score { color: #16A34A; }
+.sp-syl-chip.ok { border-color: rgba(224,161,6,.45); } .sp-syl-chip.ok .sp-syl-score { color: #B98300; }
+.sp-syl-chip.bad { border-color: rgba(220,38,38,.45); background: rgba(220,38,38,.05); } .sp-syl-chip.bad .sp-syl-score { color: #DC2626; }
+.sp-syl-hint { margin-top: 10px; font-size: 13.5px; color: var(--text-soft); }
+/* With the sound box showing, shrink the score ring so Try again / Next
+   stay above the tab bar instead of needing a scroll. */
+#screen-speak-practice:has(#spSylPanel:not([hidden])) .sp-result .sp-ring-wrap { width: 136px; height: 136px; }
+#screen-speak-practice:has(#spSylPanel:not([hidden])) .sp-result .sp-ring-wrap svg { width: 136px; height: 136px; }
+#screen-speak-practice:has(#spSylPanel:not([hidden])) .sp-result .sp-ring-score { font-size: 34px; }
+#screen-speak-practice:has(#spSylPanel:not([hidden])) .sp-result .sp-ring-cap { font-size: 10px; }
+#screen-speak-practice:has(#spSylPanel:not([hidden])) .sp-stage { padding-top: 6px; padding-bottom: 6px; }

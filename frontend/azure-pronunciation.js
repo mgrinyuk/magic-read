@@ -8,7 +8,8 @@
    Exposes:
      assessPronunciation(referenceText, lang, { tokenUrl, fetchWithAuth })
        -> resolves { transcript, accuracy, fluency, completeness,
-                     pronunciation, prosody, words: [{word, accuracy, errorType}] }
+                     pronunciation, prosody, words: [{word, accuracy, errorType,
+                     syllables: [{char, pinyin, tone, accuracy}] (zh only)}] }
        -> rejects with err.code in:
             NO_AUTH | NOT_CONFIGURED | QUOTA_EXCEEDED | TOKEN_FAILED
             SDK_LOAD_FAILED | NO_SPEECH | MIC_DENIED | CANCELED | SDK_ERROR
@@ -60,11 +61,33 @@ function extractWords(detailJson) {
     return words.map((w) => ({
       word: w.Word,
       accuracy: w.PronunciationAssessment?.AccuracyScore ?? null,
-      errorType: w.PronunciationAssessment?.ErrorType ?? "None"
+      errorType: w.PronunciationAssessment?.ErrorType ?? "None",
+      syllables: extractSyllables(w)
     }));
   } catch {
     return [];
   }
+}
+
+// Chinese only: Azure names each zh-CN "phoneme" as a whole pinyin syllable
+// with the expected tone ("jiang 3", "men 5") and scores it. A wrong tone
+// pulls that syllable's score down (tested: 买 said as 卖 scored 42, said
+// right 98), though it doesn't say which tone was produced. Other languages
+// return real phonemes, so they get [] and keep the word-level view.
+function extractSyllables(w) {
+  const phonemes = w.Phonemes || [];
+  if (!phonemes.length || !phonemes.every((p) => /^[a-zü]+ [1-5]$/i.test(p.Phoneme || ""))) return [];
+  const graphemes = (w.Syllables || []).map((s) => s.Grapheme).filter(Boolean);
+  const chars = graphemes.length === phonemes.length ? graphemes : [...(w.Word || "")];
+  return phonemes.map((p, i) => {
+    const [pinyin, tone] = p.Phoneme.split(" ");
+    return {
+      char: chars.length === phonemes.length ? chars[i] : "",
+      pinyin: pinyin.toLowerCase().replace(/v/g, "ü"),
+      tone: Number(tone),
+      accuracy: p.PronunciationAssessment?.AccuracyScore ?? p.AccuracyScore ?? null
+    };
+  });
 }
 
 export async function assessPronunciation(referenceText, lang, { tokenUrl, fetchWithAuth }) {

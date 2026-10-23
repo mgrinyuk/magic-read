@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261018.16";
+import { UI_TEXT } from "./ui-text.js?v=20261023.1";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -7,7 +7,7 @@ import {
   renderAssessment,
   collectFailedChunks,
   GREEN_THRESHOLD
-} from "./azure-pronunciation.js";
+} from "./azure-pronunciation.js?v=20261023.1";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
@@ -5089,6 +5089,83 @@ const spState = {
 };
 
 function spColor(score) { return score >= 85 ? "#16A34A" : score >= 70 ? "#E0A106" : "#DC2626"; }
+
+/* ── Sound check (Chinese) ──
+   Each scored word carries its syllables: expected pinyin + tone and a
+   score. Real voices score noisier than the TTS we tested with, so only a
+   clearly low syllable (< SYL_WEAK) is called out; 60–79 shows amber. */
+const SYL_WEAK = 60;
+
+// "jiang", 3 → "jiǎng". The mark goes on a or e, on the o of "ou", otherwise
+// on the last vowel; neutral tone (5) stays unmarked.
+function pinyinWithTone(syllable, tone) {
+  const marks = { a: "āáǎà", e: "ēéěè", i: "īíǐì", o: "ōóǒò", u: "ūúǔù", ü: "ǖǘǚǜ" };
+  if (!(tone >= 1 && tone <= 4)) return syllable;
+  let at = syllable.search(/[ae]/);
+  if (at < 0) at = syllable.indexOf("ou");
+  if (at < 0) {
+    for (let i = syllable.length - 1; i >= 0; i--) if (marks[syllable[i]]) { at = i; break; }
+  }
+  if (at < 0) return syllable;
+  return syllable.slice(0, at) + marks[syllable[at]][tone - 1] + syllable.slice(at + 1);
+}
+
+function sylClass(acc) { return acc == null ? "" : acc >= 80 ? "good" : acc >= SYL_WEAK ? "ok" : "bad"; }
+
+// wordIndex: show that word's syllables; null: the weakest syllables of the
+// sentence (or nothing when all of them are fine).
+function spRenderSyllables(res, wordIndex) {
+  const panel = document.getElementById("spSylPanel");
+  if (!panel) return;
+  const t = getT();
+  const words = res?.words || [];
+  let title, items;
+  if (wordIndex != null) {
+    const w = words[wordIndex];
+    title = t.sylCheckTitle.replace("{word}", w?.text || "");
+    items = (w?.syllables || []).map((sy) => ({ ...sy, word: w.text }));
+  } else {
+    const weak = words.flatMap((w) => (w.syllables || []).map((sy) => ({ ...sy, word: w.text })))
+      .filter((sy) => sy.accuracy != null && sy.accuracy < SYL_WEAK)
+      .sort((a, b) => a.accuracy - b.accuracy)
+      .slice(0, 3);
+    title = t.sylPractiseTitle;
+    items = weak;
+  }
+  if (!items.length) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+  const weakest = items.reduce((m, sy) => (sy.accuracy ?? 100) < (m?.accuracy ?? 100) ? sy : m, null);
+  const hint = weakest && weakest.accuracy != null && weakest.accuracy < SYL_WEAK
+    ? `<div class="sp-syl-hint">${escapeHtml(t[`toneHint${weakest.tone}`] || "")}</div>` : "";
+  panel.innerHTML = `
+    <div class="sp-syl-head">
+      <span>${escapeHtml(title)}</span>
+      ${wordIndex != null ? `<button class="sp-syl-meaning" type="button">${escapeHtml(t.sylMeaning)}</button>` : ""}
+    </div>
+    <div class="sp-syl-list">${items.map((sy, i) => `
+      <button class="sp-syl-chip ${sylClass(sy.accuracy)}" type="button" data-k="${i}">
+        <b class="zh">${escapeHtml(sy.char || "")}</b>
+        <span class="sp-syl-py">${escapeHtml(pinyinWithTone(sy.pinyin, sy.tone))}</span>
+        <span class="sp-syl-score">${sy.accuracy == null ? "–" : Math.round(sy.accuracy)}</span>
+      </button>`).join("")}
+    </div>${hint}`;
+  panel.hidden = false;
+  // Tap a syllable to hear it said correctly.
+  panel.querySelectorAll(".sp-syl-chip").forEach((chip) => chip.addEventListener("click", () => {
+    const sy = items[Number(chip.dataset.k)];
+    unlockAudioForMobile();
+    playGoogleTTS(sy.char || sy.word, spState.lang, null, null).catch(console.error);
+  }));
+  panel.querySelector(".sp-syl-meaning")?.addEventListener("click", (e) => {
+    const word = words[wordIndex]?.text;
+    if (!word) return;
+    sourceLangSelect.value = spState.lang;
+    showWordPopup(e.currentTarget, word, spState.sentences[spState.idx], "", true).catch(console.error);
+  });
+}
 function spMessage(score) {
   return score >= 95 ? "Native-like!" : score >= 85 ? "Sounds clean!" : score >= 70 ? "Almost there" : "Keep going";
 }
@@ -5102,7 +5179,7 @@ function spMapAzure(result) {
       let status = "good";
       if (w.errorType && w.errorType !== "None") status = "bad";
       else if (w.accuracy != null) status = w.accuracy >= 85 ? "good" : w.accuracy >= 70 ? "ok" : "bad";
-      return { text: w.word || "", status };
+      return { text: w.word || "", status, syllables: w.syllables || [] };
     });
   return {
     score: round(result.pronunciation ?? result.accuracy),
@@ -5227,12 +5304,13 @@ async function spRenderPractice() {
   const zh = document.getElementById("spZh");
   if (done && res && res.words && res.words.length) {
     zh.innerHTML = res.words
-      .map((w) => `<span class="sp-word w-${w.status} ${`sp-${w.status}`}" data-word="${escapeHtml(w.text)}">${escapeHtml(w.text)}</span>`)
+      .map((w, i) => `<span class="sp-word w-${w.status} ${`sp-${w.status}`}" data-word="${escapeHtml(w.text)}" data-i="${i}">${escapeHtml(w.text)}</span>`)
       .join("");
   } else {
     zh.innerHTML = spBuildClickableTokens(s, spState.lang);
   }
   spAttachWordTaps(zh, s);
+  spRenderSyllables(done ? res : null, null);
 
   // toggle mic vs result
   document.getElementById("spMicGroup").hidden = done;
@@ -5294,6 +5372,13 @@ function spAttachWordTaps(container, sentence) {
       e.stopPropagation();
       const word = el.dataset.word;
       if (!word) return;
+      // Scored Chinese words open their sound check; it links on to the meaning.
+      const res = spState.phase === "done" ? spState.results[spState.idx] : null;
+      const scored = el.dataset.i != null ? res?.words?.[Number(el.dataset.i)] : null;
+      if (scored?.syllables?.length) {
+        spRenderSyllables(res, Number(el.dataset.i));
+        return;
+      }
       sourceLangSelect.value = spState.lang;
       showWordPopup(el, word, sentence, "", true).catch(console.error);
     });
