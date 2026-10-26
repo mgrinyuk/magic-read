@@ -8122,3 +8122,14 @@ body.fc-focus #fcFullscreenBtn { visibility: hidden; }
 .tg-pitch-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .tg-pitch-legend i { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--primary); }
 .tg-pitch-legend i.target { border-top: 2.5px dashed var(--text-dim); }
+
+/* Back of a card: the meaning at a reading size, not a headline. Long
+   dictionary meanings step down again so they don't fill the card. */
+#screen-flashcards .flashcard-translation { font-size: clamp(20px, 5.2vw, 30px); font-weight: 750; line-height: 1.3; }
+#screen-flashcards .flashcard-translation.is-long { font-size: clamp(17px, 4.2vw, 22px); font-weight: 700; }
+
+/* Import: which deck the words go into. */
+.import-deck { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--text-soft); }
+.import-deck-select { flex: 1; min-width: 0; height: 40px; padding: 0 10px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 15px; font-weight: 600; }
+.import-deck-name { width: 100%; margin: 0 0 10px; }
+.import-deck-name[hidden] { display: none; }

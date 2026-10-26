@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261023.3";
+import { UI_TEXT } from "./ui-text.js?v=20261026.1";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -7,8 +7,8 @@ import {
   renderAssessment,
   collectFailedChunks,
   GREEN_THRESHOLD
-} from "./azure-pronunciation.js?v=20261023.3";
-import { detectPitch, analyseWord, toneVerdict, toneTemplate } from "./tone-pitch.js?v=20261023.3";
+} from "./azure-pronunciation.js?v=20261026.1";
+import { detectPitch, analyseWord, toneVerdict, toneTemplate } from "./tone-pitch.js?v=20261026.1";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
@@ -9229,6 +9229,9 @@ function cleanDictDefinitions(definitions = []) {
 
 function cleanTranslation(str = "") {
   return String(str)
+    // CC-CEDICT measure-word notes: "(CL: 份)", "; CL:筆|笔[bi3]"
+    .replace(/\s*\(\s*CL:[^)]*\)/g, "")
+    .replace(/[;,]?\s*\bCL:[^;]*/g, "")
     .replace(/\*\*/g, "")
     .replace(/\[.*?\]/g, "")
     .replace(/^\s*\d+\.\s*/g, "")
@@ -9454,7 +9457,10 @@ async function renderFlashcards() {
   wordEl.textContent = card.word || "";
   wordPinyinEl.textContent = card.pinyin || "";
   if (wordBackEl) wordBackEl.textContent = card.word || "";
-  if (translationEl) translationEl.textContent = cleanTranslation(card.translation);
+  if (translationEl) {
+    translationEl.textContent = cleanTranslation(card.translation);
+    translationEl.classList.toggle("is-long", translationEl.textContent.length > 28);
+  }
   renderCardPicture(card);
 
   flashcardFlipped = false;
@@ -9598,17 +9604,25 @@ async function clearFlashcards() {
 
 async function createDeck() {
   // Gate: free users can have up to FREE_MAX_DECKS decks.
-  const allowed = await checkDeckQuota("new-deck", document.getElementById("flashcardNewDeckBtn"));
+  const allowed = await checkDeckQuota("new-deck", null);
   if (!allowed) return;
 
   const name = await showPrompt("Deck name:");
   if (!name) return;
+  if (await insertDeck(name)) {
+    currentFlashcardIndex = 0;
+    renderDeckSelector();
+    renderFlashcards();
+  }
+}
 
+// Creates a deck and makes it the current one; returns it, or null.
+async function insertDeck(name) {
   const {
     data: { user }
   } = await supabase.auth.getUser();
 
-  if (!user) return;
+  if (!user || !String(name || "").trim()) return null;
 
   const { data, error } = await supabase
     .from("flashcard_decks")
@@ -9622,20 +9636,13 @@ async function createDeck() {
   if (error) {
     console.error("Create deck error:", error);
     showToast("Could not create deck.", "error");
-    return;
+    return null;
   }
 
-  flashcardDecks.push({
-    id: data.id,
-    name: data.name,
-    cards: []
-  });
-
+  const deck = { id: data.id, name: data.name, cards: [] };
+  flashcardDecks.push(deck);
   currentDeckId = data.id;
-  currentFlashcardIndex = 0;
-
-  renderDeckSelector();
-  renderFlashcards();
+  return deck;
 }
 
 async function deleteCurrentDeck() {
@@ -9677,11 +9684,7 @@ function limitMeanings(text, max = 3) {
 
 async function importWords() {
   if (isOnFreePlan()) { showUpgradePrompt("CARD_QUOTA_EXCEEDED"); return; }
-  const deck = getCurrentDeck();
-  if (!deck) {
-    showToast("Please select or create a deck first.", "error");
-    return;
-  }
+  const t = getT();
 
   const lang = sourceLangSelect.value;
   const targetLang = targetLangSelect.value;
@@ -9693,6 +9696,14 @@ async function importWords() {
     <div class="modal-box import-modal-box">
       <h3 class="import-modal-title">Import words</h3>
       <p class="import-modal-hint">One word per line, or separated by commas or semicolons.</p>
+      <label class="import-deck">
+        <span>${escapeHtml(t.importInto || "Import into")}</span>
+        <select class="import-deck-select">
+          ${flashcardDecks.map((d) => `<option value="${escapeHtml(String(d.id))}"${d.id === currentDeckId ? " selected" : ""}>${escapeHtml(d.name)}</option>`).join("")}
+          <option value="__new"${flashcardDecks.length ? "" : " selected"}>${escapeHtml(t.newDeckOption || "+ New deck…")}</option>
+        </select>
+      </label>
+      <input class="import-deck-name auth-input" type="text" maxlength="60" placeholder="${escapeHtml(t.deckNamePlaceholder || "New deck name")}" ${flashcardDecks.length ? "hidden" : ""} />
       <textarea class="import-modal-textarea" placeholder="图书馆&#10;学习&#10;天气&#10;朋友"></textarea>
       <div class="import-progress" hidden></div>
       <div class="modal-actions">
@@ -9704,6 +9715,12 @@ async function importWords() {
   document.body.appendChild(overlay);
 
   const textarea = overlay.querySelector(".import-modal-textarea");
+  const deckSelect = overlay.querySelector(".import-deck-select");
+  const deckName = overlay.querySelector(".import-deck-name");
+  deckSelect.addEventListener("change", () => {
+    deckName.hidden = deckSelect.value !== "__new";
+    if (!deckName.hidden) deckName.focus();
+  });
   const progressEl = overlay.querySelector(".import-progress");
   const confirmBtn = overlay.querySelector(".modal-confirm");
   const cancelBtn = overlay.querySelector(".modal-cancel");
@@ -9724,6 +9741,22 @@ async function importWords() {
       showToast("Please enter at least one word.", "error");
       return;
     }
+
+    // Where the words go: an existing deck, or one made now.
+    if (deckSelect.value === "__new") {
+      const name = deckName.value.trim();
+      if (!name) { showToast(t.deckNameNeeded || "Give the new deck a name.", "error"); deckName.focus(); return; }
+      if (!(await checkDeckQuota("new-deck", null))) return;
+      const made = await insertDeck(name);
+      if (!made) return;
+      deckSelect.insertAdjacentHTML("afterbegin", `<option value="${escapeHtml(String(made.id))}">${escapeHtml(made.name)}</option>`);
+      deckSelect.value = String(made.id);
+      deckName.hidden = true;
+    } else {
+      currentDeckId = flashcardDecks.find((d) => String(d.id) === deckSelect.value)?.id ?? currentDeckId;
+    }
+    currentFlashcardIndex = 0;
+    renderDeckSelector();
 
     confirmBtn.disabled = true;
     cancelBtn.disabled = true;
@@ -9752,11 +9785,7 @@ async function importWords() {
             const dictData = await dictRes.json();
             if (dictRes.ok && dictData.entries?.length) {
               const entry = dictData.entries[0];
-              translation = entry.definitions
-                .map(d => d.trim())
-                .filter(Boolean)
-                .slice(0, 3)
-                .join("; ");
+              translation = cleanDictDefinitions(entry.definitions);
               pinyin = entry.pinyin || "";
             }
           } catch {
