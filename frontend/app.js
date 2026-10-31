@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261026.1";
+import { UI_TEXT } from "./ui-text.js?v=20261031.1";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -7,8 +7,8 @@ import {
   renderAssessment,
   collectFailedChunks,
   GREEN_THRESHOLD
-} from "./azure-pronunciation.js?v=20261026.1";
-import { detectPitch, analyseWord, toneVerdict, toneTemplate } from "./tone-pitch.js?v=20261026.1";
+} from "./azure-pronunciation.js?v=20261031.1";
+import { detectPitch, analyseWord, toneVerdict, toneTemplate } from "./tone-pitch.js?v=20261031.1";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
@@ -72,7 +72,7 @@ async function tryAzurePronunciation(referenceText, lang, renderTo, recordBtn, t
     // Out of free checks: show a contextual upgrade prompt at the result area.
     if (err.code === "QUOTA_EXCEEDED") {
       if (renderTo) renderTo.hidden = false;
-      showUpgradePrompt("QUOTA_EXCEEDED", renderTo);
+      showSpeechQuotaPrompt(err);
       return { score: 0 };
     }
     const messages = {
@@ -369,7 +369,7 @@ async function runPronunciationDrill(chunks, shortLang, resultBox, t) {
               outcome.error.info?.error ||
                 tt("drillQuota", "You're out of today's free checks.")
             )}</p>`;
-            showUpgradePrompt("QUOTA_EXCEEDED");
+            showSpeechQuotaPrompt(outcome.error);
             finish("abort");
             return;
           }
@@ -1528,11 +1528,26 @@ document.getElementById("welcomeWeekDismiss")?.addEventListener("click", () => {
    CONTEXTUAL UPGRADE PROMPTS
 ----------------------------- */
 
+let trialDailyLimit = 300;
+
+// The speaking counter rolls over at midnight UTC: show that moment in the
+// learner's own time.
+function speechResetTime() {
+  const now = new Date();
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return next.toLocaleTimeString(localStorage.getItem("magicread_ui_lang") || undefined, { hour: "numeric", minute: "2-digit" });
+}
+
 function getUpgradeMessage(code) {
   const lim = userPlan.limits;
   const t = getT();
   const fill = (str, n) => String(str || "").replace("{n}", n);
   const msgs = {
+    TRIAL_DAILY_LIMIT: {
+      title: t.quotaTrialTitle,
+      sub: fill(t.quotaTrialSub, trialDailyLimit).replace("{time}", speechResetTime()),
+      reassurance: null
+    },
     QUOTA_EXCEEDED: {
       title: t.quotaChecksTitle,
       sub: t.quotaChecksSub,
@@ -1589,6 +1604,14 @@ function getUpgradeMessage(code) {
 
 // Show a dismissible upgrade modal at hard limits. The inline usage meter
 // (renderSpeakMeter) stays visible independently — this modal is additive.
+// A refused speech check: the trial's daily limit gets its own honest message
+// (with the limit and when it resets); anything else is the usual prompt.
+function showSpeechQuotaPrompt(err) {
+  const trial = err?.info?.reason === "TRIAL_DAILY_LIMIT";
+  if (trial) trialDailyLimit = err.info.limit || trialDailyLimit;
+  showUpgradePrompt(trial ? "TRIAL_DAILY_LIMIT" : "QUOTA_EXCEEDED");
+}
+
 function showUpgradePrompt(code) {
   analyticsEvent("paywall_shown", { reason: code || "unknown" });
   document.querySelectorAll(".upgrade-modal-overlay, .upgrade-inline").forEach(el => el.remove());
@@ -5457,7 +5480,7 @@ async function spOnMicTap() {
     // The user may have tapped "done" while the session was still connecting.
     if (spState.stopRequested) spStopAndScore();
   } catch (err) {
-    if (err && err.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); spResetMic(); return; }
+    if (err && err.code === "QUOTA_EXCEEDED") { showSpeechQuotaPrompt(err); spResetMic(); return; }
     if (err && err.code === "MIC_DENIED") {
       showToast(micBlockedMessage(), "error");
       spResetMic();
@@ -10769,7 +10792,7 @@ async function tgSayAttempt() {
   const recorded = (await capture)?.stop();
   tg.busy = false;
   if (error) {
-    if (error.code === "QUOTA_EXCEEDED") { showUpgradePrompt("QUOTA_EXCEEDED"); tgRenderItem(); return; }
+    if (error.code === "QUOTA_EXCEEDED") { showSpeechQuotaPrompt(error); tgRenderItem(); return; }
     const t = getT();
     tg.result = { error: error.code === "MIC_DENIED" ? micBlockedMessage() : error.code === "NO_SPEECH" ? t.gymNoSpeech : t.gymSayFailed };
   } else {

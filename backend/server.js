@@ -106,7 +106,7 @@ const FREE_DAILY_PRONUNCIATION_LIMIT = 0;
 // Ceiling on a trial day's speaking. Chosen from the real distribution — median
 // 10 a day, ninetieth percentile 52 — so ordinary practice never meets it; it
 // only catches the outliers, one of which reached 401 in a single day.
-const TRIAL_DAILY_PRONUNCIATION_LIMIT = Number(process.env.TRIAL_DAILY_PRONUNCIATION_LIMIT || 100);
+const TRIAL_DAILY_PRONUNCIATION_LIMIT = Number(process.env.TRIAL_DAILY_PRONUNCIATION_LIMIT || 300);
 const FREE_DAILY_TEXT_LIMIT = 1;
 const FREE_MAX_SAVED_TEXTS = 0;
 const FREE_MAX_DECKS = 1; // the default deck every account gets
@@ -2234,16 +2234,20 @@ app.post("/api/speech-token", extractUser, requireUser, async (req, res) => {
     const { effectivePlan, plan, trialActive } = await getUserPlan(userId);
     const isPro = effectivePlan === "pro";
 
-    // Trial users account for ~89% of everything Azure bills us for, and Azure
-    // charges by the second it listens. A normal trial day is ten attempts and
-    // the busiest tenth reach fifty, so this ceiling is far above real practice
-    // — it exists to stop one runaway day, not to ration the trial.
+    // Trial users account for most of what Azure bills us for, and Azure
+    // charges by the second it listens. A typical speaking day is about 14
+    // checks and the busiest tenth reach 80+, and at 100 this stopped keen
+    // new learners mid-practice on day one. It's here to stop a runaway day,
+    // not to ration the trial, so it sits well above real practice.
     if (isPro && plan !== "pro" && trialActive) {
       const used = await pronunciationUsedToday(userId);
       if (used >= TRIAL_DAILY_PRONUNCIATION_LIMIT) {
         return res.status(429).json({
           error: "You've reached today's speaking practice limit for the free trial. Subscribe for unlimited practice.",
           code: "QUOTA_EXCEEDED",
+          // Lets the app explain this is the trial's daily limit, which resets;
+          // older builds ignore it and show the general upgrade screen.
+          reason: "TRIAL_DAILY_LIMIT",
           used,
           limit: TRIAL_DAILY_PRONUNCIATION_LIMIT
         });
