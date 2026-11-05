@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { UI_TEXT } from "./ui-text.js?v=20261031.1";
+import { UI_TEXT } from "./ui-text.js?v=20261105.1";
 import { getModeCopy } from "./mode-copy.js?v=20260618.2";
 import {
   assessPronunciation,
@@ -7,8 +7,8 @@ import {
   renderAssessment,
   collectFailedChunks,
   GREEN_THRESHOLD
-} from "./azure-pronunciation.js?v=20261031.1";
-import { detectPitch, analyseWord, toneVerdict, toneTemplate } from "./tone-pitch.js?v=20261031.1";
+} from "./azure-pronunciation.js?v=20261105.1";
+import { detectPitch, analyseWord, toneVerdict, toneTemplate } from "./tone-pitch.js?v=20261105.1";
 
 const SUPABASE_URL = "https://nudirmexwisvvcmskhtn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8rz-fBIcvrR4qSNuG4j_7w_c_nZ79cU";
@@ -6879,6 +6879,10 @@ async function rdShowWordSheet(word, pinyin, sentence) {
     unlockAudioForMobile();
     playGoogleTTS(word, R.lang, null, null).catch(console.error);
   };
+  // Say the word as soon as it's tapped; the button is there to hear it again.
+  unlockAudioForMobile();
+  stopAllTTS();
+  playGoogleTTS(word, R.lang, null, null).catch(console.error);
 
   // Real dictionary lookup (same endpoints as the reader word popup).
   let translation = "";
@@ -9546,6 +9550,17 @@ function flipFlashcard() {
   cardEl.classList.toggle("is-flipped", flashcardFlipped);
 }
 
+// Say the card's word when the learner moves to it. Not when the word is the
+// answer they're about to say (hard speaking mode hides it).
+function speakCurrentFlashcard() {
+  const card = getCurrentCards()[currentFlashcardIndex];
+  if (!card?.word) return;
+  if (flashcardSpeakingMode === "hard" && !flashcardSpeakingUnlocked) return;
+  unlockAudioForMobile();
+  stopAllTTS();
+  playGoogleTTS(card.word, card.lang || null, null, null).catch(console.error);
+}
+
 function goToNextFlashcard() {
   const cards = getCurrentCards();
   if (!cards.length) return;
@@ -9563,6 +9578,7 @@ function goToNextFlashcard() {
     if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
   }
   renderFlashcards();
+  speakCurrentFlashcard();
 }
 
 function goToPrevFlashcard() {
@@ -9577,6 +9593,7 @@ function goToPrevFlashcard() {
     if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ""; }
   }
   renderFlashcards();
+  speakCurrentFlashcard();
 }
 
 async function deleteCurrentFlashcard() {
@@ -11070,6 +11087,13 @@ function renderReview() {
     unlockAudioForMobile();
     playGoogleTTS(card.word, card.lang || null, null, null).catch(console.error);
   });
+  // Say each word once when its card comes up (not again on Show answer).
+  if (rv.spokenIdx !== rv.idx) {
+    rv.spokenIdx = rv.idx;
+    unlockAudioForMobile();
+    stopAllTTS();
+    playGoogleTTS(card.word, card.lang || null, null, null).catch(console.error);
+  }
   document.getElementById("rvShowBtn")?.addEventListener("click", () => { rv.revealed = true; renderReview(); });
   // Later: stop here. Graded words are already saved; the rest stay due.
   document.getElementById("rvLaterBtn")?.addEventListener("click", () => {
